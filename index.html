@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Jarvis · Kiosk Duran</title>
+<style>
+:root{--bg1:#0b1324;--bg2:#132c57;--ink:#e6efff;--mut:#a9b7e6;--glass:rgba(255,255,255,.06);--line:rgba(255,255,255,.12);--brand:#57a3ff;--ok:#22c55e;--warn:#f59e0b;--err:#ef4444}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;background:
+radial-gradient(1100px 600px at 50% -10%, #1a3a78 0%, #0e1a35 50%, #091326 100%);} 
+.app{min-height:100%;display:grid;grid-template-rows:auto 1fr}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px}
+.logo{display:flex;align-items:center;gap:12px}
+.logo img{height:38px;filter:drop-shadow(0 2px 18px rgba(87,163,255,.35))}
+.halo{position:absolute;inset:auto auto auto 12px;width:70px;height:70px;border-radius:50%;background:radial-gradient(circle at 35% 30%, rgba(87,163,255,.28), rgba(87,163,255,.05) 60%, transparent 65%);pointer-events:none}
+.badge{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--glass);color:var(--ink)}
+.grid{display:grid;gap:16px}
+.two{grid-template-columns:1.2fr .8fr}
+.card{border:1px solid var(--line);background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04));backdrop-filter:blur(10px);border-radius:18px;padding:16px;color:var(--ink)}
+.row{display:flex;gap:10px;align-items:center}
+input,button,select,textarea{font:inherit}
+input[type="text"]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.2);color:var(--ink);outline:none}
+button{padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--ink);cursor:pointer}
+button:hover{background:rgba(255,255,255,.12)}
+.small{font-size:12px;color:var(--mut)}
+.flags{display:grid;grid-template-columns:repeat(6,52px);gap:8px}
+.flags button{padding:0;border-radius:10px;overflow:hidden}
+.flags img{display:block;width:100%;height:40px;object-fit:cover}
+.sphere{width:160px;height:160px;border-radius:50%;margin:auto;border:1px solid rgba(255,255,255,.25);box-shadow:0 0 40px rgba(80,180,255,.28);position:relative;overflow:hidden}
+.sphere .g{position:absolute;inset:0;background:conic-gradient(from 0deg at 50% 50%, #60a5fa, #a78bfa, #f472b6, #60a5fa);filter:blur(16px);opacity:.85}
+.sphere.listening .g{animation:rot 8s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+.sphere .ring{position:absolute;left:50%;top:50%;width:90px;height:90px;transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(255,255,255,.45);opacity:.5}
+.sphere.listening .ring{animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%{transform:translate(-50%,-50%) scale(1);opacity:.6}50%{transform:translate(-50%,-50%) scale(1.5);opacity:.1}100%{transform:translate(-50%,-50%) scale(1);opacity:.6}}
+.list{display:grid;gap:10px;max-height:48vh;overflow:auto}
+.item{display:grid;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.04);padding:12px;border-radius:14px}
+.sub{color:var(--mut);font-size:12px}
+.map{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.map img{display:block;width:100%;height:auto}
+.pin{position:absolute;width:14px;height:14px;background:#ef4444;border-radius:50%;box-shadow:0 0 0 5px rgba(239,68,68,.35);transform:translate(-50%,-50%);display:none}
+.hidden{display:none!important}
+footer{padding:8px 16px;color:var(--mut);font-size:12px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo" style="position:relative">
+      <div class="halo"></div>
+      <img src="logo-duran.png" alt="DURAN" />
+      <div class="badge">Jarvis · Centro Duran Calvià</div>
+    </div>
+    <div class="small" id="status">Listo</div>
+  </header>
+
+  <main class="grid two" style="padding:16px">
+    <section class="card grid" id="left">
+      <div class="grid">
+        <div class="small">Selecciona idioma</div>
+        <div class="flags" id="flags"></div>
+      </div>
+      <div class="row">
+        <input id="name" type="text" placeholder="Tu nombre (opcional)" />
+        <button id="start">Empezar</button>
+      </div>
+
+      <div class="grid" id="queryBox" style="display:none">
+        <div class="row">
+          <input id="q" type="text" placeholder="Escribe lo que necesitas… (ej. manguito 32, scala2, filtro e1)" />
+          <button id="mic">🎙️ Hablar</button>
+          <button id="go">Buscar</button>
+        </div>
+        <div class="grid" style="place-items:center">
+          <div class="sphere" id="sphere">
+            <div class="g"></div>
+            <div class="ring"></div>
+          </div>
+          <div id="spLabel" class="small">Listo</div>
+        </div>
+        <div class="small">Jarvis hablará y, sólo cuando encuentre el producto, mostrará el plano con la ubicación.</div>
+      </div>
+
+      <div id="results" class="list hidden"></div>
+    </section>
+
+    <section class="card grid" id="right">
+      <div class="small">Plano (se muestra tras localizar producto)</div>
+      <div class="map">
+        <img id="mapImg" src="plano-calvia.jpg" alt="Plano Calvià" />
+        <div id="pin" class="pin"></div>
+      </div>
+      <div id="route" class="sub"></div>
+      <div class="row">
+        <button id="again">Nueva búsqueda</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>Offline listo: esta app puede instalarse como PWA (Añadir a pantalla principal). Datos: CSV locales o exportados de SharePoint. Futuro SAP vía export.</footer>
+</div>
+
+<script>
+// =============== Config ===============
+const CENTER = "Duran Calvià"; // Centro de la maqueta
+const LANGS = {
+  es:{name:"Español", tag:"es-ES", sphere:{idle:"Listo", listening:"Escuchando…", thinking:"Pensando…", speaking:"Hablando…"},
+      explainIntro:n=>`${n? n+", ":""}Te explico y te guío.`,
+      found:d=>`He encontrado la mejor opción: ${d}.`,
+      guide:(p,l,e,b)=>`Desde tu posición, dirígete al pasillo ${p}, lado ${l}, estante ${e}, balda ${b}.`},
+  ca:{name:"Mallorquí", tag:"ca-ES", sphere:{idle:"A punt", listening:"Escoltant…", thinking:"Pensant…", speaking:"Parlant…"},
+      explainIntro:n=>`${n? n+", ":""}T'ho explic i després te guiaré.`,
+      found:d=>`La millor opció és: ${d}.`,
+      guide:(p,l,e,b)=>`Des de la teva ubicació, ves al passadís ${p}, costat ${l}, prestatge ${e}, balda ${b}.`},
+  en:{name:"English", tag:"en-GB", sphere:{idle:"Ready", listening:"Listening…", thinking:"Thinking…", speaking:"Speaking…"},
+      explainIntro:n=>`${n? n+", ":""}I'll explain and guide you.`,
+      found:d=>`Best match: ${d}.`,
+      guide:(p,l,e,b)=>`From your position, go to aisle ${p}, ${l} side, shelf ${e}, tier ${b}.`},
+  de:{name:"Deutsch", tag:"de-DE", sphere:{idle:"Bereit", listening:"Zuhören…", thinking:"Denken…", speaking:"Sprechen…"},
+      explainIntro:n=>`${n? n+", ":""}Ich erkläre kurz und führe Sie.`,
+      found:d=>`Beste Option: ${d}.`,
+      guide:(p,l,e,b)=>`Von Ihrer Position zum Gang ${p}, ${l}e Seite, Regal ${e}, Ebene ${b}.`},
+  pl:{name:"Polski", tag:"pl-PL", sphere:{idle:"Gotowe", listening:"Słucham…", thinking:"Myślę…", speaking:"Mówię…"},
+      explainIntro:n=>`${n? n+", ":""}Krótko wyjaśnię i poprowadzę.`,
+      found:d=>`Najlepsza opcja: ${d}.`,
+      guide:(p,l,e,b)=>`Z Twojej pozycji: alejka ${p}, strona ${l}, półka ${e}, poziom ${b}.`},
+  ru:{name:"Русский", tag:"ru-RU", sphere:{idle:"Готово", listening:"Слушаю…", thinking:"Думаю…", speaking:"Говорю…"},
+      explainIntro:n=>`${n? n+", ":""}Коротко объясню и проведу.`,
+      found:d=>`Лучший вариант: ${d}.`,
+      guide:(p,l,e,b)=>`От вашей позиции: ряд ${p}, сторона ${l}, полка ${e}, уровень ${b}.`}
+};
+let lang = 'es';
+
+// =============== UI refs ===============
+const flags = document.getElementById('flags');
+const nameInput = document.getElementById('name');
+const startBtn = document.getElementById('start');
+const queryBox = document.getElementById('queryBox');
+const q = document.getElementById('q');
+const goBtn = document.getElementById('go');
+const micBtn = document.getElementById('mic');
+const sphere = document.getElementById('sphere');
+const spLabel = document.getElementById('spLabel');
+const statusEl = document.getElementById('status');
+const resultsEl = document.getElementById('results');
+const mapImg = document.getElementById('mapImg');
+const pin = document.getElementById('pin');
+const routeEl = document.getElementById('route');
+const againBtn = document.getElementById('again');
+
+// =============== Flags ===============
+const SENYERA = `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='640' height='400'><rect width='640' height='400' fill='#f7d117'/><g fill='#d40000'><rect y='25' width='640' height='50'/><rect y='115' width='640' height='50'/><rect y='205' width='640' height='50'/><rect y='295' width='640' height='50'/></g></svg>`)}`;
+const FLAGS = { es:'https://flagcdn.com/w80/es.png', ca:SENYERA, en:'https://flagcdn.com/w80/gb.png', de:'https://flagcdn.com/w80/de.png', pl:'https://flagcdn.com/w80/pl.png', ru:'https://flagcdn.com/w80/ru.png' };
+for(const code of Object.keys(LANGS)){
+  const b=document.createElement('button'); b.innerHTML=`<img alt='${code}' src='${FLAGS[code]}'/>`; b.title=LANGS[code].name; b.onclick=()=>{lang=code; setSphere('idle'); speak(`Idioma ${LANGS[code].name}`)}; flags.appendChild(b);
+}
+
+// =============== Speech ===============
+let VOICES=[]; function refreshVoices(){ try{VOICES=speechSynthesis.getVoices()}catch{} }
+refreshVoices(); speechSynthesis.onvoiceschanged=refreshVoices;
+function pickVoice(tag){ tag=tag.toLowerCase(); const pool=VOICES.filter(v=> (v.lang||'').toLowerCase().startsWith(tag.slice(0,2))|| (v.lang||'').toLowerCase()===tag); const score=v=>{ let s=0; const n=(v.name||'').toLowerCase(); if((v.lang||'').toLowerCase().startsWith(tag)) s+=5; if(n.includes('google')||n.includes('microsoft')) s+=3; if(n.includes('natural')||n.includes('neural')) s+=2; return s }; return pool.sort((a,b)=>score(b)-score(a))[0]||pool[0]||null; }
+function speak(text){ try{ const u=new SpeechSynthesisUtterance(text); const v=pickVoice(LANGS[lang].tag)||pickVoice('es-ES'); if(v) u.voice=v; u.lang=(v&&v.lang)||LANGS[lang].tag; u.rate=1; u.pitch=1; u.volume=1; speechSynthesis.cancel(); speechSynthesis.speak(u); setSphere('speaking'); const ms=Math.min(7000, Math.max(1400, text.split(/\s+/).length*350)); setTimeout(()=>setSphere('idle'), ms);}catch(e){console.warn(e)} }
+let rec=null; let listening=false; let recStart=0;
+function startListening(){ const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR){ alert('El navegador no soporta reconocimiento de voz'); return } rec=new SR(); rec.lang=LANGS[lang].tag; rec.continuous=true; rec.interimResults=true; rec.onresult=(ev)=>{ let txt=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ const r=ev.results[i]; if(r.isFinal) txt+=r[0].transcript+' '; } if(txt.trim()){ q.value=(q.value? q.value+' ':'')+txt.trim(); handleSearch() } }; rec.onend=()=>{ if(!listening){ setSphere('idle'); return } const elapsed=Date.now()-recStart; if(elapsed<8000){ rec.start() } else { listening=false; setSphere('idle') } }; listening=true; recStart=Date.now(); setSphere('listening'); rec.start(); }
+function stopListening(){ try{ listening=false; rec&&rec.stop() }catch{} }
+function setSphere(mode){ sphere.classList.remove('listening','speaking'); if(mode==='listening') sphere.classList.add('listening'); if(mode==='speaking') sphere.classList.add('speaking'); spLabel.textContent=LANGS[lang].sphere[mode]||'…'; statusEl.textContent=spLabel.textContent; }
+
+// =============== Data ===============
+// Espera archivos CSV en la misma carpeta: Articulos.csv y Ubicaciones.csv
+// Formato mínimo:
+// Articulos: NumeroArticulo;ReferenciaProveedor;Descripcion;CodigoEAN;NombreProveedor;ImagenURL;FichaTecnica;Manual
+// Ubicaciones: NumeroArticulo;Centro;Pasillo;Lado;Estante;Balda;X;Y;Stock
+
+async function loadCSV(name){
+  try{ const res=await fetch(name, {cache:'no-store'}); if(!res.ok) return null; const text=await res.text(); return parseCSV(text) }catch{ return null }
+}
+function parseCSV(text){
+  // Soporta ; o , como separador, comillas dobles y salto de línea \n/\r\n
+  const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim().length);
+  // detect sep by first line
+  const sep=(lines[0].match(/;/g)||[]).length> (lines[0].match(/,/g)||[]).length? ';' : ',';
+  const rows=[]; for(const line of lines){ rows.push(parseCSVLine(line, sep)) }
+  const headers=rows.shift().map(h=>h.trim());
+  return rows.map(r=>{ const obj={}; headers.forEach((h,i)=> obj[h]= (r[i]??'').trim()); return obj })
+}
+function parseCSVLine(line, sep){
+  const out=[]; let cur=''; let inQ=false; for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else { inQ=!inQ } } else if(ch===sep && !inQ){ out.push(cur); cur='' } else { cur+=ch } } out.push(cur); return out
+}
+
+let ART=[]; let UBI=[]; let INDEX={};
+function normalize(s){ return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'') }
+// Diccionario de sinónimos muy básico
+const SYN=[
+  ['grupo de presion','grupo presion','grupo presión','presurizador','booster','hidrofor','estacion presion','estación presión'],
+  ['bomba','electrobomba','impulsor','scala','prisma'],
+  ['manguito','acople','acoplamiento','union','unión','enchufe','conector','racor'],
+  ['valvula','válvula','esfera','llave'],
+  ['tubo','tuberia','tubería','pe','polietileno','pvc','multicapa'],
+  ['codo','coudé','coude'],
+  ['te','tee','derivacion','derivación'],
+  ['filtro','filtros','e1'],
+  ['descalcificador','descalcificador myperla','myperla','bwt']
+];
+function expandSyn(q){ let s=normalize(q); for(const group of SYN){ for(const w of group){ if(s.includes(normalize(w))){ s+=' '+group.join(' ') } } } return s }
+
+async function loadData(){
+  ART = await loadCSV('Articulos.csv') || [];
+  UBI = (await loadCSV('Ubicaciones.csv') || []).filter(u=> (u.Centro===CENTER || u.Centro==='Calvia'));
+  // index ubicaciones por numero
+  const map=new Map(); for(const u of UBI){ const k=(u.NumeroArticulo||'').toString().trim(); if(!map.has(k)) map.set(k, []); map.get(k).push(u) }
+  INDEX = Object.fromEntries(map);
+}
+
+function pickLocation(num){ const list=INDEX[(num||'').toString().trim()]; if(!list||!list.length) return null; // si hay varias, elige la de mayor stock
+  return list.slice().sort((a,b)=> (Number(b.Stock||0) - Number(a.Stock||0)))[0]
+}
+
+function search(qraw){ const qn=expandSyn(qraw); const words=normalize(qn).split(/\s+/).filter(Boolean); const scored=[]; for(const a of ART){ const text=normalize(`${a.Descripcion} ${a.ReferenciaProveedor} ${a.CodigoEAN}`); let s=0; for(const w of words){ if(!w) continue; if(text.includes(w)) s+=2; if(text.startsWith(w)) s+=1 } if(s>0){ scored.push({a, score:s}) } }
+  scored.sort((x,y)=> y.score-x.score); return scored.slice(0,25).map(x=> x.a)
+}
+
+function renderResults(list){ resultsEl.innerHTML=''; if(!list.length){ const div=document.createElement('div'); div.className='item'; div.innerHTML='<div>No se han encontrado artículos. Por favor, solicite ayuda a un vendedor.</div>'; resultsEl.appendChild(div); resultsEl.classList.remove('hidden'); return }
+  for(const a of list){ const loc=pickLocation(a.NumeroArticulo); const sub=`Ref: ${a.ReferenciaProveedor||'—'} · EAN: ${a.CodigoEAN||'—'} · Proveedor: ${a.NombreProveedor||'—'} · Stock: ${(loc&&loc.Stock)||'—'}`; const card=document.createElement('div'); card.className='item'; card.innerHTML=`<div><strong>${a.Descripcion||'Sin descripción'}</strong></div><div class='sub'>${sub}</div><div class='row'><button class='goMap'>Guíame</button> <button class='say'>Explicar</button></div>`; card.querySelector('.goMap').onclick=()=> selectArticle(a); card.querySelector('.say').onclick=()=> explainArticle(a); resultsEl.appendChild(card) }
+  resultsEl.classList.remove('hidden')
+}
+
+function explainArticle(a){ const name=nameInput.value||''; const intro=LANGS[lang].explainIntro(name); const desc=a.Descripcion||''; speak(`${intro} ${desc}`.trim()) }
+
+function selectArticle(a){ const loc=pickLocation(a.NumeroArticulo); if(!loc){ speak('No tengo ubicación registrada. Por favor, solicite ayuda a un vendedor.'); routeEl.textContent=''; pin.style.display='none'; return }
+  // pin por porcentajes
+  const x=parseNum(loc.X); const y=parseNum(loc.Y); if(x==null||y==null){ pin.style.display='none' } else { pin.style.left=(x*100)+'%'; pin.style.top=(y*100)+'%'; pin.style.display='block' }
+  const lado=(loc.Lado && (loc.Lado.Value||loc.Lado)) || loc.Lado || '—';
+  routeEl.textContent = LANGS[lang].guide(loc.Pasillo||'—', lado, loc.Estante||'—', loc.Balda||'—');
+  speak(LANGS[lang].found(a.Descripcion||'')); setTimeout(()=> speak(routeEl.textContent), 1100)
+}
+
+function parseNum(v){ if(v==null) return null; if(typeof v==='number') return v; const s=String(v).trim().replace(',','.'); const n=Number(s); return isFinite(n)? n : null }
+
+// =============== Events ===============
+startBtn.onclick=()=>{ queryBox.style.display='grid'; resultsEl.classList.add('hidden'); speak(LANGS[lang].explainIntro(nameInput.value||'')) }
+micBtn.onclick=()=> startListening();
+goBtn.onclick=()=> handleSearch();
+q.onkeydown=(e)=>{ if(e.key==='Enter') handleSearch() };
+againBtn.onclick=()=>{ q.value=''; resultsEl.classList.add('hidden'); routeEl.textContent=''; pin.style.display='none'; window.scrollTo(0,0) };
+
+function handleSearch(){ stopListening(); setSphere('thinking'); const list=search(q.value||''); renderResults(list); setSphere('idle'); if(list.length){ const first=list[0]; speak(LANGS[lang].found(first.Descripcion||'')) } }
+
+// =============== Init ===============
+(async function(){ await loadData(); speak('Hola. Selecciona idioma, escribe o usa el micrófono.'); })();
+
+// =============== PWA (opcional, offline) ===============
+if('serviceWorker' in navigator){
+  const swCode = `self.addEventListener('install',e=>{e.waitUntil(caches.open('jarvis-kiosk-v1').then(c=>c.addAll([location.href])))});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
+  const blob=new Blob([swCode],{type:'text/javascript'}); const url=URL.createObjectURL(blob); navigator.serviceWorker.register(url).catch(()=>{});
+}
+</script>
+</body>
+</html>
+
+
