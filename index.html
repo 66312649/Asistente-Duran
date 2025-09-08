@@ -1,346 +1,329 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html>
+<!doctype html>
+<html lang="es">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta http-equiv="Content-Style-Type" content="text/css">
-  <title></title>
-  <meta name="Generator" content="Cocoa HTML Writer">
-  <meta name="CocoaVersion" content="2113.65">
-  <style type="text/css">
-    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
-    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
-    span.s1 {font: 12.0px 'Apple Color Emoji'}
-    span.s2 {font: 12.0px 'Lucida Grande'}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Jarvis · Kiosk Duran</title>
+<link rel="icon" href="logo-duran.png"/>
+<!-- Librería para leer EXCEL en el navegador (gratuita) -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#0b1324; --bg2:#0e1a35; --ink:#e6efff; --mut:#a9b7e6; --glass:rgba(255,255,255,.06);
+  --line:rgba(255,255,255,.12); --brand:#57a3ff; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:radial-gradient(1100px 600px at 50% -10%, #1a3a78 0%, #0e1a35 50%, #091326 100%);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial;color:var(--ink)}
+.app{min-height:100%;display:grid;grid-template-rows:auto 1fr}
+header{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:14px 16px}
+.logo{display:flex;align-items:center;gap:12px;position:relative}
+.logo img{height:38px;filter:drop-shadow(0 2px 18px rgba(87,163,255,.35))}
+.logo .halo{position:absolute;left:-6px;top:-6px;width:70px;height:70px;border-radius:50%;background:radial-gradient(circle at 35% 30%, rgba(87,163,255,.28), rgba(87,163,255,.05) 60%, transparent 65%);pointer-events:none}
+.badge{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--glass);color:var(--ink);font-weight:600}
+.small{font-size:12px;color:var(--mut)}
+.grid{display:grid;gap:16px}
+.two{grid-template-columns:1.15fr .85fr}
+.card{border:1px solid var(--line);background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04));backdrop-filter:blur(10px);border-radius:18px;padding:16px}
+.row{display:flex;gap:10px;align-items:center}
+input,button,select{font:inherit}
+input[type="text"], input[type="number"]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.2);color:var(--ink);outline:none}
+button{padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--ink);cursor:pointer}
+button:hover{background:rgba(255,255,255,.12)}
+button.ghost{background:transparent;border-color:transparent;color:var(--mut)}
+.btn-brand{border-color:rgba(87,163,255,.5);box-shadow:0 0 0 3px rgba(87,163,255,.12) inset}
+.flags{display:grid;grid-template-columns:repeat(6,52px);gap:8px}
+.flags button{padding:0;border-radius:10px;overflow:hidden}
+.flags img{display:block;width:100%;height:40px;object-fit:cover}
+.sphere{width:160px;height:160px;border-radius:50%;margin:auto;border:1px solid rgba(255,255,255,.25);box-shadow:0 0 40px rgba(80,180,255,.28);position:relative;overflow:hidden}
+.sphere .g{position:absolute;inset:0;background:conic-gradient(from 0deg at 50% 50%, #60a5fa, #a78bfa, #f472b6, #60a5fa);filter:blur(16px);opacity:.85}
+.sphere.listening .g{animation:rot 8s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+.sphere .ring{position:absolute;left:50%;top:50%;width:90px;height:90px;transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(255,255,255,.45);opacity:.5}
+.sphere.listening .ring{animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%{transform:translate(-50%,-50%) scale(1);opacity:.6}50%{transform:translate(-50%,-50%) scale(1.5);opacity:.1}100%{transform:translate(-50%,-50%) scale(1);opacity:.6}}
+.list{display:grid;gap:10px;max-height:48vh;overflow:auto}
+.item{display:grid;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.04);padding:12px;border-radius:14px}
+.sub{color:var(--mut);font-size:12px}
+.hidden{display:none!important}
+/* Mapa */
+.map{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.map img{display:block;width:100%;height:auto;user-select:none}
+.pin{position:absolute;width:14px;height:14px;background:#ef4444;border-radius:50%;box-shadow:0 0 0 5px rgba(239,68,68,.35);transform:translate(-50%,-50%);display:none}
+.grid-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+footer{padding:8px 16px;color:var(--mut);font-size:12px}
+.bad{color:#fca5a5}
+</style>
 </head>
 <body>
-<p class="p1">&lt;!doctype html&gt;</p>
-<p class="p1">&lt;html lang="es"&gt;</p>
-<p class="p1">&lt;head&gt;</p>
-<p class="p1">&lt;meta charset="utf-8"/&gt;</p>
-<p class="p1">&lt;meta name="viewport" content="width=device-width, initial-scale=1"/&gt;</p>
-<p class="p1">&lt;title&gt;Jarvis · Kiosk Duran&lt;/title&gt;</p>
-<p class="p1">&lt;link rel="icon" href="logo-duran.png"/&gt;</p>
-<p class="p1">&lt;!-- Librería para leer EXCEL en el navegador (gratuita) --&gt;</p>
-<p class="p1">&lt;script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"&gt;&lt;/script&gt;</p>
-<p class="p1">&lt;style&gt;</p>
-<p class="p1">:root{</p>
-<p class="p1"><span class="Apple-converted-space">  </span>--bg:#0b1324; --bg2:#0e1a35; --ink:#e6efff; --mut:#a9b7e6; --glass:rgba(255,255,255,.06);</p>
-<p class="p1"><span class="Apple-converted-space">  </span>--line:rgba(255,255,255,.12); --brand:#57a3ff; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;</p>
-<p class="p1">}</p>
-<p class="p1">*{box-sizing:border-box}</p>
-<p class="p1">html,body{height:100%}</p>
-<p class="p1">body{margin:0;background:radial-gradient(1100px 600px at 50% -10%, #1a3a78 0%, #0e1a35 50%, #091326 100%);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial;color:var(--ink)}</p>
-<p class="p1">.app{min-height:100%;display:grid;grid-template-rows:auto 1fr}</p>
-<p class="p1">header{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:14px 16px}</p>
-<p class="p1">.logo{display:flex;align-items:center;gap:12px;position:relative}</p>
-<p class="p1">.logo img{height:38px;filter:drop-shadow(0 2px 18px rgba(87,163,255,.35))}</p>
-<p class="p1">.logo .halo{position:absolute;left:-6px;top:-6px;width:70px;height:70px;border-radius:50%;background:radial-gradient(circle at 35% 30%, rgba(87,163,255,.28), rgba(87,163,255,.05) 60%, transparent 65%);pointer-events:none}</p>
-<p class="p1">.badge{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--glass);color:var(--ink);font-weight:600}</p>
-<p class="p1">.small{font-size:12px;color:var(--mut)}</p>
-<p class="p1">.grid{display:grid;gap:16px}</p>
-<p class="p1">.two{grid-template-columns:1.15fr .85fr}</p>
-<p class="p1">.card{border:1px solid var(--line);background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04));backdrop-filter:blur(10px);border-radius:18px;padding:16px}</p>
-<p class="p1">.row{display:flex;gap:10px;align-items:center}</p>
-<p class="p1">input,button,select{font:inherit}</p>
-<p class="p1">input[type="text"], input[type="number"]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.2);color:var(--ink);outline:none}</p>
-<p class="p1">button{padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--ink);cursor:pointer}</p>
-<p class="p1">button:hover{background:rgba(255,255,255,.12)}</p>
-<p class="p1">button.ghost{background:transparent;border-color:transparent;color:var(--mut)}</p>
-<p class="p1">.btn-brand{border-color:rgba(87,163,255,.5);box-shadow:0 0 0 3px rgba(87,163,255,.12) inset}</p>
-<p class="p1">.flags{display:grid;grid-template-columns:repeat(6,52px);gap:8px}</p>
-<p class="p1">.flags button{padding:0;border-radius:10px;overflow:hidden}</p>
-<p class="p1">.flags img{display:block;width:100%;height:40px;object-fit:cover}</p>
-<p class="p1">.sphere{width:160px;height:160px;border-radius:50%;margin:auto;border:1px solid rgba(255,255,255,.25);box-shadow:0 0 40px rgba(80,180,255,.28);position:relative;overflow:hidden}</p>
-<p class="p1">.sphere .g{position:absolute;inset:0;background:conic-gradient(from 0deg at 50% 50%, #60a5fa, #a78bfa, #f472b6, #60a5fa);filter:blur(16px);opacity:.85}</p>
-<p class="p1">.sphere.listening .g{animation:rot 8s linear infinite}</p>
-<p class="p1">@keyframes rot{to{transform:rotate(360deg)}}</p>
-<p class="p1">.sphere .ring{position:absolute;left:50%;top:50%;width:90px;height:90px;transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(255,255,255,.45);opacity:.5}</p>
-<p class="p1">.sphere.listening .ring{animation:pulse 2s ease-in-out infinite}</p>
-<p class="p1">@keyframes pulse{0%{transform:translate(-50%,-50%) scale(1);opacity:.6}50%{transform:translate(-50%,-50%) scale(1.5);opacity:.1}100%{transform:translate(-50%,-50%) scale(1);opacity:.6}}</p>
-<p class="p1">.list{display:grid;gap:10px;max-height:48vh;overflow:auto}</p>
-<p class="p1">.item{display:grid;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.04);padding:12px;border-radius:14px}</p>
-<p class="p1">.sub{color:var(--mut);font-size:12px}</p>
-<p class="p1">.hidden{display:none!important}</p>
-<p class="p1">/* Mapa */</p>
-<p class="p1">.map{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden}</p>
-<p class="p1">.map img{display:block;width:100%;height:auto;user-select:none}</p>
-<p class="p1">.pin{position:absolute;width:14px;height:14px;background:#ef4444;border-radius:50%;box-shadow:0 0 0 5px rgba(239,68,68,.35);transform:translate(-50%,-50%);display:none}</p>
-<p class="p1">.grid-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}</p>
-<p class="p1">footer{padding:8px 16px;color:var(--mut);font-size:12px}</p>
-<p class="p1">.bad{color:#fca5a5}</p>
-<p class="p1">&lt;/style&gt;</p>
-<p class="p1">&lt;/head&gt;</p>
-<p class="p1">&lt;body&gt;</p>
-<p class="p1">&lt;div class="app"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>&lt;header&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="logo"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="halo"&gt;&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;img src="logo-duran.png" alt="DURAN"/&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="badge"&gt;Jarvis · Centro Duran Calvià&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="row small"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;span id="status"&gt;Listo&lt;/span&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;button id="adminToggle" class="ghost" title="Modo administrador"&gt;<span class="s1">⚙️</span> Admin&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>&lt;/header&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">  </span>&lt;main class="grid two" style="padding:16px"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- COLUMNA IZQUIERDA: idioma, consulta, resultados, import/export --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;section class="card grid" id="left"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="grid"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="small"&gt;Selecciona idioma&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="flags" id="flags"&gt;&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="row"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;input id="name" type="text" placeholder="Tu nombre (opcional)"/&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;button id="start" class="btn-brand"&gt;Empezar&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="grid" id="queryBox" style="display:none"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="row"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;input id="q" type="text" placeholder="Escribe lo que necesitas… (ej. manguito 32, scala2, filtro e1)"/&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;button id="mic" title="Hablar"&gt;<span class="s1">🎙️</span>&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;button id="go" class="btn-brand"&gt;Buscar&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="grid" style="place-items:center"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;div class="sphere" id="sphere"&gt;&lt;div class="g"&gt;&lt;/div&gt;&lt;div class="ring"&gt;&lt;/div&gt;&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;div id="spLabel" class="small"&gt;Listo&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div id="results" class="list hidden"&gt;&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;details&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;summary class="small"&gt;<span class="s1">📥</span> Importar datos (EXCEL/CSV) · <span class="s1">📤</span> Exportar&lt;/summary&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="grid"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;div class="row"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;input type="file" id="inpExcel" accept=".xlsx,.xls"/&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="btnExcel" title="Leer Excel y preparar artículos"&gt;Importar Excel&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="expArt"&gt;Exportar Articulos.csv&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;div class="row"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;input type="file" id="inpUbiCSV" accept=".csv"/&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="impUbi"&gt;Importar Ubicaciones.csv&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="expUbi"&gt;Exportar Ubicaciones.csv&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;/details&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;/section&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- COLUMNA DERECHA: MAPA (se muestra SOLO cuando hay selección) --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;section class="card grid hidden" id="right"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="row" style="justify-content:space-between;align-items:center"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="small"&gt;Plano (aparece tras localizar el producto)&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;button id="again" class="ghost"&gt;<span class="s2">↩︎</span> Nueva búsqueda&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="map" id="mapBox"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;img id="mapImg" src="plano-calvia.jpg" alt="Plano Calvià"/&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;div id="pin" class="pin"&gt;&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div id="route" class="sub"&gt;&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;!-- Panel Admin para fijar ubicación --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div id="adminPanel" class="hidden"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="small"&gt;Modo administrador · Toca el plano para capturar X/Y (0–1). Completa los campos y pulsa Guardar.&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="grid-two"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;label&gt;Pasillo &lt;input id="fPasillo" type="number" min="0" step="1"&gt;&lt;/label&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;label&gt;Lado</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;select id="fLado"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">              </span>&lt;option value="I"&gt;I&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">              </span>&lt;option value="D"&gt;D&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;/select&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;/label&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;label&gt;Estante &lt;input id="fEst" type="number" min="0" step="1"&gt;&lt;/label&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;label&gt;Balda &lt;input id="fBal" type="number" min="0" step="1"&gt;&lt;/label&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;label&gt;X &lt;input id="fX" type="number" min="0" max="1" step="0.01"&gt;&lt;/label&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;label&gt;Y &lt;input id="fY" type="number" min="0" max="1" step="0.01"&gt;&lt;/label&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="row"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;button id="saveLoc" class="btn-brand"&gt;<span class="s1">💾</span> Guardar ubicación del artículo seleccionado&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;button id="delLoc"&gt;<span class="s1">🗑️</span> Quitar ubicación&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="small"&gt;Las ubicaciones quedan en memoria y puedes &lt;strong&gt;Exportar Ubicaciones.csv&lt;/strong&gt; para subirlo a tu hosting.&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;/section&gt;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>&lt;/main&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">  </span>&lt;footer&gt;Funciona offline como PWA. Datos desde CSV o importando Excel (luego exporta CSV). Voz gratis (Web Speech API). © DURAN&lt;/footer&gt;</p>
-<p class="p1">&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1">&lt;script&gt;</p>
-<p class="p1">// =============== Config ===============</p>
-<p class="p1">const CENTER = "Duran Calvià"; // Centro por defecto</p>
-<p class="p1">const LANGS = {</p>
-<p class="p1"><span class="Apple-converted-space">  </span>es:{name:"Español", tag:"es-ES", sphere:{idle:"Listo", listening:"Escuchando…", thinking:"Pensando…", speaking:"Hablando…"},</p>
-<p class="p1"><span class="Apple-converted-space">      </span>explainIntro:n=&gt;`${n? n+", ":""}Te explico y te guío.`,</p>
-<p class="p1"><span class="Apple-converted-space">      </span>found:d=&gt;`He encontrado la mejor opción: ${d}.`,</p>
-<p class="p1"><span class="Apple-converted-space">      </span>guide:(p,l,e,b)=&gt;`Desde tu posición, dirígete al pasillo ${p}, lado ${l}, estante ${e}, balda ${b}.`},</p>
-<p class="p1"><span class="Apple-converted-space">  </span>ca:{name:"Mallorquí", tag:"ca-ES", sphere:{idle:"A punt", listening:"Escoltant…", thinking:"Pensant…", speaking:"Parlant…"},</p>
-<p class="p1"><span class="Apple-converted-space">      </span>explainIntro:n=&gt;`${n? n+", ":""}T'ho explic i després te guiaré.`,</p>
-<p class="p1"><span class="Apple-converted-space">      </span>found:d=&gt;`La millor opció és: ${d}.`,</p>
-<p class="p1"><span class="Apple-converted-space">      </span>guide:(p,l,e,b)=&gt;`Des de la teva ubicació, ves al passadís ${p}, costat ${l}, prestatge ${e}, balda ${b}.`},</p>
-<p class="p1"><span class="Apple-converted-space">  </span>en:{name:"English", tag:"en-GB", sphere:{idle:"Ready", listening:"Listening…", thinking:"Thinking…", speaking:"Speaking…"},</p>
-<p class="p1"><span class="Apple-converted-space">      </span>explainIntro:n=&gt;`${n? n+", ":""}I'll explain and guide you.`,</p>
-<p class="p1"><span class="Apple-converted-space">      </span>found:d=&gt;`Best match: ${d}.`,</p>
-<p class="p1"><span class="Apple-converted-space">      </span>guide:(p,l,e,b)=&gt;`From your position, go to aisle ${p}, ${l} side, shelf ${e}, tier ${b}.`},</p>
-<p class="p1"><span class="Apple-converted-space">  </span>de:{name:"Deutsch", tag:"de-DE", sphere:{idle:"Bereit", listening:"Zuhören…", thinking:"Denken…", speaking:"Sprechen…"},</p>
-<p class="p1"><span class="Apple-converted-space">      </span>explainIntro:n=&gt;`${n? n+", ":""}Ich erkläre kurz und führe Sie.`,</p>
-<p class="p1"><span class="Apple-converted-space">      </span>found:d=&gt;`Beste Option: ${d}.`,</p>
-<p class="p1"><span class="Apple-converted-space">      </span>guide:(p,l,e,b)=&gt;`Von Ihrer Position zum Gang ${p}, ${l}e Seite, Regal ${e}, Ebene ${b}.`},</p>
-<p class="p1"><span class="Apple-converted-space">  </span>pl:{name:"Polski", tag:"pl-PL", sphere:{idle:"Gotowe", listening:"Słucham…", thinking:"Myślę…", speaking:"Mówię…"},</p>
-<p class="p1"><span class="Apple-converted-space">      </span>explainIntro:n=&gt;`${n? n+", ":""}Krótko wyjaśnię i poprowadzę.`,</p>
-<p class="p1"><span class="Apple-converted-space">      </span>found:d=&gt;`Najlepsza opcja: ${d}.`,</p>
-<p class="p1"><span class="Apple-converted-space">      </span>guide:(p,l,e,b)=&gt;`Z Twojej pozycji: alejka ${p}, strona ${l}, półka ${e}, poziom ${b}.`},</p>
-<p class="p1"><span class="Apple-converted-space">  </span>ru:{name:"Русский", tag:"ru-RU", sphere:{idle:"Готово", listening:"Слушаю…", thinking:"Думаю…", speaking:"Говорю…"},</p>
-<p class="p1"><span class="Apple-converted-space">      </span>explainIntro:n=&gt;`${n? n+", ":""}Коротко объясню и проведу.`,</p>
-<p class="p1"><span class="Apple-converted-space">      </span>found:d=&gt;`Лучший вариант: ${d}.`,</p>
-<p class="p1"><span class="Apple-converted-space">      </span>guide:(p,l,e,b)=&gt;`От вашей позиции: ряд ${p}, сторона ${l}, полка ${e}, уровень ${b}.`}</p>
-<p class="p1">};</p>
-<p class="p1">let lang='es', admin=false;</p>
-<p class="p2"><br></p>
-<p class="p1">// =============== UI refs ===============</p>
-<p class="p1">const flags=document.getElementById('flags');</p>
-<p class="p1">const nameInput=document.getElementById('name');</p>
-<p class="p1">const startBtn=document.getElementById('start');</p>
-<p class="p1">const queryBox=document.getElementById('queryBox');</p>
-<p class="p1">const q=document.getElementById('q');</p>
-<p class="p1">const goBtn=document.getElementById('go');</p>
-<p class="p1">const micBtn=document.getElementById('mic');</p>
-<p class="p1">const sphere=document.getElementById('sphere');</p>
-<p class="p1">const spLabel=document.getElementById('spLabel');</p>
-<p class="p1">const statusEl=document.getElementById('status');</p>
-<p class="p1">const resultsEl=document.getElementById('results');</p>
-<p class="p1">const right=document.getElementById('right');</p>
-<p class="p1">const mapImg=document.getElementById('mapImg');</p>
-<p class="p1">const mapBox=document.getElementById('mapBox');</p>
-<p class="p1">const pin=document.getElementById('pin');</p>
-<p class="p1">const routeEl=document.getElementById('route');</p>
-<p class="p1">const againBtn=document.getElementById('again');</p>
-<p class="p1">const adminToggle=document.getElementById('adminToggle');</p>
-<p class="p1">const adminPanel=document.getElementById('adminPanel');</p>
-<p class="p1">const fPas=document.getElementById('fPasillo');</p>
-<p class="p1">const fLado=document.getElementById('fLado');</p>
-<p class="p1">const fEst=document.getElementById('fEst');</p>
-<p class="p1">const fBal=document.getElementById('fBal');</p>
-<p class="p1">const fX=document.getElementById('fX');</p>
-<p class="p1">const fY=document.getElementById('fY');</p>
-<p class="p1">const saveLocBtn=document.getElementById('saveLoc');</p>
-<p class="p1">const delLocBtn=document.getElementById('delLoc');</p>
-<p class="p2"><br></p>
-<p class="p1">// Import/Export</p>
-<p class="p1">const inpExcel=document.getElementById('inpExcel');</p>
-<p class="p1">const btnExcel=document.getElementById('btnExcel');</p>
-<p class="p1">const expArt=document.getElementById('expArt');</p>
-<p class="p1">const inpUbiCSV=document.getElementById('inpUbiCSV');</p>
-<p class="p1">const impUbi=document.getElementById('impUbi');</p>
-<p class="p1">const expUbi=document.getElementById('expUbi');</p>
-<p class="p2"><br></p>
-<p class="p1">// =============== Flags ===============</p>
-<p class="p1">const SENYERA = `data:image/svg+xml;utf8,${encodeURIComponent(`&lt;svg xmlns='http://www.w3.org/2000/svg' width='640' height='400'&gt;&lt;rect width='640' height='400' fill='#f7d117'/&gt;&lt;g fill='#d40000'&gt;&lt;rect y='25' width='640' height='50'/&gt;&lt;rect y='115' width='640' height='50'/&gt;&lt;rect y='205' width='640' height='50'/&gt;&lt;rect y='295' width='640' height='50'/&gt;&lt;/g&gt;&lt;/svg&gt;`)}`;</p>
-<p class="p1">const FLAGS={es:'https://flagcdn.com/w80/es.png', ca:SENYERA, en:'https://flagcdn.com/w80/gb.png', de:'https://flagcdn.com/w80/de.png', pl:'https://flagcdn.com/w80/pl.png', ru:'https://flagcdn.com/w80/ru.png'};</p>
-<p class="p1">for(const code of Object.keys(LANGS)){</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const b=document.createElement('button'); b.innerHTML=`&lt;img alt='${code}' src='${FLAGS[code]}'/&gt;`; b.title=LANGS[code].name; b.onclick=()=&gt;{lang=code; setSphere('idle'); speak(`Idioma ${LANGS[code].name}`)}; flags.appendChild(b);</p>
-<p class="p1">}</p>
-<p class="p2"><br></p>
-<p class="p1">// =============== Speech (gratis) ===============</p>
-<p class="p1">let VOICES=[]; function refreshVoices(){try{VOICES=speechSynthesis.getVoices()}catch{}}; refreshVoices(); speechSynthesis.onvoiceschanged=refreshVoices;</p>
-<p class="p1">function pickVoice(tag){tag=tag.toLowerCase(); const pool=VOICES.filter(v=&gt; (v.lang||'').toLowerCase().startsWith(tag.slice(0,2)) || (v.lang||'').toLowerCase()===tag); const score=v=&gt;{let s=0; const n=(v.name||'').toLowerCase(); if((v.lang||'').toLowerCase().startsWith(tag)) s+=5; if(n.includes('google')||n.includes('microsoft')) s+=3; if(n.includes('natural')||n.includes('neural')) s+=2; return s}; return pool.sort((a,b)=&gt;score(b)-score(a))[0]||pool[0]||null}</p>
-<p class="p1">function speak(text){try{const u=new SpeechSynthesisUtterance(text); const v=pickVoice(LANGS[lang].tag)||pickVoice('es-ES'); if(v) u.voice=v; u.lang=(v&amp;&amp;v.lang)||LANGS[lang].tag; u.rate=1; u.pitch=1; u.volume=1; speechSynthesis.cancel(); speechSynthesis.speak(u); setSphere('speaking'); const ms=Math.min(7000, Math.max(1400, text.split(/\s+/).length*350)); setTimeout(()=&gt;setSphere('idle'), ms);}catch(e){console.warn(e)}}</p>
-<p class="p1">let rec=null, listening=false, recStart=0; function startListening(){ const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR){ alert('El navegador no soporta reconocimiento de voz'); return } rec=new SR(); rec.lang=LANGS[lang].tag; rec.continuous=true; rec.interimResults=true; rec.onresult=(ev)=&gt;{let txt=''; for(let i=ev.resultIndex;i&lt;ev.results.length;i++){ const r=ev.results[i]; if(r.isFinal) txt+=r[0].transcript+' ' } if(txt.trim()){ q.value=(q.value? q.value+' ':'')+txt.trim(); handleSearch() }}; rec.onend=()=&gt;{ if(!listening){ setSphere('idle'); return } const elapsed=Date.now()-recStart; if(elapsed&lt;8000){ rec.start() } else { listening=false; setSphere('idle') } }; listening=true; recStart=Date.now(); setSphere('listening'); rec.start() }</p>
-<p class="p1">function stopListening(){try{listening=false; rec&amp;&amp;rec.stop()}catch{}}</p>
-<p class="p1">function setSphere(mode){sphere.classList.remove('listening','speaking'); if(mode==='listening') sphere.classList.add('listening'); if(mode==='speaking') sphere.classList.add('speaking'); spLabel.textContent=LANGS[lang].sphere[mode]||'…'; statusEl.textContent=spLabel.textContent}</p>
-<p class="p2"><br></p>
-<p class="p1">// =============== Datos ===============</p>
-<p class="p1">let ART=[], UBI=[], INDEX={}; let varSel=null;</p>
-<p class="p1">function normalize(s){return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}</p>
-<p class="p1">const SYN=[['grupo de presion','grupo presion','grupo presión','presurizador','booster','hidrofor','estacion presion','estación presión'],['bomba','electrobomba','impulsor','scala','prisma'],['manguito','acople','acoplamiento','union','unión','enchufe','conector','racor'],['valvula','válvula','esfera','llave'],['tubo','tuberia','tubería','pe','polietileno','pvc','multicapa'],['codo','coudé','coude'],['te','tee','derivacion','derivación'],['filtro','filtros','e1'],['descalcificador','descalcificador myperla','myperla','bwt']];</p>
-<p class="p1">function expandSyn(q){let s=normalize(q); for(const g of SYN){ for(const w of g){ if(s.includes(normalize(w))){ s+=' '+g.join(' ') } } } return s}</p>
-<p class="p1">function parseNum(v){ if(v==null) return null; if(typeof v==='number') return v; const s=String(v).trim().replace(',','.'); const n=Number(s); return isFinite(n)? n : null }</p>
-<p class="p2"><br></p>
-<p class="p1">async function fetchText(url){ try{ const r=await fetch(url,{cache:'no-store'}); if(!r.ok) return null; return await r.text()}catch{ return null}}</p>
-<p class="p1">function parseCSV(text){ const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=&gt;l.trim().length); const sep=(lines[0].match(/;/g)||[]).length &gt; (lines[0].match(/,/g)||[]).length? ';' : ','; const rows=[]; for(const line of lines){ rows.push(parseCSVLine(line,sep)) } const headers=rows.shift().map(h=&gt;h.trim()); return rows.map(r=&gt;{const o={}; headers.forEach((h,i)=&gt; o[h]=(r[i]??'').trim()); return o}) }</p>
-<p class="p1">function parseCSVLine(line,sep){ const out=[]; let cur=''; let inQ=false; for(let i=0;i&lt;line.length;i++){ const ch=line[i]; if(ch==='"'){ if(inQ &amp;&amp; line[i+1]==='"'){ cur+='"'; i++; } else { inQ=!inQ } } else if(ch===sep &amp;&amp; !inQ){ out.push(cur); cur='' } else { cur+=ch } } out.push(cur); return out }</p>
-<p class="p2"><br></p>
-<p class="p1">async function loadData(){</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const a=await fetchText('Articulos.csv'); if(a){ ART=parseCSV(a) } else { ART=[] }</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const u=await fetchText('Ubicaciones.csv'); if(u){ UBI=parseCSV(u) } else { UBI=[] }</p>
-<p class="p1"><span class="Apple-converted-space">  </span>reindex();</p>
-<p class="p1">}</p>
-<p class="p1">function reindex(){ // filtra por centro y crea mapa por NumeroArticulo</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const only=UBI.filter(u=&gt; (u.Centro===CENTER || u.Centro==='Calvia')); const map=new Map(); for(const u of only){ const k=(u.NumeroArticulo||'').toString().trim(); if(!map.has(k)) map.set(k,[]); map.get(k).push(u) } INDEX=Object.fromEntries(map)</p>
-<p class="p1">}</p>
-<p class="p1">function pickLocation(num){ const list=INDEX[(num||'').toString().trim()]; if(!list||!list.length) return null; return list.slice().sort((a,b)=&gt; Number(b.Stock||0)-Number(a.Stock||0))[0] }</p>
-<p class="p2"><br></p>
-<p class="p1">function search(qraw){ const qn=expandSyn(qraw); const words=normalize(qn).split(/\s+/).filter(Boolean); const scored=[]; for(const a of ART){ const text=normalize(`${a.Descripcion} ${a.ReferenciaProveedor} ${a.CodigoEAN}`); let s=0; for(const w of words){ if(!w) continue; if(text.includes(w)) s+=2; if(text.startsWith(w)) s+=1 } if(s&gt;0){ scored.push({a,score:s}) } } scored.sort((x,y)=&gt;y.score-x.score); return scored.slice(0,50).map(x=&gt;x.a) }</p>
-<p class="p2"><br></p>
-<p class="p1">function renderResults(list){ resultsEl.innerHTML=''; if(!list.length){ const div=document.createElement('div'); div.className='item'; div.innerHTML='&lt;div&gt;No se han encontrado artículos. Por favor, solicite ayuda a un vendedor.&lt;/div&gt;'; resultsEl.appendChild(div); resultsEl.classList.remove('hidden'); right.classList.add('hidden'); return }</p>
-<p class="p1"><span class="Apple-converted-space">  </span>for(const a of list){ const loc=pickLocation(a.NumeroArticulo); const sub=`Ref: ${a.ReferenciaProveedor||'—'} · EAN: ${a.CodigoEAN||'—'} · Proveedor: ${a.NombreProveedor||'—'} · Stock: ${(loc&amp;&amp;loc.Stock)||'—'}`; const card=document.createElement('div'); card.className='item'; card.innerHTML=`&lt;div&gt;&lt;strong&gt;${a.Descripcion||'Sin descripción'}&lt;/strong&gt;&lt;/div&gt;&lt;div class='sub'&gt;${sub}&lt;/div&gt;&lt;div class='row'&gt;&lt;button class='goMap btn-brand'&gt;Guíame&lt;/button&gt; &lt;button class='say'&gt;Explicar&lt;/button&gt;&lt;/div&gt;`; card.querySelector('.goMap').onclick=()=&gt; selectArticle(a); card.querySelector('.say').onclick=()=&gt; explainArticle(a); resultsEl.appendChild(card) }</p>
-<p class="p1"><span class="Apple-converted-space">  </span>resultsEl.classList.remove('hidden'); right.classList.add('hidden');</p>
-<p class="p1">}</p>
-<p class="p2"><br></p>
-<p class="p1">function explainArticle(a){ const name=nameInput.value||''; const intro=LANGS[lang].explainIntro(name); const desc=a.Descripcion||''; speak(`${intro} ${desc}`.trim()) }</p>
-<p class="p2"><br></p>
-<p class="p1">function selectArticle(a){ varSel=a; // mostrar panel mapa solo ahora</p>
-<p class="p1"><span class="Apple-converted-space">  </span>right.classList.remove('hidden');</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const loc=pickLocation(a.NumeroArticulo); if(!loc){ speak('No tengo ubicación registrada. Puedes capturarla en modo administrador.'); routeEl.textContent=''; pin.style.display='none'; if(admin) adminPanel.classList.remove('hidden'); return }</p>
-<p class="p1"><span class="Apple-converted-space">  </span>// pintar pin</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const x=parseNum(loc.X), y=parseNum(loc.Y); if(x==null||y==null){ pin.style.display='none' } else { pin.style.left=(x*100)+'%'; pin.style.top=(y*100)+'%'; pin.style.display='block' }</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const lado=(loc.Lado &amp;&amp; (loc.Lado.Value||loc.Lado)) || loc.Lado || '—';</p>
-<p class="p1"><span class="Apple-converted-space">  </span>routeEl.textContent=LANGS[lang].guide(loc.Pasillo||'—', lado, loc.Estante||'—', loc.Balda||'—');</p>
-<p class="p1"><span class="Apple-converted-space">  </span>speak(LANGS[lang].found(a.Descripcion||'')); setTimeout(()=&gt; speak(routeEl.textContent), 1100)</p>
-<p class="p1"><span class="Apple-converted-space">  </span>if(admin){ // precarga form</p>
-<p class="p1"><span class="Apple-converted-space">    </span>fPas.value=loc.Pasillo||''; fLado.value=(lado||'I').toString().substring(0,1).toUpperCase(); fEst.value=loc.Estante||''; fBal.value=loc.Balda||''; fX.value=(x??''); fY.value=(y??''); adminPanel.classList.remove('hidden') }</p>
-<p class="p1">}</p>
-<p class="p2"><br></p>
-<p class="p1">// =============== Admin: capturar en plano y guardar ===============</p>
-<p class="p1">mapBox.addEventListener('click', ev=&gt;{ if(!admin || !varSel) return; const rect=mapImg.getBoundingClientRect(); const x=(ev.clientX-rect.left)/rect.width; const y=(ev.clientY-rect.top)/rect.height; fX.value=x.toFixed(2); fY.value=y.toFixed(2); pin.style.left=(x*100)+'%'; pin.style.top=(y*100)+'%'; pin.style.display='block' });</p>
-<p class="p2"><br></p>
-<p class="p1">saveLocBtn.onclick=()=&gt;{ if(!varSel) { alert('Selecciona un artículo en la lista de resultados.'); return } const num=(varSel.NumeroArticulo||'').toString().trim(); const rec={ NumeroArticulo:num, Centro:CENTER, Pasillo:fPas.value||'', Lado:fLado.value||'', Estante:fEst.value||'', Balda:fBal.value||'', X:fX.value||'', Y:fY.value||'', Stock: (pickLocation(num)?.Stock||'') }; // inserta/actualiza</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const idx=UBI.findIndex(u=&gt; (u.NumeroArticulo||'').toString().trim()===num &amp;&amp; (u.Centro===CENTER||u.Centro==='Calvia')); if(idx&gt;=0) UBI[idx]=rec; else UBI.push(rec); reindex(); speak('Ubicación guardada. No olvides exportar Ubicaciones punto CSV.'); selectArticle(varSel) };</p>
-<p class="p2"><br></p>
-<p class="p1">delLocBtn.onclick=()=&gt;{ if(!varSel) return; const num=(varSel.NumeroArticulo||'').toString().trim(); const before=UBI.length; UBI=UBI.filter(u=&gt; (u.NumeroArticulo||'').toString().trim()!==num || !(u.Centro===CENTER || u.Centro==='Calvia')); reindex(); if(UBI.length&lt;before){ speak('Ubicación eliminada.'); routeEl.textContent=''; pin.style.display='none' } };</p>
-<p class="p2"><br></p>
-<p class="p1">// =============== Import / Export ===============</p>
-<p class="p1">btnExcel.onclick=()=&gt;{ const f=inpExcel.files?.[0]; if(!f){ alert('Selecciona un archivo Excel'); return } const reader=new FileReader(); reader.onload=e=&gt;{ const wb=XLSX.read(new Uint8Array(e.target.result), {type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]]; const rows=XLSX.utils.sheet_to_json(ws, {defval:'', raw:false}); // mapeo de columnas</p>
-<p class="p1"><span class="Apple-converted-space">    </span>const mapRow=r=&gt;({</p>
-<p class="p1"><span class="Apple-converted-space">      </span>NumeroArticulo: r.NumeroArticulo||r.numeroArticulo||r.Numero||r['Número']||r['Nº']||'',</p>
-<p class="p1"><span class="Apple-converted-space">      </span>ReferenciaProveedor: r.ReferenciaProveedor||r['Referencia Proveedor']||r.Ref||'',</p>
-<p class="p1"><span class="Apple-converted-space">      </span>Descripcion: r.Descripcion||r['Descripción']||r.Description||'',</p>
-<p class="p1"><span class="Apple-converted-space">      </span>CodigoEAN: r.CodigoEAN||r.EAN||r.Codigo||r.Código||'',</p>
-<p class="p1"><span class="Apple-converted-space">      </span>NombreProveedor: r.NombreProveedor||r.Proveedor||'',</p>
-<p class="p1"><span class="Apple-converted-space">      </span>ImagenURL: r.ImagenURL||r.Imagen||'',</p>
-<p class="p1"><span class="Apple-converted-space">      </span>FichaTecnica: r.FichaTecnica||r['Ficha Técnica']||'',</p>
-<p class="p1"><span class="Apple-converted-space">      </span>Manual: r.Manual||''</p>
-<p class="p1"><span class="Apple-converted-space">    </span>});</p>
-<p class="p1"><span class="Apple-converted-space">    </span>ART=rows.map(mapRow).filter(r=&gt; r.Descripcion||r.ReferenciaProveedor||r.CodigoEAN); renderResults([]); alert('Excel importado. Ya puedes buscar y exportar Articulos.csv'); };</p>
-<p class="p1"><span class="Apple-converted-space">  </span>reader.readAsArrayBuffer(f) };</p>
-<p class="p2"><br></p>
-<p class="p1">impUbi.onclick=async()=&gt;{ const f=inpUbiCSV.files?.[0]; if(!f){ alert('Selecciona Ubicaciones.csv'); return } const text=await f.text(); UBI=parseCSV(text); reindex(); alert('Ubicaciones cargadas'); };</p>
-<p class="p2"><br></p>
-<p class="p1">function download(name, text){ const blob=new Blob([text],{type:'text/plain;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=&gt; URL.revokeObjectURL(a.href), 1000) }</p>
-<p class="p2"><br></p>
-<p class="p1">expArt.onclick=()=&gt;{ if(!ART.length){ alert('No hay artículos en memoria'); return } const head=['NumeroArticulo','ReferenciaProveedor','Descripcion','CodigoEAN','NombreProveedor','ImagenURL','FichaTecnica','Manual']; const lines=[head.join(';')]; for(const a of ART){ lines.push(head.map(h=&gt; String(a[h]??'').replaceAll('"','""')).map(v=&gt;(/[,;"\n]/.test(v)? '"'+v+'"' : v)).join(';')) } download('Articulos.csv', lines.join('\n')) };</p>
-<p class="p2"><br></p>
-<p class="p1">expUbi.onclick=()=&gt;{ if(!UBI.length){ alert('No hay ubicaciones en memoria'); return } const head=['NumeroArticulo','Centro','Pasillo','Lado','Estante','Balda','X','Y','Stock']; const lines=[head.join(';')]; for(const u of UBI){ lines.push(head.map(h=&gt; String(u[h]??'').replaceAll('"','""')).map(v=&gt;(/[,;"\n]/.test(v)? '"'+v+'"' : v)).join(';')) } download('Ubicaciones.csv', lines.join('\n')) };</p>
-<p class="p2"><br></p>
-<p class="p1">// =============== Interacción ===============</p>
-<p class="p1">startBtn.onclick=()=&gt;{ queryBox.style.display='grid'; resultsEl.classList.add('hidden'); right.classList.add('hidden'); speak(LANGS[lang].explainIntro(nameInput.value||'')) };</p>
-<p class="p1">micBtn.onclick=()=&gt; startListening();</p>
-<p class="p1">goBtn.onclick=()=&gt; handleSearch();</p>
-<p class="p1">q.onkeydown=(e)=&gt;{ if(e.key==='Enter') handleSearch() };</p>
-<p class="p1">againBtn.onclick=()=&gt;{ q.value=''; resultsEl.classList.add('hidden'); right.classList.add('hidden'); routeEl.textContent=''; pin.style.display='none'; window.scrollTo(0,0) };</p>
-<p class="p2"><br></p>
-<p class="p1">adminToggle.onclick=()=&gt;{ admin=!admin; adminToggle.classList.toggle('btn-brand', admin); adminPanel.classList.toggle('hidden', !admin); if(admin &amp;&amp; varSel){ selectArticle(varSel) } };</p>
-<p class="p2"><br></p>
-<p class="p1">function handleSearch(){ stopListening(); setSphere('thinking'); const list=search(q.value||''); renderResults(list); setSphere('idle'); if(list.length){ const first=list[0]; speak(LANGS[lang].found(first.Descripcion||'')) } }</p>
-<p class="p2"><br></p>
-<p class="p1">// =============== Init + PWA ===============</p>
-<p class="p1">(async function(){ await loadData(); speak('Hola. Selecciona idioma, escribe o usa el micrófono. El plano aparecerá cuando elijamos producto.'); })();</p>
-<p class="p2"><br></p>
-<p class="p1">if('serviceWorker' in navigator){ const swCode=`self.addEventListener('install',e=&gt;{e.waitUntil(caches.open('jarvis-kiosk-v2').then(c=&gt;c.addAll([location.href]))) }); self.addEventListener('fetch',e=&gt;{e.respondWith(caches.match(e.request).then(r=&gt;r||fetch(e.request)))})`; const blob=new Blob([swCode],{type:'text/javascript'}); const url=URL.createObjectURL(blob); navigator.serviceWorker.register(url).catch(()=&gt;{}); }</p>
-<p class="p1">&lt;/script&gt;</p>
-<p class="p1">&lt;/body&gt;</p>
-<p class="p1">&lt;/html&gt;</p>
+<div class="app">
+  <header>
+    <div class="logo">
+      <div class="halo"></div>
+      <img src="logo-duran.png" alt="DURAN"/>
+      <div class="badge">Jarvis · Centro Duran Calvià</div>
+    </div>
+    <div class="row small">
+      <span id="status">Listo</span>
+      <button id="adminToggle" class="ghost" title="Modo administrador">⚙️ Admin</button>
+    </div>
+  </header>
+
+  <main class="grid two" style="padding:16px">
+    <!-- COLUMNA IZQUIERDA: idioma, consulta, resultados, import/export -->
+    <section class="card grid" id="left">
+      <div class="grid">
+        <div class="small">Selecciona idioma</div>
+        <div class="flags" id="flags"></div>
+      </div>
+      <div class="row">
+        <input id="name" type="text" placeholder="Tu nombre (opcional)"/>
+        <button id="start" class="btn-brand">Empezar</button>
+      </div>
+
+      <div class="grid" id="queryBox" style="display:none">
+        <div class="row">
+          <input id="q" type="text" placeholder="Escribe lo que necesitas… (ej. manguito 32, scala2, filtro e1)"/>
+          <button id="mic" title="Hablar">🎙️</button>
+          <button id="go" class="btn-brand">Buscar</button>
+        </div>
+        <div class="grid" style="place-items:center">
+          <div class="sphere" id="sphere"><div class="g"></div><div class="ring"></div></div>
+          <div id="spLabel" class="small">Listo</div>
+        </div>
+      </div>
+
+      <div id="results" class="list hidden"></div>
+
+      <details>
+        <summary class="small">📥 Importar datos (EXCEL/CSV) · 📤 Exportar</summary>
+        <div class="grid">
+          <div class="row">
+            <input type="file" id="inpExcel" accept=".xlsx,.xls"/>
+            <button id="btnExcel" title="Leer Excel y preparar artículos">Importar Excel</button>
+            <button id="expArt">Exportar Articulos.csv</button>
+          </div>
+          <div class="row">
+            <input type="file" id="inpUbiCSV" accept=".csv"/>
+            <button id="impUbi">Importar Ubicaciones.csv</button>
+            <button id="expUbi">Exportar Ubicaciones.csv</button>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- COLUMNA DERECHA: MAPA (se muestra SOLO cuando hay selección) -->
+    <section class="card grid hidden" id="right">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div class="small">Plano (aparece tras localizar el producto)</div>
+        <button id="again" class="ghost">↩︎ Nueva búsqueda</button>
+      </div>
+      <div class="map" id="mapBox">
+        <img id="mapImg" src="plano-calvia.jpg" alt="Plano Calvià"/>
+        <div id="pin" class="pin"></div>
+      </div>
+      <div id="route" class="sub"></div>
+
+      <!-- Panel Admin para fijar ubicación -->
+      <div id="adminPanel" class="hidden">
+        <div class="small">Modo administrador · Toca el plano para capturar X/Y (0–1). Completa los campos y pulsa Guardar.</div>
+        <div class="grid-two">
+          <label>Pasillo <input id="fPasillo" type="number" min="0" step="1"></label>
+          <label>Lado
+            <select id="fLado">
+              <option value="I">I</option>
+              <option value="D">D</option>
+            </select>
+          </label>
+          <label>Estante <input id="fEst" type="number" min="0" step="1"></label>
+          <label>Balda <input id="fBal" type="number" min="0" step="1"></label>
+          <label>X <input id="fX" type="number" min="0" max="1" step="0.01"></label>
+          <label>Y <input id="fY" type="number" min="0" max="1" step="0.01"></label>
+        </div>
+        <div class="row">
+          <button id="saveLoc" class="btn-brand">💾 Guardar ubicación del artículo seleccionado</button>
+          <button id="delLoc">🗑️ Quitar ubicación</button>
+        </div>
+        <div class="small">Las ubicaciones quedan en memoria y puedes <strong>Exportar Ubicaciones.csv</strong> para subirlo a tu hosting.</div>
+      </div>
+    </section>
+  </main>
+
+  <footer>Funciona offline como PWA. Datos desde CSV o importando Excel (luego exporta CSV). Voz gratis (Web Speech API). © DURAN</footer>
+</div>
+
+<script>
+// =============== Config ===============
+const CENTER = "Duran Calvià"; // Centro por defecto
+const LANGS = {
+  es:{name:"Español", tag:"es-ES", sphere:{idle:"Listo", listening:"Escuchando…", thinking:"Pensando…", speaking:"Hablando…"},
+      explainIntro:n=>`${n? n+", ":""}Te explico y te guío.`,
+      found:d=>`He encontrado la mejor opción: ${d}.`,
+      guide:(p,l,e,b)=>`Desde tu posición, dirígete al pasillo ${p}, lado ${l}, estante ${e}, balda ${b}.`},
+  ca:{name:"Mallorquí", tag:"ca-ES", sphere:{idle:"A punt", listening:"Escoltant…", thinking:"Pensant…", speaking:"Parlant…"},
+      explainIntro:n=>`${n? n+", ":""}T'ho explic i després te guiaré.`,
+      found:d=>`La millor opció és: ${d}.`,
+      guide:(p,l,e,b)=>`Des de la teva ubicació, ves al passadís ${p}, costat ${l}, prestatge ${e}, balda ${b}.`},
+  en:{name:"English", tag:"en-GB", sphere:{idle:"Ready", listening:"Listening…", thinking:"Thinking…", speaking:"Speaking…"},
+      explainIntro:n=>`${n? n+", ":""}I'll explain and guide you.`,
+      found:d=>`Best match: ${d}.`,
+      guide:(p,l,e,b)=>`From your position, go to aisle ${p}, ${l} side, shelf ${e}, tier ${b}.`},
+  de:{name:"Deutsch", tag:"de-DE", sphere:{idle:"Bereit", listening:"Zuhören…", thinking:"Denken…", speaking:"Sprechen…"},
+      explainIntro:n=>`${n? n+", ":""}Ich erkläre kurz und führe Sie.`,
+      found:d=>`Beste Option: ${d}.`,
+      guide:(p,l,e,b)=>`Von Ihrer Position zum Gang ${p}, ${l}e Seite, Regal ${e}, Ebene ${b}.`},
+  pl:{name:"Polski", tag:"pl-PL", sphere:{idle:"Gotowe", listening:"Słucham…", thinking:"Myślę…", speaking:"Mówię…"},
+      explainIntro:n=>`${n? n+", ":""}Krótko wyjaśnię i poprowadzę.`,
+      found:d=>`Najlepsza opcja: ${d}.`,
+      guide:(p,l,e,b)=>`Z Twojej pozycji: alejka ${p}, strona ${l}, półka ${e}, poziom ${b}.`},
+  ru:{name:"Русский", tag:"ru-RU", sphere:{idle:"Готово", listening:"Слушаю…", thinking:"Думаю…", speaking:"Говорю…"},
+      explainIntro:n=>`${n? n+", ":""}Коротко объясню и проведу.`,
+      found:d=>`Лучший вариант: ${d}.`,
+      guide:(p,l,e,b)=>`От вашей позиции: ряд ${p}, сторона ${l}, полка ${e}, уровень ${b}.`}
+};
+let lang='es', admin=false;
+
+// =============== UI refs ===============
+const flags=document.getElementById('flags');
+const nameInput=document.getElementById('name');
+const startBtn=document.getElementById('start');
+const queryBox=document.getElementById('queryBox');
+const q=document.getElementById('q');
+const goBtn=document.getElementById('go');
+const micBtn=document.getElementById('mic');
+const sphere=document.getElementById('sphere');
+const spLabel=document.getElementById('spLabel');
+const statusEl=document.getElementById('status');
+const resultsEl=document.getElementById('results');
+const right=document.getElementById('right');
+const mapImg=document.getElementById('mapImg');
+const mapBox=document.getElementById('mapBox');
+const pin=document.getElementById('pin');
+const routeEl=document.getElementById('route');
+const againBtn=document.getElementById('again');
+const adminToggle=document.getElementById('adminToggle');
+const adminPanel=document.getElementById('adminPanel');
+const fPas=document.getElementById('fPasillo');
+const fLado=document.getElementById('fLado');
+const fEst=document.getElementById('fEst');
+const fBal=document.getElementById('fBal');
+const fX=document.getElementById('fX');
+const fY=document.getElementById('fY');
+const saveLocBtn=document.getElementById('saveLoc');
+const delLocBtn=document.getElementById('delLoc');
+
+// Import/Export
+const inpExcel=document.getElementById('inpExcel');
+const btnExcel=document.getElementById('btnExcel');
+const expArt=document.getElementById('expArt');
+const inpUbiCSV=document.getElementById('inpUbiCSV');
+const impUbi=document.getElementById('impUbi');
+const expUbi=document.getElementById('expUbi');
+
+// =============== Flags ===============
+const SENYERA = `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='640' height='400'><rect width='640' height='400' fill='#f7d117'/><g fill='#d40000'><rect y='25' width='640' height='50'/><rect y='115' width='640' height='50'/><rect y='205' width='640' height='50'/><rect y='295' width='640' height='50'/></g></svg>`)}`;
+const FLAGS={es:'https://flagcdn.com/w80/es.png', ca:SENYERA, en:'https://flagcdn.com/w80/gb.png', de:'https://flagcdn.com/w80/de.png', pl:'https://flagcdn.com/w80/pl.png', ru:'https://flagcdn.com/w80/ru.png'};
+for(const code of Object.keys(LANGS)){
+  const b=document.createElement('button'); b.innerHTML=`<img alt='${code}' src='${FLAGS[code]}'/>`; b.title=LANGS[code].name; b.onclick=()=>{lang=code; setSphere('idle'); speak(`Idioma ${LANGS[code].name}`)}; flags.appendChild(b);
+}
+
+// =============== Speech (gratis) ===============
+let VOICES=[]; function refreshVoices(){try{VOICES=speechSynthesis.getVoices()}catch{}}; refreshVoices(); speechSynthesis.onvoiceschanged=refreshVoices;
+function pickVoice(tag){tag=tag.toLowerCase(); const pool=VOICES.filter(v=> (v.lang||'').toLowerCase().startsWith(tag.slice(0,2)) || (v.lang||'').toLowerCase()===tag); const score=v=>{let s=0; const n=(v.name||'').toLowerCase(); if((v.lang||'').toLowerCase().startsWith(tag)) s+=5; if(n.includes('google')||n.includes('microsoft')) s+=3; if(n.includes('natural')||n.includes('neural')) s+=2; return s}; return pool.sort((a,b)=>score(b)-score(a))[0]||pool[0]||null}
+function speak(text){try{const u=new SpeechSynthesisUtterance(text); const v=pickVoice(LANGS[lang].tag)||pickVoice('es-ES'); if(v) u.voice=v; u.lang=(v&&v.lang)||LANGS[lang].tag; u.rate=1; u.pitch=1; u.volume=1; speechSynthesis.cancel(); speechSynthesis.speak(u); setSphere('speaking'); const ms=Math.min(7000, Math.max(1400, text.split(/\s+/).length*350)); setTimeout(()=>setSphere('idle'), ms);}catch(e){console.warn(e)}}
+let rec=null, listening=false, recStart=0; function startListening(){ const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR){ alert('El navegador no soporta reconocimiento de voz'); return } rec=new SR(); rec.lang=LANGS[lang].tag; rec.continuous=true; rec.interimResults=true; rec.onresult=(ev)=>{let txt=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ const r=ev.results[i]; if(r.isFinal) txt+=r[0].transcript+' ' } if(txt.trim()){ q.value=(q.value? q.value+' ':'')+txt.trim(); handleSearch() }}; rec.onend=()=>{ if(!listening){ setSphere('idle'); return } const elapsed=Date.now()-recStart; if(elapsed<8000){ rec.start() } else { listening=false; setSphere('idle') } }; listening=true; recStart=Date.now(); setSphere('listening'); rec.start() }
+function stopListening(){try{listening=false; rec&&rec.stop()}catch{}}
+function setSphere(mode){sphere.classList.remove('listening','speaking'); if(mode==='listening') sphere.classList.add('listening'); if(mode==='speaking') sphere.classList.add('speaking'); spLabel.textContent=LANGS[lang].sphere[mode]||'…'; statusEl.textContent=spLabel.textContent}
+
+// =============== Datos ===============
+let ART=[], UBI=[], INDEX={}; let varSel=null;
+function normalize(s){return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
+const SYN=[['grupo de presion','grupo presion','grupo presión','presurizador','booster','hidrofor','estacion presion','estación presión'],['bomba','electrobomba','impulsor','scala','prisma'],['manguito','acople','acoplamiento','union','unión','enchufe','conector','racor'],['valvula','válvula','esfera','llave'],['tubo','tuberia','tubería','pe','polietileno','pvc','multicapa'],['codo','coudé','coude'],['te','tee','derivacion','derivación'],['filtro','filtros','e1'],['descalcificador','descalcificador myperla','myperla','bwt']];
+function expandSyn(q){let s=normalize(q); for(const g of SYN){ for(const w of g){ if(s.includes(normalize(w))){ s+=' '+g.join(' ') } } } return s}
+function parseNum(v){ if(v==null) return null; if(typeof v==='number') return v; const s=String(v).trim().replace(',','.'); const n=Number(s); return isFinite(n)? n : null }
+
+async function fetchText(url){ try{ const r=await fetch(url,{cache:'no-store'}); if(!r.ok) return null; return await r.text()}catch{ return null}}
+function parseCSV(text){ const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim().length); const sep=(lines[0].match(/;/g)||[]).length > (lines[0].match(/,/g)||[]).length? ';' : ','; const rows=[]; for(const line of lines){ rows.push(parseCSVLine(line,sep)) } const headers=rows.shift().map(h=>h.trim()); return rows.map(r=>{const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').trim()); return o}) }
+function parseCSVLine(line,sep){ const out=[]; let cur=''; let inQ=false; for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else { inQ=!inQ } } else if(ch===sep && !inQ){ out.push(cur); cur='' } else { cur+=ch } } out.push(cur); return out }
+
+async function loadData(){
+  const a=await fetchText('Articulos.csv'); if(a){ ART=parseCSV(a) } else { ART=[] }
+  const u=await fetchText('Ubicaciones.csv'); if(u){ UBI=parseCSV(u) } else { UBI=[] }
+  reindex();
+}
+function reindex(){ // filtra por centro y crea mapa por NumeroArticulo
+  const only=UBI.filter(u=> (u.Centro===CENTER || u.Centro==='Calvia')); const map=new Map(); for(const u of only){ const k=(u.NumeroArticulo||'').toString().trim(); if(!map.has(k)) map.set(k,[]); map.get(k).push(u) } INDEX=Object.fromEntries(map)
+}
+function pickLocation(num){ const list=INDEX[(num||'').toString().trim()]; if(!list||!list.length) return null; return list.slice().sort((a,b)=> Number(b.Stock||0)-Number(a.Stock||0))[0] }
+
+function search(qraw){ const qn=expandSyn(qraw); const words=normalize(qn).split(/\s+/).filter(Boolean); const scored=[]; for(const a of ART){ const text=normalize(`${a.Descripcion} ${a.ReferenciaProveedor} ${a.CodigoEAN}`); let s=0; for(const w of words){ if(!w) continue; if(text.includes(w)) s+=2; if(text.startsWith(w)) s+=1 } if(s>0){ scored.push({a,score:s}) } } scored.sort((x,y)=>y.score-x.score); return scored.slice(0,50).map(x=>x.a) }
+
+function renderResults(list){ resultsEl.innerHTML=''; if(!list.length){ const div=document.createElement('div'); div.className='item'; div.innerHTML='<div>No se han encontrado artículos. Por favor, solicite ayuda a un vendedor.</div>'; resultsEl.appendChild(div); resultsEl.classList.remove('hidden'); right.classList.add('hidden'); return }
+  for(const a of list){ const loc=pickLocation(a.NumeroArticulo); const sub=`Ref: ${a.ReferenciaProveedor||'—'} · EAN: ${a.CodigoEAN||'—'} · Proveedor: ${a.NombreProveedor||'—'} · Stock: ${(loc&&loc.Stock)||'—'}`; const card=document.createElement('div'); card.className='item'; card.innerHTML=`<div><strong>${a.Descripcion||'Sin descripción'}</strong></div><div class='sub'>${sub}</div><div class='row'><button class='goMap btn-brand'>Guíame</button> <button class='say'>Explicar</button></div>`; card.querySelector('.goMap').onclick=()=> selectArticle(a); card.querySelector('.say').onclick=()=> explainArticle(a); resultsEl.appendChild(card) }
+  resultsEl.classList.remove('hidden'); right.classList.add('hidden');
+}
+
+function explainArticle(a){ const name=nameInput.value||''; const intro=LANGS[lang].explainIntro(name); const desc=a.Descripcion||''; speak(`${intro} ${desc}`.trim()) }
+
+function selectArticle(a){ varSel=a; // mostrar panel mapa solo ahora
+  right.classList.remove('hidden');
+  const loc=pickLocation(a.NumeroArticulo); if(!loc){ speak('No tengo ubicación registrada. Puedes capturarla en modo administrador.'); routeEl.textContent=''; pin.style.display='none'; if(admin) adminPanel.classList.remove('hidden'); return }
+  // pintar pin
+  const x=parseNum(loc.X), y=parseNum(loc.Y); if(x==null||y==null){ pin.style.display='none' } else { pin.style.left=(x*100)+'%'; pin.style.top=(y*100)+'%'; pin.style.display='block' }
+  const lado=(loc.Lado && (loc.Lado.Value||loc.Lado)) || loc.Lado || '—';
+  routeEl.textContent=LANGS[lang].guide(loc.Pasillo||'—', lado, loc.Estante||'—', loc.Balda||'—');
+  speak(LANGS[lang].found(a.Descripcion||'')); setTimeout(()=> speak(routeEl.textContent), 1100)
+  if(admin){ // precarga form
+    fPas.value=loc.Pasillo||''; fLado.value=(lado||'I').toString().substring(0,1).toUpperCase(); fEst.value=loc.Estante||''; fBal.value=loc.Balda||''; fX.value=(x??''); fY.value=(y??''); adminPanel.classList.remove('hidden') }
+}
+
+// =============== Admin: capturar en plano y guardar ===============
+mapBox.addEventListener('click', ev=>{ if(!admin || !varSel) return; const rect=mapImg.getBoundingClientRect(); const x=(ev.clientX-rect.left)/rect.width; const y=(ev.clientY-rect.top)/rect.height; fX.value=x.toFixed(2); fY.value=y.toFixed(2); pin.style.left=(x*100)+'%'; pin.style.top=(y*100)+'%'; pin.style.display='block' });
+
+saveLocBtn.onclick=()=>{ if(!varSel) { alert('Selecciona un artículo en la lista de resultados.'); return } const num=(varSel.NumeroArticulo||'').toString().trim(); const rec={ NumeroArticulo:num, Centro:CENTER, Pasillo:fPas.value||'', Lado:fLado.value||'', Estante:fEst.value||'', Balda:fBal.value||'', X:fX.value||'', Y:fY.value||'', Stock: (pickLocation(num)?.Stock||'') }; // inserta/actualiza
+  const idx=UBI.findIndex(u=> (u.NumeroArticulo||'').toString().trim()===num && (u.Centro===CENTER||u.Centro==='Calvia')); if(idx>=0) UBI[idx]=rec; else UBI.push(rec); reindex(); speak('Ubicación guardada. No olvides exportar Ubicaciones punto CSV.'); selectArticle(varSel) };
+
+delLocBtn.onclick=()=>{ if(!varSel) return; const num=(varSel.NumeroArticulo||'').toString().trim(); const before=UBI.length; UBI=UBI.filter(u=> (u.NumeroArticulo||'').toString().trim()!==num || !(u.Centro===CENTER || u.Centro==='Calvia')); reindex(); if(UBI.length<before){ speak('Ubicación eliminada.'); routeEl.textContent=''; pin.style.display='none' } };
+
+// =============== Import / Export ===============
+btnExcel.onclick=()=>{ const f=inpExcel.files?.[0]; if(!f){ alert('Selecciona un archivo Excel'); return } const reader=new FileReader(); reader.onload=e=>{ const wb=XLSX.read(new Uint8Array(e.target.result), {type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]]; const rows=XLSX.utils.sheet_to_json(ws, {defval:'', raw:false}); // mapeo de columnas
+    const mapRow=r=>({
+      NumeroArticulo: r.NumeroArticulo||r.numeroArticulo||r.Numero||r['Número']||r['Nº']||'',
+      ReferenciaProveedor: r.ReferenciaProveedor||r['Referencia Proveedor']||r.Ref||'',
+      Descripcion: r.Descripcion||r['Descripción']||r.Description||'',
+      CodigoEAN: r.CodigoEAN||r.EAN||r.Codigo||r.Código||'',
+      NombreProveedor: r.NombreProveedor||r.Proveedor||'',
+      ImagenURL: r.ImagenURL||r.Imagen||'',
+      FichaTecnica: r.FichaTecnica||r['Ficha Técnica']||'',
+      Manual: r.Manual||''
+    });
+    ART=rows.map(mapRow).filter(r=> r.Descripcion||r.ReferenciaProveedor||r.CodigoEAN); renderResults([]); alert('Excel importado. Ya puedes buscar y exportar Articulos.csv'); };
+  reader.readAsArrayBuffer(f) };
+
+impUbi.onclick=async()=>{ const f=inpUbiCSV.files?.[0]; if(!f){ alert('Selecciona Ubicaciones.csv'); return } const text=await f.text(); UBI=parseCSV(text); reindex(); alert('Ubicaciones cargadas'); };
+
+function download(name, text){ const blob=new Blob([text],{type:'text/plain;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=> URL.revokeObjectURL(a.href), 1000) }
+
+expArt.onclick=()=>{ if(!ART.length){ alert('No hay artículos en memoria'); return } const head=['NumeroArticulo','ReferenciaProveedor','Descripcion','CodigoEAN','NombreProveedor','ImagenURL','FichaTecnica','Manual']; const lines=[head.join(';')]; for(const a of ART){ lines.push(head.map(h=> String(a[h]??'').replaceAll('"','""')).map(v=>(/[,;"\n]/.test(v)? '"'+v+'"' : v)).join(';')) } download('Articulos.csv', lines.join('\n')) };
+
+expUbi.onclick=()=>{ if(!UBI.length){ alert('No hay ubicaciones en memoria'); return } const head=['NumeroArticulo','Centro','Pasillo','Lado','Estante','Balda','X','Y','Stock']; const lines=[head.join(';')]; for(const u of UBI){ lines.push(head.map(h=> String(u[h]??'').replaceAll('"','""')).map(v=>(/[,;"\n]/.test(v)? '"'+v+'"' : v)).join(';')) } download('Ubicaciones.csv', lines.join('\n')) };
+
+// =============== Interacción ===============
+startBtn.onclick=()=>{ queryBox.style.display='grid'; resultsEl.classList.add('hidden'); right.classList.add('hidden'); speak(LANGS[lang].explainIntro(nameInput.value||'')) };
+micBtn.onclick=()=> startListening();
+goBtn.onclick=()=> handleSearch();
+q.onkeydown=(e)=>{ if(e.key==='Enter') handleSearch() };
+againBtn.onclick=()=>{ q.value=''; resultsEl.classList.add('hidden'); right.classList.add('hidden'); routeEl.textContent=''; pin.style.display='none'; window.scrollTo(0,0) };
+
+adminToggle.onclick=()=>{ admin=!admin; adminToggle.classList.toggle('btn-brand', admin); adminPanel.classList.toggle('hidden', !admin); if(admin && varSel){ selectArticle(varSel) } };
+
+function handleSearch(){ stopListening(); setSphere('thinking'); const list=search(q.value||''); renderResults(list); setSphere('idle'); if(list.length){ const first=list[0]; speak(LANGS[lang].found(first.Descripcion||'')) } }
+
+// =============== Init + PWA ===============
+(async function(){ await loadData(); speak('Hola. Selecciona idioma, escribe o usa el micrófono. El plano aparecerá cuando elijamos producto.'); })();
+
+if('serviceWorker' in navigator){ const swCode=`self.addEventListener('install',e=>{e.waitUntil(caches.open('jarvis-kiosk-v2').then(c=>c.addAll([location.href]))) }); self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`; const blob=new Blob([swCode],{type:'text/javascript'}); const url=URL.createObjectURL(blob); navigator.serviceWorker.register(url).catch(()=>{}); }
+</script>
 </body>
 </html>
+
