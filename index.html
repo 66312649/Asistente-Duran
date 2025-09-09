@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Asistente · Duran (v5)</title>
+<title>Asistente · Duran (v5.1)</title>
 <link rel="icon" href="logo-duran.png"/>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
@@ -52,7 +52,10 @@ input[type="text"], input[type="number"]{width:100%;padding:.8em 1em;border-radi
 .sub{color:var(--mut);font-size:clamp(11px,1.6vmin,13px)}
 
 /* MAPA pantalla completa */
-.mapWrap{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;min-height:60svh}
+.mapWrap{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;height:clamp(320px,70dvh,900px);display:block}
+.mapWrap img{display:block;width:100%;height:100%;object-fit:contain;user-select:none;background:radial-gradient(600px 300px at 50% 0%, rgba(255,255,255,.03), transparent 60%)}
+.pin{position:absolute;width:clamp(12px,1.8vmin,16px);height:clamp(12px,1.8vmin,16px);background:#ef4444;border-radius:50%;box-shadow:0 0 0 5px rgba(239,68,68,.35);transform:translate(-50%,-50%);display:none}
+.pin.ref{background:#3b82f6; box-shadow:0 0 0 5px rgba(59,130,246,.35)}
 .mapWrap img{display:block;width:100%;height:auto;user-select:none}
 .pin{position:absolute;width:clamp(12px,1.8vmin,16px);height:clamp(12px,1.8vmin,16px);background:#ef4444;border-radius:50%;box-shadow:0 0 0 5px rgba(239,68,68,.35);transform:translate(-50%,-50%);display:none}
 .pin.ref{background:#3b82f6; box-shadow:0 0 0 5px rgba(59,130,246,.35)}
@@ -288,8 +291,8 @@ const impUbi=document.getElementById('impUbi');
 const expUbi=document.getElementById('expUbi');
 
 // Idiomas y banderas
-const SENYERA=`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='640' height='400'><rect width='640' height='400' fill='#f7d117'/><g fill='#d40000'><rect y='25' width='640' height='50'/><rect y='115' width='640' height='50'/><rect y='205' width='640' height='50'/><rect y='295' width='640' height='50'/></g></svg>`)}`;
-const FLAGS={es:'https://flagcdn.com/w80/es.png', ca:SENYERA, en:'https://flagcdn.com/w80/gb.png', de:'https://flagcdn.com/w80/de.png', pl:'https://flagcdn.com/w80/pl.png', ru:'https://flagcdn.com/w80/ru.png'};
+const BALEARIC='https://upload.wikimedia.org/wikipedia/commons/6/6a/Flag_of_the_Balearic_Islands.svg';
+const FLAGS={es:'https://flagcdn.com/w80/es.png', ca:BALEARIC, en:'https://flagcdn.com/w80/gb.png', de:'https://flagcdn.com/w80/de.png', pl:'https://flagcdn.com/w80/pl.png', ru:'https://flagcdn.com/w80/ru.png'};
 for(const code of Object.keys(LANGS)){
   const b=document.createElement('button'); b.innerHTML=`<img alt='${code}' src='${FLAGS[code]}'/>`; b.title=LANGS[code].name; b.onclick=()=>{lang=code; setSphere('idle'); speak(LANGS[lang].greet(nameInput.value||''))}; flags.appendChild(b);
 }
@@ -357,18 +360,21 @@ function dirFromRef(x,y){ if(!termRef||x==null||y==null) return 'sigue recto'; c
   const partY = Math.abs(dy)>0.05? (dy>0? (lang==='es'?'hacia el fondo':lang==='ca'?'cap al fons':'forward') : (lang==='es'?'hacia la entrada':lang==='ca'?'cap a l\'entrada':'back')) : '';
   return [partX,partY].filter(Boolean).join(' y ') || (lang==='es'?'sigue recto':'go straight') }
 
-function goMap(a){ varSel=a; showScreen('map'); const loc=pickLocation(a.NumeroArticulo); if(!loc){ speak('No tengo ubicación registrada. Puedes capturarla en modo administrador.'); routeEl.textContent=''; pin.style.display='none'; if(admin) adminPanel.style.display='block'; return }
-  const x=parseNum(loc.X), y=parseNum(loc.Y); if(x==null||y==null){ pin.style.display='none' } else { pin.style.left=(x*100)+'%'; pin.style.top=(y*100)+'%'; pin.style.display='block' }
+function getImageDrawMetrics(){ const rect=mapBox.getBoundingClientRect(); const cw=rect.width, ch=rect.height; const nw=mapImg.naturalWidth||cw, nh=mapImg.naturalHeight||ch; const scale=Math.min(cw/nw, ch/nh); const dw=nw*scale, dh=nh*scale; const leftOffset=(cw-dw)/2; const topOffset=(ch-dh)/2; return {rect,cw,ch,nw,nh,scale,dw,dh,leftOffset,topOffset} }
+function placePinFromXY(x,y){ const m=getImageDrawMetrics(); const px=m.leftOffset + x*m.dw; const py=m.topOffset + y*m.dh; pin.style.left=px+'px'; pin.style.top=py+'px'; pin.style.display='block' }
+function goMap(a){ varSel=a; showScreen('map'); const loc=pickLocation(a.NumeroArticulo); if(!loc){ speak('No tengo ubicación registrada. Puedes capturarla en modo administrador.'); routeEl.textContent=''; pin.style.display='none'; if(admin) adminPanel.style.display='block'; renderRefPin(); return }
+  const x=parseNum(loc.X), y=parseNum(loc.Y); if(x==null||y==null){ pin.style.display='none' } else { placePinFromXY(x,y) }
   const ladoRaw=(loc.Lado && (loc.Lado.Value||loc.Lado)) || loc.Lado || '—'; const lado=LANGS[lang].side((ladoRaw||'').toString().substring(0,1).toUpperCase()); const dir=dirFromRef(x,y);
   routeEl.textContent=LANGS[lang].guide(loc.Pasillo||'—', lado, loc.Estante||'—', loc.Balda||'—', dir);
-  // IMPORTANTE: no decir "He encontrado...", solo la guía
   speak(routeEl.textContent);
   if(admin){ fPas.value=loc.Pasillo||''; fLado.value=lado; fEst.value=loc.Estante||''; fBal.value=loc.Balda||''; fX.value=(x??''); fY.value=(y??''); adminPanel.style.display='block' }
-  renderRefPin();
-}
+  renderRefPin(); }
 
 // Admin: click en plano (guardar ubicación o fijar referencia)
-mapBox.addEventListener('click',ev=>{ const r=mapImg.getBoundingClientRect(); const x=(ev.clientX-r.left)/r.width; const y=(ev.clientY-r.top)/r.height; if(capturingRef){ saveRef(x,y); capturingRef=false; speak('Posición de referencia del terminal guardada'); return } if(!admin||!varSel) return; fX.value=x.toFixed(2); fY.value=y.toFixed(2); pin.style.left=(x*100)+'%'; pin.style.top=(y*100)+'%'; pin.style.display='block' });
+mapBox.addEventListener('click',ev=>{ const m=getImageDrawMetrics(); const cx=ev.clientX - m.rect.left; const cy=ev.clientY - m.rect.top; // dentro del área visible dibujada
+  const xNorm=(cx - m.leftOffset)/m.dw; const yNorm=(cy - m.topOffset)/m.dh; if(xNorm<0||yNorm<0||xNorm>1||yNorm>1) return; // fuera de imagen
+  if(capturingRef){ saveRef(xNorm,yNorm); capturingRef=false; speak('Posición de referencia del terminal guardada'); return }
+  if(!admin||!varSel) return; fX.value=xNorm.toFixed(2); fY.value=yNorm.toFixed(2); placePinFromXY(xNorm,yNorm); }); const x=(ev.clientX-r.left)/r.width; const y=(ev.clientY-r.top)/r.height; if(capturingRef){ saveRef(x,y); capturingRef=false; speak('Posición de referencia del terminal guardada'); return } if(!admin||!varSel) return; fX.value=x.toFixed(2); fY.value=y.toFixed(2); pin.style.left=(x*100)+'%'; pin.style.top=(y*100)+'%'; pin.style.display='block' });
 setRefModeBtn.onclick=()=>{ if(!adminGranted){ const p=prompt('Contraseña de administrador:'); if(p!=='0666'){ alert('Contraseña incorrecta'); return } adminGranted=true; } capturingRef=true; speak('Toca el plano para fijar la posición del terminal') };
 clearRefBtn.onclick=()=>{ clearRef(); speak('Referencia eliminada') };
 
@@ -407,6 +413,9 @@ async function handleFile(f){ if(!f){ alert('Selecciona un archivo Excel o CSV')
 setEAN.onclick=()=>{ const num=(admNum.value||'').trim(); const ean=(admEAN.value||'').trim(); if(!num||!ean){ alert('Rellena Número de artículo y EAN'); return } const a=ART.find(x=> (x.NumeroArticulo||'').toString().trim()===num); if(!a){ alert('Número de artículo no encontrado. Importa el Excel o usa la búsqueda por descripción.'); return } a.CodigoEAN=ean; alert('EAN asignado a '+(a.Descripcion||num)); };
 admDescBtn.onclick=()=>{ const txt=(admDesc.value||'').trim(); const list=search(txt); renderAdminResults(list) };
 function renderAdminResults(list){ admResults.innerHTML=''; for(const a of list.slice(0,50)){ const precio=formatEUR(a.Precio||''); const d=document.createElement('div'); d.className='item'; d.innerHTML=`<div><strong>${a.Descripcion||'Sin descripción'}</strong></div><div class='sub'>Num: ${a.NumeroArticulo||'—'} · EAN: ${a.CodigoEAN||'—'} · Ref: ${a.ReferenciaProveedor||'—'} · ${precio}</div><div class='row'><button>Seleccionar</button></div>`; d.querySelector('button').onclick=()=>{ admNum.value=a.NumeroArticulo||''; varSel=a; speak('Artículo seleccionado para administración'); }; admResults.appendChild(d) } }
+
+// Ajuste de pin de referencia al redimensionar
+window.addEventListener('resize',()=>{ if(varSel){ const loc=pickLocation(varSel.NumeroArticulo); if(loc && loc.X!=null && loc.Y!=null) placePinFromXY(parseNum(loc.X), parseNum(loc.Y)) } renderRefPin(); });
 
 // Quagga
 let quaggaRunning=false; function startScan(){ if(quaggaRunning) return; scanArea.classList.remove('hidden'); try{ Quagga.init({ inputStream:{ name:'Live', type:'LiveStream', target:scanArea, constraints:{ facingMode:'environment' } }, decoder:{ readers:['ean_reader','ean_8_reader','upc_reader','code_128_reader'] } }, (err)=>{ if(err){ alert('No se pudo iniciar la cámara: '+err); scanArea.classList.add('hidden'); return } Quagga.start(); quaggaRunning=true; }); Quagga.onDetected((res)=>{ const code=res?.codeResult?.code; if(code){ admEAN.value=code; speak('Código detectado'); stopScan(); } }); }catch(e){ alert('Escáner no disponible en este navegador.'); } }
