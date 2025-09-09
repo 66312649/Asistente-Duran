@@ -303,9 +303,22 @@ const FLAGS={
   ru:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='16' fill='#fff'/><rect y='16' width='80' height='16' fill='#0039a6'/><rect y='32' width='80' height='16' fill='#d52b1e'/></svg>`)}`
 };
 ;
-for(const code of Object.keys(LANGS)){
-  const b=document.createElement('button'); b.innerHTML=`<img alt='${code}' src='${FLAGS[code]}'/>`; b.title=LANGS[code].name; b.onclick=()=>{lang=code; setSphere('idle'); speak(LANGS[lang].greet(nameInput.value||''))}; flags.appendChild(b);
+try {
+  for (const code of Object.keys(LANGS)) {
+    const b = document.createElement('button');
+    b.innerHTML = `<img alt='${code}' src='${FLAGS[code]}'/>`;
+    b.title = LANGS[code].name;
+    b.onclick = () => { lang = code; setSphere('idle'); speak(LANGS[lang].greet(nameInput.value||'')); };
+    flags.appendChild(b);
+  }
+} catch (e) {
+  console.error('Error creando banderas', e);
+  const warn = document.createElement('div');
+  warn.className = 'small';
+  warn.textContent = '(No se pudieron mostrar las banderas de idioma)';
+  flags?.parentElement?.appendChild(warn);
 }
+
 
 // Synth voz salida
 let VOICES=[]; function refreshVoices(){ try{ VOICES=speechSynthesis.getVoices() }catch{} } refreshVoices(); speechSynthesis.onvoiceschanged=refreshVoices;
@@ -455,6 +468,7 @@ if('serviceWorker' in navigator){ navigator.serviceWorker.getRegistrations().the
 </script>
 </body>
 </html>
+
 
 
 
