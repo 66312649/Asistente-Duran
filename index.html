@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Asistente · Duran (v5.5)</title>
+<title>Asistente Duran</title>
 <link rel="icon" href="logo-duran.png"/>
 <style>
 :root{ --bg:#0b1324; --bg2:#0e1a35; --ink:#e6efff; --mut:#a9b7e6; --glass:rgba(255,255,255,.06); --line:rgba(255,255,255,.12); --brand:#57a3ff; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; }
@@ -81,7 +81,7 @@ input[type="text"],input[type="number"]{width:100%;padding:.8em 1em;border-radiu
   <!-- MAPA -->
   <section id="scrMap" class="screen">
     <div class="row" style="justify-content:space-between"><button id="backResults" class="ghost">← Resultados</button><button id="again" class="ghost">↩︎ Nueva búsqueda</button></div>
-    <div class="mapWrap" id="mapBox"><img id="mapImg" src="plano-calvia.jpg" alt="Plano"/><div id="pin" class="pin"></div><div id="pinRef" class="pin ref" style="display:none"></div></div>
+    <div class="mapWrap" id="mapBox"><img id="mapImg" src="calvia/plano-calvia.jpg" alt="Plano"/><div id="pin" class="pin"></div><div id="pinRef" class="pin ref" style="display:none"></div></div>
     <div id="route" class="small"></div>
     <div id="adminPanel" class="panel" style="display:none">
       <div class="small">Acceso restringido. Contraseña (0666).</div><hr style="border-color:var(--line);opacity:.4">
@@ -104,13 +104,13 @@ input[type="text"],input[type="number"]{width:100%;padding:.8em 1em;border-radiu
 </div>
 
 <script>
-const APP_VERSION='v5.5-'+Date.now();
-// === Centros (cada uno con sus propios CSV e imagen) ===
+const APP_VERSION='v5.6-'+Date.now();
+// === Centros oficiales: Calvià, Coll, Alcudia, Santanyí ===
 const CENTERS={
   calvia:{id:'calvia', label:'Duran Calvià', a:'calvia/Articulos.csv', u:'calvia/Ubicaciones.csv', map:'calvia/plano-calvia.jpg'},
-  palma:{id:'palma', label:'Duran Palma', a:'palma/Articulos.csv', u:'palma/Ubicaciones.csv', map:'palma/plano-palma.jpg'},
-  inca:{id:'inca', label:'Duran Inca', a:'inca/Articulos.csv', u:'inca/Ubicaciones.csv', map:'inca/plano-inca.jpg'},
-  manacor:{id:'manacor', label:'Duran Manacor', a:'manacor/Articulos.csv', u:'manacor/Ubicaciones.csv', map:'manacor/plano-manacor.jpg'}
+  coll:{id:'coll', label:'Duran Coll', a:'coll/Articulos.csv', u:'coll/Ubicaciones.csv', map:'coll/plano-coll.jpg'},
+  alcudia:{id:'alcudia', label:'Duran Alcudia', a:'alcudia/Articulos.csv', u:'alcudia/Ubicaciones.csv', map:'alcudia/plano-alcudia.jpg'},
+  santanyi:{id:'santanyi', label:'Duran Santanyí', a:'santanyi/Articulos.csv', u:'santanyi/Ubicaciones.csv', map:'santanyi/plano-santanyi.jpg'}
 };
 let CENTER=CENTERS[localStorage.getItem('centerId')||'calvia'];
 
@@ -184,7 +184,7 @@ async function fetchText(url){ try{ const r=await fetch(url+`?v=${APP_VERSION}`,
 function parseCSV(text){ const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim().length); const sep=(lines[0].match(/;/g)||[]).length>(lines[0].match(/,/g)||[]).length?';':','; const rows=[]; for(const line of lines){ rows.push(parseCSVLine(line,sep)) } const headers=rows.shift().map(h=>h.trim()); return rows.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').trim()); return o }) }
 function parseCSVLine(line,sep){ const out=[]; let cur=''; let inQ=false; for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else { inQ=!inQ } } else if(ch===sep && !inQ){ out.push(cur); cur='' } else { cur+=ch } } out.push(cur); return out }
 
-async function loadData(){ statusEl.textContent='Cargando datos…'; try{ const a=await fetchText(CENTER.a) || await fetchText('Articulos.csv'); ART=a? parseCSV(a) : []; const u=await fetchText(CENTER.u) || await fetchText('Ubicaciones.csv'); UBI=u? parseCSV(u) : []; mergeUbiWithLocal(); await mergeUbiWithRemote(); reindex(); try{ mapImg.src=(CENTER.map||'plano-calvia.jpg')+'?v='+APP_VERSION }catch{} centerBadge.textContent='Centro '+CENTER.label; statusEl.textContent=`Artículos: ${ART.length} · Ubicaciones: ${UBI.length}`; termRef=loadRef(); renderRefPin(); }catch(e){ console.warn(e); statusEl.textContent='Error cargando datos' } }
+async function loadData(){ statusEl.textContent='Cargando datos…'; try{ const a=await fetchText(CENTER.a) || await fetchText('Articulos.csv'); ART=a? parseCSV(a) : []; const u=await fetchText(CENTER.u) || await fetchText('Ubicaciones.csv'); UBI=u? parseCSV(u) : []; mergeUbiWithLocal(); await mergeUbiWithRemote(); reindex(); try{ mapImg.src=(CENTER.map||'calvia/plano-calvia.jpg')+'?v='+APP_VERSION }catch{} centerBadge.textContent='Centro '+CENTER.label; statusEl.textContent=`Artículos: ${ART.length} · Ubicaciones: ${UBI.length}`; termRef=loadRef(); renderRefPin(); }catch(e){ console.warn(e); statusEl.textContent='Error cargando datos' } }
 
 // ===== Persistencia ubicaciones =====
 function saveUbiLocal(){ try{ localStorage.setItem('UBI@'+CENTER.id, JSON.stringify(UBI)) }catch(e){ console.warn('No se pudo guardar UBI en localStorage',e) } }
@@ -194,7 +194,7 @@ async function mergeUbiWithRemote(){ if(!UBI_API) return; try{ const r=await fet
 function reindex(){ const only=UBI.filter(u=> (u.Centro===CENTER.label || u.Centro===CENTER.id || u.Centro==='Calvia' && CENTER.id==='calvia')); const map=new Map(); for(const u of only){ const k=(u.NumeroArticulo||'').toString().trim(); if(!map.has(k)) map.set(k,[]); map.get(k).push(u) } INDEX=Object.fromEntries(map) }
 function pickLocation(num){ const list=INDEX[(num||'').toString().trim()]; if(!list||!list.length) return null; return list.slice().sort((a,b)=>Number(b.Stock||0)-Number(a.Stock||0))[0] }
 
-// ===== Búsqueda (manual: botón/Enter) =====
+// ===== Búsqueda (manual) =====
 function search(qraw){ const raw=(qraw||'').trim(); const qn=expandSyn(raw); const words=normalize(qn).split(/\s+/).filter(Boolean);
   const eanMatch=(raw.match(/\d{8,14}/)||[])[0]||null; const exactEAN=eanMatch? ART.find(a=> (a.CodigoEAN||'').replace(/\D/g,'')===eanMatch) : null;
   const exactNum=ART.find(a=> (a.NumeroArticulo||'').toString().trim()===raw);
@@ -263,3 +263,4 @@ if('serviceWorker' in navigator){ navigator.serviceWorker.getRegistrations().the
 </script>
 </body>
 </html>
+
