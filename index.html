@@ -3,10 +3,11 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Jarvis · Kiosk Duran</title>
+<title>Asistente · Duran (v4)</title>
 <link rel="icon" href="logo-duran.png"/>
-<!-- Librería para leer EXCEL en el navegador (gratuita) -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- Lector de códigos de barras (gratis) -->
+<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
 <style>
 :root{
   --bg:#0b1324; --bg2:#0e1a35; --ink:#e6efff; --mut:#a9b7e6; --glass:rgba(255,255,255,.06);
@@ -15,44 +16,51 @@
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;background:radial-gradient(1100px 600px at 50% -10%, #1a3a78 0%, #0e1a35 50%, #091326 100%);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial;color:var(--ink)}
-.app{min-height:100%;display:grid;grid-template-rows:auto 1fr}
-header{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:14px 16px}
+.app{min-height:100vh;display:grid;grid-template-rows:auto 1fr}
+@supports (height: 100dvh){ .app{min-height:100dvh} }
+header{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:clamp(8px,2vmin,16px)}
 .logo{display:flex;align-items:center;gap:12px;position:relative}
-.logo img{height:38px;filter:drop-shadow(0 2px 18px rgba(87,163,255,.35))}
+.logo img{height:clamp(28px,4vmin,44px);filter:drop-shadow(0 2px 18px rgba(87,163,255,.35))}
 .logo .halo{position:absolute;left:-6px;top:-6px;width:70px;height:70px;border-radius:50%;background:radial-gradient(circle at 35% 30%, rgba(87,163,255,.28), rgba(87,163,255,.05) 60%, transparent 65%);pointer-events:none}
-.badge{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--glass);color:var(--ink);font-weight:600}
-.small{font-size:12px;color:var(--mut)}
-.grid{display:grid;gap:16px}
-.two{grid-template-columns:1.15fr .85fr}
-.card{border:1px solid var(--line);background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04));backdrop-filter:blur(10px);border-radius:18px;padding:16px}
-.row{display:flex;gap:10px;align-items:center}
+.badge{padding:.5em .8em;border-radius:999px;border:1px solid var(--line);background:var(--glass);color:var(--ink);font-weight:600;font-size:clamp(12px,1.8vmin,14px)}
+.small{font-size:clamp(11px,1.6vmin,13px);color:var(--mut)}
+.grid{display:grid;gap:clamp(10px,2vmin,16px)}
+.two{grid-template-columns:1.1fr .9fr;gap:clamp(12px,2.2vmin,18px);align-items:start;max-width:1600px;margin:0 auto;width:100%;padding:clamp(10px,2vmin,16px)}
+@media (max-width: 1024px){ .two{grid-template-columns:1fr} }
+.card{border:1px solid var(--line);background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04));backdrop-filter:blur(10px);border-radius:18px;padding:clamp(12px,2vmin,16px)}
+.row{display:flex;gap:clamp(8px,1.6vmin,12px);align-items:center;flex-wrap:wrap}
 input,button,select{font:inherit}
-input[type="text"], input[type="number"]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.2);color:var(--ink);outline:none}
-button{padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--ink);cursor:pointer}
+input[type="text"], input[type="number"]{width:100%;padding:.8em 1em;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.2);color:var(--ink);outline:none;min-width:12ch}
+button{padding:.7em 1em;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--ink);cursor:pointer}
 button:hover{background:rgba(255,255,255,.12)}
 button.ghost{background:transparent;border-color:transparent;color:var(--mut)}
 .btn-brand{border-color:rgba(87,163,255,.5);box-shadow:0 0 0 3px rgba(87,163,255,.12) inset}
-.flags{display:grid;grid-template-columns:repeat(6,52px);gap:8px}
+.flags{display:grid;grid-template-columns:repeat(6,clamp(40px,6vmin,56px));gap:8px}
 .flags button{padding:0;border-radius:10px;overflow:hidden}
-.flags img{display:block;width:100%;height:40px;object-fit:cover}
-.sphere{width:160px;height:160px;border-radius:50%;margin:auto;border:1px solid rgba(255,255,255,.25);box-shadow:0 0 40px rgba(80,180,255,.28);position:relative;overflow:hidden}
+.flags img{display:block;width:100%;height:clamp(28px,4.8vmin,44px);object-fit:cover}
+.sphere{width:clamp(120px,18vmin,200px);height:clamp(120px,18vmin,200px);border-radius:50%;margin:auto;border:1px solid rgba(255,255,255,.25);box-shadow:0 0 40px rgba(80,180,255,.28);position:relative;overflow:hidden}
 .sphere .g{position:absolute;inset:0;background:conic-gradient(from 0deg at 50% 50%, #60a5fa, #a78bfa, #f472b6, #60a5fa);filter:blur(16px);opacity:.85}
 .sphere.listening .g{animation:rot 8s linear infinite}
 @keyframes rot{to{transform:rotate(360deg)}}
-.sphere .ring{position:absolute;left:50%;top:50%;width:90px;height:90px;transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(255,255,255,.45);opacity:.5}
+.sphere .ring{position:absolute;left:50%;top:50%;width:60%;height:60%;transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(255,255,255,.45);opacity:.5}
 .sphere.listening .ring{animation:pulse 2s ease-in-out infinite}
 @keyframes pulse{0%{transform:translate(-50%,-50%) scale(1);opacity:.6}50%{transform:translate(-50%,-50%) scale(1.5);opacity:.1}100%{transform:translate(-50%,-50%) scale(1);opacity:.6}}
-.list{display:grid;gap:10px;max-height:48vh;overflow:auto}
+.list{display:grid;gap:10px;max-height:calc(100svh - 420px);overflow:auto}
+@supports(height: 100dvh){ .list{max-height:calc(100dvh - 420px)} }
 .item{display:grid;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.04);padding:12px;border-radius:14px}
-.sub{color:var(--mut);font-size:12px}
+.sub{color:var(--mut);font-size:clamp(11px,1.6vmin,13px)}
 .hidden{display:none!important}
-/* Mapa */
-.map{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.map{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;max-height:70svh}
 .map img{display:block;width:100%;height:auto;user-select:none}
-.pin{position:absolute;width:14px;height:14px;background:#ef4444;border-radius:50%;box-shadow:0 0 0 5px rgba(239,68,68,.35);transform:translate(-50%,-50%);display:none}
-.grid-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pin{position:absolute;width:clamp(12px,1.8vmin,16px);height:clamp(12px,1.8vmin,16px);background:#ef4444;border-radius:50%;box-shadow:0 0 0 5px rgba(239,68,68,.35);transform:translate(-50%,-50%);display:none}
+.grid-two{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media (max-width: 640px){ .grid-two{grid-template-columns:1fr} }
 footer{padding:8px 16px;color:var(--mut);font-size:12px}
 .bad{color:#fca5a5}
+.drop{border:1px dashed var(--line);border-radius:12px;padding:.8em;text-align:center;color:var(--mut)}
+.drop.drag{background:rgba(255,255,255,.06)}
+#scanArea{position:relative; width:100%; aspect-ratio:4/3; background:#000; border-radius:12px; overflow:hidden;}
+#scanArea video, #scanArea canvas{width:100%; height:100%; object-fit:cover}
 </style>
 </head>
 <body>
@@ -61,16 +69,15 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px}
     <div class="logo">
       <div class="halo"></div>
       <img src="logo-duran.png" alt="DURAN"/>
-      <div class="badge">Jarvis · Centro Duran Calvià</div>
+      <div class="badge">Asistente · Centro Duran Calvià</div>
     </div>
     <div class="row small">
       <span id="status">Listo</span>
-      <button id="adminToggle" class="ghost" title="Modo administrador">⚙️ Admin</button>
+      <button id="adminToggle" class="ghost" title="Área de administración">⚙️ Admin</button>
     </div>
   </header>
 
-  <main class="grid two" style="padding:16px">
-    <!-- COLUMNA IZQUIERDA: idioma, consulta, resultados, import/export -->
+  <main class="grid two">
     <section class="card grid" id="left">
       <div class="grid">
         <div class="small">Selecciona idioma</div>
@@ -83,7 +90,7 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px}
 
       <div class="grid" id="queryBox" style="display:none">
         <div class="row">
-          <input id="q" type="text" placeholder="Escribe lo que necesitas… (ej. manguito 32, scala2, filtro e1)"/>
+          <input id="q" type="text" placeholder="Escribe o pulsa 🎙️ (ej. manguito 32, scala2, filtro e1)"/>
           <button id="mic" title="Hablar">🎙️</button>
           <button id="go" class="btn-brand">Buscar</button>
         </div>
@@ -94,28 +101,12 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px}
       </div>
 
       <div id="results" class="list hidden"></div>
-
-      <details>
-        <summary class="small">📥 Importar datos (EXCEL/CSV) · 📤 Exportar</summary>
-        <div class="grid">
-          <div class="row">
-            <input type="file" id="inpExcel" accept=".xlsx,.xls"/>
-            <button id="btnExcel" title="Leer Excel y preparar artículos">Importar Excel</button>
-            <button id="expArt">Exportar Articulos.csv</button>
-          </div>
-          <div class="row">
-            <input type="file" id="inpUbiCSV" accept=".csv"/>
-            <button id="impUbi">Importar Ubicaciones.csv</button>
-            <button id="expUbi">Exportar Ubicaciones.csv</button>
-          </div>
-        </div>
-      </details>
+      <div class="small bad" id="voiceWarn" style="display:none"></div>
     </section>
 
-    <!-- COLUMNA DERECHA: MAPA (se muestra SOLO cuando hay selección) -->
     <section class="card grid hidden" id="right">
       <div class="row" style="justify-content:space-between;align-items:center">
-        <div class="small">Plano (aparece tras localizar el producto)</div>
+        <div class="small">Plano (se muestra al elegir un producto)</div>
         <button id="again" class="ghost">↩︎ Nueva búsqueda</button>
       </div>
       <div class="map" id="mapBox">
@@ -124,16 +115,14 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px}
       </div>
       <div id="route" class="sub"></div>
 
-      <!-- Panel Admin para fijar ubicación -->
+      <!-- ADMIN -->
       <div id="adminPanel" class="hidden">
-        <div class="small">Modo administrador · Toca el plano para capturar X/Y (0–1). Completa los campos y pulsa Guardar.</div>
+        <div class="small">Acceso restringido. Contraseña requerida para activar este panel.</div>
+        <hr style="border-color:var(--line);opacity:.4">
         <div class="grid-two">
           <label>Pasillo <input id="fPasillo" type="number" min="0" step="1"></label>
           <label>Lado
-            <select id="fLado">
-              <option value="I">I</option>
-              <option value="D">D</option>
-            </select>
+            <select id="fLado"><option>Izquierda</option><option>Derecha</option></select>
           </label>
           <label>Estante <input id="fEst" type="number" min="0" step="1"></label>
           <label>Balda <input id="fBal" type="number" min="0" step="1"></label>
@@ -144,185 +133,172 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px}
           <button id="saveLoc" class="btn-brand">💾 Guardar ubicación del artículo seleccionado</button>
           <button id="delLoc">🗑️ Quitar ubicación</button>
         </div>
-        <div class="small">Las ubicaciones quedan en memoria y puedes <strong>Exportar Ubicaciones.csv</strong> para subirlo a tu hosting.</div>
+
+        <h4 class="small" style="margin:.6em 0 0">Datos (importar/exportar)</h4>
+        <div class="grid">
+          <div class="drop" id="drop">Suelta aquí tu Excel (hoja 1) o CSV de artículos</div>
+          <div class="row">
+            <input type="file" id="inpExcel" accept=".xlsx,.xls,.csv"/>
+            <button id="btnExcel">Importar artículos</button>
+            <button id="expArt">Exportar Articulos.csv</button>
+          </div>
+          <div class="row">
+            <input type="file" id="inpUbiCSV" accept=".csv"/>
+            <button id="impUbi">Importar Ubicaciones.csv</button>
+            <button id="expUbi">Exportar Ubicaciones.csv</button>
+          </div>
+        </div>
+
+        <h4 class="small" style="margin:.6em 0 0">EAN · Escanear / asignar</h4>
+        <div class="grid">
+          <div class="row">
+            <button id="scanStart">📷 Escanear EAN</button>
+            <button id="scanStop" class="ghost">Detener</button>
+          </div>
+          <div id="scanArea" class="hidden"></div>
+          <div class="grid-two">
+            <label>Número de artículo <input id="admNum" type="text" placeholder="p.ej. 9286"></label>
+            <label>EAN <input id="admEAN" type="text" placeholder="Escanear o escribir"></label>
+          </div>
+          <div class="row">
+            <button id="setEAN" class="btn-brand">Asignar EAN al artículo</button>
+          </div>
+          <div class="grid-two">
+            <label>Buscar por descripción <input id="admDesc" type="text" placeholder="Texto libre"></label>
+            <button id="admDescBtn">Buscar</button>
+          </div>
+          <div id="admResults" class="list"></div>
+        </div>
       </div>
     </section>
   </main>
 
-  <footer>Funciona offline como PWA. Datos desde CSV o importando Excel (luego exporta CSV). Voz gratis (Web Speech API). © DURAN</footer>
+  <footer>Instalable como PWA. Voz gratis (Web Speech). © DURAN</footer>
 </div>
 
 <script>
-// =============== Config ===============
-const CENTER = "Duran Calvià"; // Centro por defecto
-const LANGS = {
-  es:{name:"Español", tag:"es-ES", sphere:{idle:"Listo", listening:"Escuchando…", thinking:"Pensando…", speaking:"Hablando…"},
-      explainIntro:n=>`${n? n+", ":""}Te explico y te guío.`,
-      found:d=>`He encontrado la mejor opción: ${d}.`,
-      guide:(p,l,e,b)=>`Desde tu posición, dirígete al pasillo ${p}, lado ${l}, estante ${e}, balda ${b}.`},
-  ca:{name:"Mallorquí", tag:"ca-ES", sphere:{idle:"A punt", listening:"Escoltant…", thinking:"Pensant…", speaking:"Parlant…"},
-      explainIntro:n=>`${n? n+", ":""}T'ho explic i després te guiaré.`,
-      found:d=>`La millor opció és: ${d}.`,
-      guide:(p,l,e,b)=>`Des de la teva ubicació, ves al passadís ${p}, costat ${l}, prestatge ${e}, balda ${b}.`},
-  en:{name:"English", tag:"en-GB", sphere:{idle:"Ready", listening:"Listening…", thinking:"Thinking…", speaking:"Speaking…"},
-      explainIntro:n=>`${n? n+", ":""}I'll explain and guide you.`,
-      found:d=>`Best match: ${d}.`,
-      guide:(p,l,e,b)=>`From your position, go to aisle ${p}, ${l} side, shelf ${e}, tier ${b}.`},
-  de:{name:"Deutsch", tag:"de-DE", sphere:{idle:"Bereit", listening:"Zuhören…", thinking:"Denken…", speaking:"Sprechen…"},
-      explainIntro:n=>`${n? n+", ":""}Ich erkläre kurz und führe Sie.`,
-      found:d=>`Beste Option: ${d}.`,
-      guide:(p,l,e,b)=>`Von Ihrer Position zum Gang ${p}, ${l}e Seite, Regal ${e}, Ebene ${b}.`},
-  pl:{name:"Polski", tag:"pl-PL", sphere:{idle:"Gotowe", listening:"Słucham…", thinking:"Myślę…", speaking:"Mówię…"},
-      explainIntro:n=>`${n? n+", ":""}Krótko wyjaśnię i poprowadzę.`,
-      found:d=>`Najlepsza opcja: ${d}.`,
-      guide:(p,l,e,b)=>`Z Twojej pozycji: alejka ${p}, strona ${l}, półka ${e}, poziom ${b}.`},
-  ru:{name:"Русский", tag:"ru-RU", sphere:{idle:"Готово", listening:"Слушаю…", thinking:"Думаю…", speaking:"Говорю…"},
-      explainIntro:n=>`${n? n+", ":""}Коротко объясню и проведу.`,
-      found:d=>`Лучший вариант: ${d}.`,
-      guide:(p,l,e,b)=>`От вашей позиции: ряд ${p}, сторона ${l}, полка ${e}, уровень ${b}.`}
+const CENTER = "Duran Calvià"; // Centro activo
+const LANGS={
+ es:{name:"Español",tag:"es-ES",sphere:{idle:"Listo",listening:"Escuchando…",thinking:"Pensando…",speaking:"Hablando…"},
+     greet:(name)=>{const h=new Date().getHours(); const hola=(h>=14?"Buenas tardes":"Buenos días"); return `${hola}${name?`, ${name}`:''}. ¿En qué puedo ayudarte?`},
+     found:d=>`He encontrado la mejor opción: ${d}.`,
+     side:s=> s==='I'?'Izquierda': s==='D'?'Derecha':(s||'—'),
+     guide:(p,l,e,b)=>`Desde tu posición, dirígete al pasillo ${p}, lado ${l}, estante ${e}, balda ${b}.`},
+ ca:{name:"Mallorquí",tag:"ca-ES",sphere:{idle:"A punt",listening:"Escoltant…",thinking:"Pensant…",speaking:"Parlant…"},
+     greet:(name)=>{const h=new Date().getHours(); const hola=(h>=14?"Bona tarda":"Bon dia"); return `${hola}${name?`, ${name}`:''}. En què et puc ajudar?`},
+     found:d=>`La millor opció és: ${d}.`,
+     side:s=> s==='I'?'Esquerra': s==='D'?'Dreta':(s||'—'),
+     guide:(p,l,e,b)=>`Des de la teva ubicació, ves al passadís ${p}, costat ${l}, prestatge ${e}, balda ${b}.`},
+ en:{name:"English",tag:"en-GB",sphere:{idle:"Ready",listening:"Listening…",thinking:"Thinking…",speaking:"Speaking…"},
+     greet:(name)=>{const h=new Date().getHours(); const hello=(h>=14?"Good afternoon":"Good morning"); return `${hello}${name?`, ${name}`:''}. How can I help you?`},
+     found:d=>`Best match: ${d}.`, side:s=> s==='I'?'Left': s==='D'?'Right':(s||'—'),
+     guide:(p,l,e,b)=>`From your position, go to aisle ${p}, ${l} side, shelf ${e}, tier ${b}.`},
+ de:{name:"Deutsch",tag:"de-DE",sphere:{idle:"Bereit",listening:"Zuhören…",thinking:"Denken…",speaking:"Sprechen…"},
+     greet:(name)=>{const h=new Date().getHours(); const hallo=(h>=14?"Guten Tag":"Guten Morgen"); return `${hallo}${name?`, ${name}`:''}. Wie kann ich helfen?`},
+     found:d=>`Beste Option: ${d}.`, side:s=> s==='I'?'Links': s==='D'?'Rechts':(s||'—'),
+     guide:(p,l,e,b)=>`Von Ihrer Position zum Gang ${p}, ${l}e Seite, Regal ${e}, Ebene ${b}.`},
+ pl:{name:"Polski",tag:"pl-PL",sphere:{idle:"Gotowe",listening:"Słucham…",thinking:"Myślę…",speaking:"Mówię…"},
+     greet:(name)=>{const h=new Date().getHours(); const d=(h>=14?"Dzień dobry":"Dzień dobry"); return `${d}${name?`, ${name}`:''}. W czym mogę pomóc?`},
+     found:d=>`Najlepsza opcja: ${d}.`, side:s=> s==='I'?'Lewa': s==='D'?'Prawa':(s||'—'),
+     guide:(p,l,e,b)=>`Z Twojej pozycji: alejka ${p}, strona ${l}, półka ${e}, poziom ${b}.`},
+ ru:{name:"Русский",tag:"ru-RU",sphere:{idle:"Готово",listening:"Слушаю…",thinking:"Думаю…",speaking:"Говорю…"},
+     greet:(name)=>{const h=new Date().getHours(); const hi=(h>=14?"Добрый день":"Доброе утро"); return `${hi}${name?`, ${name}`:''}. Чем могу помочь?`},
+     found:d=>`Лучший вариант: ${d}.`, side:s=> s==='I'?'Левая': s==='D'?'Правая':(s||'—'),
+     guide:(p,l,e,b)=>`От вашей позиции: ряд ${p}, сторона ${l}, полка ${e}, уровень ${b}.`}
 };
-let lang='es', admin=false;
+let lang='es', admin=false, adminGranted=false;
 
-// =============== UI refs ===============
-const flags=document.getElementById('flags');
-const nameInput=document.getElementById('name');
-const startBtn=document.getElementById('start');
-const queryBox=document.getElementById('queryBox');
-const q=document.getElementById('q');
-const goBtn=document.getElementById('go');
-const micBtn=document.getElementById('mic');
-const sphere=document.getElementById('sphere');
-const spLabel=document.getElementById('spLabel');
-const statusEl=document.getElementById('status');
-const resultsEl=document.getElementById('results');
-const right=document.getElementById('right');
-const mapImg=document.getElementById('mapImg');
-const mapBox=document.getElementById('mapBox');
-const pin=document.getElementById('pin');
-const routeEl=document.getElementById('route');
-const againBtn=document.getElementById('again');
-const adminToggle=document.getElementById('adminToggle');
-const adminPanel=document.getElementById('adminPanel');
-const fPas=document.getElementById('fPasillo');
-const fLado=document.getElementById('fLado');
-const fEst=document.getElementById('fEst');
-const fBal=document.getElementById('fBal');
-const fX=document.getElementById('fX');
-const fY=document.getElementById('fY');
-const saveLocBtn=document.getElementById('saveLoc');
-const delLocBtn=document.getElementById('delLoc');
-
+// Refs
+const flags=document.getElementById('flags'), nameInput=document.getElementById('name'), startBtn=document.getElementById('start'), queryBox=document.getElementById('queryBox'), q=document.getElementById('q'), goBtn=document.getElementById('go'), micBtn=document.getElementById('mic'), sphere=document.getElementById('sphere'), spLabel=document.getElementById('spLabel'), statusEl=document.getElementById('status'), resultsEl=document.getElementById('results'), right=document.getElementById('right'), mapImg=document.getElementById('mapImg'), mapBox=document.getElementById('mapBox'), pin=document.getElementById('pin'), routeEl=document.getElementById('route'), againBtn=document.getElementById('again'), adminToggle=document.getElementById('adminToggle'), adminPanel=document.getElementById('adminPanel'), fPas=document.getElementById('fPasillo'), fLado=document.getElementById('fLado'), fEst=document.getElementById('fEst'), fBal=document.getElementById('fBal'), fX=document.getElementById('fX'), fY=document.getElementById('fY'), saveLocBtn=document.getElementById('saveLoc'), delLocBtn=document.getElementById('delLoc'), voiceWarn=document.getElementById('voiceWarn');
+// Admin EAN
+const scanStart=document.getElementById('scanStart'), scanStop=document.getElementById('scanStop'), scanArea=document.getElementById('scanArea'), admNum=document.getElementById('admNum'), admEAN=document.getElementById('admEAN'), setEAN=document.getElementById('setEAN'), admDesc=document.getElementById('admDesc'), admDescBtn=document.getElementById('admDescBtn'), admResults=document.getElementById('admResults');
 // Import/Export
-const inpExcel=document.getElementById('inpExcel');
-const btnExcel=document.getElementById('btnExcel');
-const expArt=document.getElementById('expArt');
-const inpUbiCSV=document.getElementById('inpUbiCSV');
-const impUbi=document.getElementById('impUbi');
-const expUbi=document.getElementById('expUbi');
+const drop=document.getElementById('drop'), inpExcel=document.getElementById('inpExcel'), btnExcel=document.getElementById('btnExcel'), expArt=document.getElementById('expArt'), inpUbiCSV=document.getElementById('inpUbiCSV'), impUbi=document.getElementById('impUbi'), expUbi=document.getElementById('expUbi');
 
-// =============== Flags ===============
-const SENYERA = `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='640' height='400'><rect width='640' height='400' fill='#f7d117'/><g fill='#d40000'><rect y='25' width='640' height='50'/><rect y='115' width='640' height='50'/><rect y='205' width='640' height='50'/><rect y='295' width='640' height='50'/></g></svg>`)}`;
+// Flags
+const SENYERA=`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='640' height='400'><rect width='640' height='400' fill='#f7d117'/><g fill='#d40000'><rect y='25' width='640' height='50'/><rect y='115' width='640' height='50'/><rect y='205' width='640' height='50'/><rect y='295' width='640' height='50'/></g></svg>`)}`;
 const FLAGS={es:'https://flagcdn.com/w80/es.png', ca:SENYERA, en:'https://flagcdn.com/w80/gb.png', de:'https://flagcdn.com/w80/de.png', pl:'https://flagcdn.com/w80/pl.png', ru:'https://flagcdn.com/w80/ru.png'};
 for(const code of Object.keys(LANGS)){
-  const b=document.createElement('button'); b.innerHTML=`<img alt='${code}' src='${FLAGS[code]}'/>`; b.title=LANGS[code].name; b.onclick=()=>{lang=code; setSphere('idle'); speak(`Idioma ${LANGS[code].name}`)}; flags.appendChild(b);
+  const b=document.createElement('button'); b.innerHTML=`<img alt='${code}' src='${FLAGS[code]}'/>`; b.title=LANGS[code].name; b.onclick=()=>{lang=code; setSphere('idle'); speak(LANGS[lang].greet(nameInput.value||''))}; flags.appendChild(b);
 }
 
-// =============== Speech (gratis) ===============
-let VOICES=[]; function refreshVoices(){try{VOICES=speechSynthesis.getVoices()}catch{}}; refreshVoices(); speechSynthesis.onvoiceschanged=refreshVoices;
-function pickVoice(tag){tag=tag.toLowerCase(); const pool=VOICES.filter(v=> (v.lang||'').toLowerCase().startsWith(tag.slice(0,2)) || (v.lang||'').toLowerCase()===tag); const score=v=>{let s=0; const n=(v.name||'').toLowerCase(); if((v.lang||'').toLowerCase().startsWith(tag)) s+=5; if(n.includes('google')||n.includes('microsoft')) s+=3; if(n.includes('natural')||n.includes('neural')) s+=2; return s}; return pool.sort((a,b)=>score(b)-score(a))[0]||pool[0]||null}
-function speak(text){try{const u=new SpeechSynthesisUtterance(text); const v=pickVoice(LANGS[lang].tag)||pickVoice('es-ES'); if(v) u.voice=v; u.lang=(v&&v.lang)||LANGS[lang].tag; u.rate=1; u.pitch=1; u.volume=1; speechSynthesis.cancel(); speechSynthesis.speak(u); setSphere('speaking'); const ms=Math.min(7000, Math.max(1400, text.split(/\s+/).length*350)); setTimeout(()=>setSphere('idle'), ms);}catch(e){console.warn(e)}}
-let rec=null, listening=false, recStart=0; function startListening(){ const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR){ alert('El navegador no soporta reconocimiento de voz'); return } rec=new SR(); rec.lang=LANGS[lang].tag; rec.continuous=true; rec.interimResults=true; rec.onresult=(ev)=>{let txt=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ const r=ev.results[i]; if(r.isFinal) txt+=r[0].transcript+' ' } if(txt.trim()){ q.value=(q.value? q.value+' ':'')+txt.trim(); handleSearch() }}; rec.onend=()=>{ if(!listening){ setSphere('idle'); return } const elapsed=Date.now()-recStart; if(elapsed<8000){ rec.start() } else { listening=false; setSphere('idle') } }; listening=true; recStart=Date.now(); setSphere('listening'); rec.start() }
-function stopListening(){try{listening=false; rec&&rec.stop()}catch{}}
-function setSphere(mode){sphere.classList.remove('listening','speaking'); if(mode==='listening') sphere.classList.add('listening'); if(mode==='speaking') sphere.classList.add('speaking'); spLabel.textContent=LANGS[lang].sphere[mode]||'…'; statusEl.textContent=spLabel.textContent}
+// Speech Synthesis
+let VOICES=[]; function refreshVoices(){ try{ VOICES=speechSynthesis.getVoices() }catch{} } refreshVoices(); speechSynthesis.onvoiceschanged=refreshVoices;
+function pickVoice(tag){ tag=tag.toLowerCase(); const pool=VOICES.filter(v=> (v.lang||'').toLowerCase().startsWith(tag.slice(0,2)) || (v.lang||'').toLowerCase()===tag ); const score=v=>{ let s=0; const n=(v.name||'').toLowerCase(); if((v.lang||'').toLowerCase().startsWith(tag)) s+=5; if(n.includes('google')||n.includes('microsoft')) s+=3; if(n.includes('natural')||n.includes('neural')) s+=2; return s }; return pool.sort((a,b)=>score(b)-score(a))[0]||pool[0]||null }
+function speak(text){ try{ const u=new SpeechSynthesisUtterance(text); const v=pickVoice(LANGS[lang].tag)||pickVoice('es-ES'); if(v) u.voice=v; u.lang=(v&&v.lang)||LANGS[lang].tag; u.rate=1; u.pitch=1; u.volume=1; speechSynthesis.cancel(); speechSynthesis.speak(u); setSphere('speaking'); const ms=Math.min(7000, Math.max(1400, text.split(/\s+/).length*350)); setTimeout(()=>setSphere('idle'), ms);}catch(e){console.warn(e)} }
 
-// =============== Datos ===============
+// Speech Recognition
+let rec=null, listening=false, recStart=0, lastTranscriptTs=0; 
+function startListening(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ voiceWarn.style.display='block'; voiceWarn.textContent='Este navegador no soporta reconocimiento de voz. En Android usa Chrome/Edge. En iOS no está soportado.'; return }
+  if(!location.protocol.startsWith('https')){ voiceWarn.style.display='block'; voiceWarn.textContent='La voz requiere HTTPS. Publica en GitHub Pages o Netlify para probar.'; return }
+  rec=new SR(); rec.lang=LANGS[lang].tag; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
+  rec.onstart=()=>{ setSphere('listening'); voiceWarn.style.display='none'; lastTranscriptTs=Date.now() };
+  rec.onresult=(ev)=>{ let interim=''; let final=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ const r=ev.results[i]; if(r.isFinal) final += r[0].transcript + ' '; else interim += r[0].transcript; } const any=(final+interim).trim(); if(any){ lastTranscriptTs=Date.now(); q.value=(q.value? q.value+' ' : '') + any; handleSearch(); } };
+  rec.onerror=(e)=>{ voiceWarn.style.display='block'; if(e.error==='not-allowed') voiceWarn.textContent='Permiso de micrófono denegado. Concede permiso y vuelve a pulsar 🎙️'; else if(e.error==='no-speech') voiceWarn.textContent='No se detectó voz. Habla cerca del micrófono.'; else if(e.error==='audio-capture') voiceWarn.textContent='No hay micrófono disponible.'; else voiceWarn.textContent='Error de voz: '+e.error; stopListening(); };
+  rec.onend=()=>{ if(!listening){ setSphere('idle'); return } const elapsed=Date.now()-recStart; if(Date.now()-lastTranscriptTs>6000 && elapsed<15000){ rec.start(); } else { listening=false; setSphere('idle'); } };
+  listening=true; recStart=Date.now(); rec.start();
+}
+function stopListening(){ try{ listening=false; rec&&rec.stop() }catch{} }
+function setSphere(mode){ sphere.classList.remove('listening','speaking'); if(mode==='listening') sphere.classList.add('listening'); if(mode==='speaking') sphere.classList.add('speaking'); spLabel.textContent=LANGS[lang].sphere[mode]||'…'; statusEl.textContent=spLabel.textContent }
+
+// Datos
 let ART=[], UBI=[], INDEX={}; let varSel=null;
 function normalize(s){return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
-const SYN=[['grupo de presion','grupo presion','grupo presión','presurizador','booster','hidrofor','estacion presion','estación presión'],['bomba','electrobomba','impulsor','scala','prisma'],['manguito','acople','acoplamiento','union','unión','enchufe','conector','racor'],['valvula','válvula','esfera','llave'],['tubo','tuberia','tubería','pe','polietileno','pvc','multicapa'],['codo','coudé','coude'],['te','tee','derivacion','derivación'],['filtro','filtros','e1'],['descalcificador','descalcificador myperla','myperla','bwt']];
-function expandSyn(q){let s=normalize(q); for(const g of SYN){ for(const w of g){ if(s.includes(normalize(w))){ s+=' '+g.join(' ') } } } return s}
+const SYN=[["grupo de presion","grupo presion","grupo presión","presurizador","booster","hidrofor","estacion presion","estación presión"],["bomba","electrobomba","impulsor","scala","prisma"],["manguito","acople","acoplamiento","union","unión","enchufe","conector","racor"],["valvula","válvula","esfera","llave"],["tubo","tuberia","tubería","pe","polietileno","pvc","multicapa"],["codo","coudé","coude"],["te","tee","derivacion","derivación"],["filtro","filtros","e1"],["descalcificador","descalcificador myperla","myperla","bwt"]];
+function expandSyn(q){ let s=normalize(q); for(const g of SYN){ for(const w of g){ if(s.includes(normalize(w))){ s+=' '+g.join(' ') } } } return s }
 function parseNum(v){ if(v==null) return null; if(typeof v==='number') return v; const s=String(v).trim().replace(',','.'); const n=Number(s); return isFinite(n)? n : null }
-
-async function fetchText(url){ try{ const r=await fetch(url,{cache:'no-store'}); if(!r.ok) return null; return await r.text()}catch{ return null}}
-function parseCSV(text){ const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim().length); const sep=(lines[0].match(/;/g)||[]).length > (lines[0].match(/,/g)||[]).length? ';' : ','; const rows=[]; for(const line of lines){ rows.push(parseCSVLine(line,sep)) } const headers=rows.shift().map(h=>h.trim()); return rows.map(r=>{const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').trim()); return o}) }
+async function fetchText(url){ try{ const r=await fetch(url,{cache:'no-store'}); if(!r.ok) return null; return await r.text() }catch{ return null } }
+function parseCSV(text){ const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim().length); const sep=(lines[0].match(/;/g)||[]).length>(lines[0].match(/,/g)||[]).length?';':','; const rows=[]; for(const line of lines){ rows.push(parseCSVLine(line,sep)) } const headers=rows.shift().map(h=>h.trim()); return rows.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').trim()); return o }) }
 function parseCSVLine(line,sep){ const out=[]; let cur=''; let inQ=false; for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else { inQ=!inQ } } else if(ch===sep && !inQ){ out.push(cur); cur='' } else { cur+=ch } } out.push(cur); return out }
+async function loadData(){ const a=await fetchText('Articulos.csv'); if(a){ ART=parseCSV(a) } const u=await fetchText('Ubicaciones.csv'); if(u){ UBI=parseCSV(u) } reindex(); }
+function reindex(){ const only=UBI.filter(u=> (u.Centro===CENTER || u.Centro==='Calvia')); const map=new Map(); for(const u of only){ const k=(u.NumeroArticulo||'').toString().trim(); if(!map.has(k)) map.set(k,[]); map.get(k).push(u) } INDEX=Object.fromEntries(map) }
+function pickLocation(num){ const list=INDEX[(num||'').toString().trim()]; if(!list||!list.length) return null; return list.slice().sort((a,b)=>Number(b.Stock||0)-Number(a.Stock||0))[0] }
+function search(qraw){ const qn=expandSyn(qraw); const words=normalize(qn).split(/\s+/).filter(Boolean); const scored=[]; for(const a of ART){ const text=normalize(`${a.Descripcion} ${a.ReferenciaProveedor} ${a.CodigoEAN}`); let s=0; for(const w of words){ if(!w) continue; if(text.includes(w)) s+=2; if(text.startsWith(w)) s+=1 } if(s>0) scored.push({a,score:s}) } scored.sort((x,y)=>y.score-x.score); return scored.slice(0,50).map(x=>x.a) }
+function renderResults(list){ resultsEl.innerHTML=''; if(!list.length){ const d=document.createElement('div'); d.className='item'; d.innerHTML='<div>No se han encontrado artículos. Por favor, solicite ayuda a un vendedor.</div>'; resultsEl.appendChild(d); resultsEl.classList.remove('hidden'); right.classList.add('hidden'); return } for(const a of list){ const loc=pickLocation(a.NumeroArticulo); const sideFull = LANGS[lang].side((loc&&((loc.Lado&& (loc.Lado.Value||loc.Lado))||loc.Lado))||''); const sub=`Ref: ${a.ReferenciaProveedor||'—'} · EAN: ${a.CodigoEAN||'—'} · Proveedor: ${a.NombreProveedor||'—'} · Stock: ${(loc&&loc.Stock)||'—'}`; const card=document.createElement('div'); card.className='item'; card.innerHTML=`<div><strong>${a.Descripcion||'Sin descripción'}</strong></div><div class='sub'>${sub}</div><div class='row'><button class='goMap btn-brand'>Guíame</button> <button class='say'>Explicar</button></div>`; card.querySelector('.goMap').onclick=()=>selectArticle(a); card.querySelector('.say').onclick=()=>explainArticle(a); resultsEl.appendChild(card) } resultsEl.classList.remove('hidden'); right.classList.add('hidden') }
+function explainArticle(a){ speak(`${(a.Descripcion||'')}`.trim()) }
+function selectArticle(a){ varSel=a; right.classList.remove('hidden'); const loc=pickLocation(a.NumeroArticulo); if(!loc){ speak('No tengo ubicación registrada. Puedes capturarla en modo administrador.'); routeEl.textContent=''; pin.style.display='none'; if(admin) adminPanel.classList.remove('hidden'); return } const x=parseNum(loc.X), y=parseNum(loc.Y); if(x==null||y==null){ pin.style.display='none' } else { pin.style.left=(x*100)+'%'; pin.style.top=(y*100)+'%'; pin.style.display='block' } const ladoRaw=(loc.Lado && (loc.Lado.Value||loc.Lado)) || loc.Lado || '—'; const lado=LANGS[lang].side((ladoRaw||'').toString().substring(0,1).toUpperCase()); routeEl.textContent=LANGS[lang].guide(loc.Pasillo||'—', lado, loc.Estante||'—', loc.Balda||'—'); speak(LANGS[lang].found(a.Descripcion||'')); setTimeout(()=>speak(routeEl.textContent),1100); if(admin){ fPas.value=loc.Pasillo||''; fLado.value=lado; fEst.value=loc.Estante||''; fBal.value=loc.Balda||''; fX.value=(x??''); fY.value=(y??''); adminPanel.classList.remove('hidden') } }
 
-async function loadData(){
-  const a=await fetchText('Articulos.csv'); if(a){ ART=parseCSV(a) } else { ART=[] }
-  const u=await fetchText('Ubicaciones.csv'); if(u){ UBI=parseCSV(u) } else { UBI=[] }
-  reindex();
-}
-function reindex(){ // filtra por centro y crea mapa por NumeroArticulo
-  const only=UBI.filter(u=> (u.Centro===CENTER || u.Centro==='Calvia')); const map=new Map(); for(const u of only){ const k=(u.NumeroArticulo||'').toString().trim(); if(!map.has(k)) map.set(k,[]); map.get(k).push(u) } INDEX=Object.fromEntries(map)
-}
-function pickLocation(num){ const list=INDEX[(num||'').toString().trim()]; if(!list||!list.length) return null; return list.slice().sort((a,b)=> Number(b.Stock||0)-Number(a.Stock||0))[0] }
+// Admin: click plano
+mapBox.addEventListener('click',ev=>{ if(!admin||!varSel) return; const r=mapImg.getBoundingClientRect(); const x=(ev.clientX-r.left)/r.width; const y=(ev.clientY-r.top)/r.height; fX.value=x.toFixed(2); fY.value=y.toFixed(2); pin.style.left=(x*100)+'%'; pin.style.top=(y*100)+'%'; pin.style.display='block' });
+saveLocBtn.onclick=()=>{ if(!varSel){ alert('Selecciona un artículo en la lista.'); return } const num=(varSel.NumeroArticulo||'').toString().trim(); const ladoLetter = (fLado.value||'').toString().toUpperCase().startsWith('D')? 'D':'I'; const rec={ NumeroArticulo:num, Centro:CENTER, Pasillo:fPas.value||'', Lado:ladoLetter, Estante:fEst.value||'', Balda:fBal.value||'', X:fX.value||'', Y:fY.value||'', Stock:(pickLocation(num)?.Stock||'') }; const idx=UBI.findIndex(u=> (u.NumeroArticulo||'').toString().trim()===num && (u.Centro===CENTER||u.Centro==='Calvia')); if(idx>=0) UBI[idx]=rec; else UBI.push(rec); reindex(); speak('Ubicación guardada. Exporta Ubicaciones.csv para publicarlo.'); selectArticle(varSel) };
+delLocBtn.onclick=()=>{ if(!varSel) return; const num=(varSel.NumeroArticulo||'').toString().trim(); const before=UBI.length; UBI=UBI.filter(u=> (u.NumeroArticulo||'').toString().trim()!==num || !(u.Centro===CENTER||u.Centro==='Calvia')); reindex(); if(UBI.length<before){ speak('Ubicación eliminada.'); routeEl.textContent=''; pin.style.display='none' } };
 
-function search(qraw){ const qn=expandSyn(qraw); const words=normalize(qn).split(/\s+/).filter(Boolean); const scored=[]; for(const a of ART){ const text=normalize(`${a.Descripcion} ${a.ReferenciaProveedor} ${a.CodigoEAN}`); let s=0; for(const w of words){ if(!w) continue; if(text.includes(w)) s+=2; if(text.startsWith(w)) s+=1 } if(s>0){ scored.push({a,score:s}) } } scored.sort((x,y)=>y.score-x.score); return scored.slice(0,50).map(x=>x.a) }
-
-function renderResults(list){ resultsEl.innerHTML=''; if(!list.length){ const div=document.createElement('div'); div.className='item'; div.innerHTML='<div>No se han encontrado artículos. Por favor, solicite ayuda a un vendedor.</div>'; resultsEl.appendChild(div); resultsEl.classList.remove('hidden'); right.classList.add('hidden'); return }
-  for(const a of list){ const loc=pickLocation(a.NumeroArticulo); const sub=`Ref: ${a.ReferenciaProveedor||'—'} · EAN: ${a.CodigoEAN||'—'} · Proveedor: ${a.NombreProveedor||'—'} · Stock: ${(loc&&loc.Stock)||'—'}`; const card=document.createElement('div'); card.className='item'; card.innerHTML=`<div><strong>${a.Descripcion||'Sin descripción'}</strong></div><div class='sub'>${sub}</div><div class='row'><button class='goMap btn-brand'>Guíame</button> <button class='say'>Explicar</button></div>`; card.querySelector('.goMap').onclick=()=> selectArticle(a); card.querySelector('.say').onclick=()=> explainArticle(a); resultsEl.appendChild(card) }
-  resultsEl.classList.remove('hidden'); right.classList.add('hidden');
-}
-
-function explainArticle(a){ const name=nameInput.value||''; const intro=LANGS[lang].explainIntro(name); const desc=a.Descripcion||''; speak(`${intro} ${desc}`.trim()) }
-
-function selectArticle(a){ varSel=a; // mostrar panel mapa solo ahora
-  right.classList.remove('hidden');
-  const loc=pickLocation(a.NumeroArticulo); if(!loc){ speak('No tengo ubicación registrada. Puedes capturarla en modo administrador.'); routeEl.textContent=''; pin.style.display='none'; if(admin) adminPanel.classList.remove('hidden'); return }
-  // pintar pin
-  const x=parseNum(loc.X), y=parseNum(loc.Y); if(x==null||y==null){ pin.style.display='none' } else { pin.style.left=(x*100)+'%'; pin.style.top=(y*100)+'%'; pin.style.display='block' }
-  const lado=(loc.Lado && (loc.Lado.Value||loc.Lado)) || loc.Lado || '—';
-  routeEl.textContent=LANGS[lang].guide(loc.Pasillo||'—', lado, loc.Estante||'—', loc.Balda||'—');
-  speak(LANGS[lang].found(a.Descripcion||'')); setTimeout(()=> speak(routeEl.textContent), 1100)
-  if(admin){ // precarga form
-    fPas.value=loc.Pasillo||''; fLado.value=(lado||'I').toString().substring(0,1).toUpperCase(); fEst.value=loc.Estante||''; fBal.value=loc.Balda||''; fX.value=(x??''); fY.value=(y??''); adminPanel.classList.remove('hidden') }
-}
-
-// =============== Admin: capturar en plano y guardar ===============
-mapBox.addEventListener('click', ev=>{ if(!admin || !varSel) return; const rect=mapImg.getBoundingClientRect(); const x=(ev.clientX-rect.left)/rect.width; const y=(ev.clientY-rect.top)/rect.height; fX.value=x.toFixed(2); fY.value=y.toFixed(2); pin.style.left=(x*100)+'%'; pin.style.top=(y*100)+'%'; pin.style.display='block' });
-
-saveLocBtn.onclick=()=>{ if(!varSel) { alert('Selecciona un artículo en la lista de resultados.'); return } const num=(varSel.NumeroArticulo||'').toString().trim(); const rec={ NumeroArticulo:num, Centro:CENTER, Pasillo:fPas.value||'', Lado:fLado.value||'', Estante:fEst.value||'', Balda:fBal.value||'', X:fX.value||'', Y:fY.value||'', Stock: (pickLocation(num)?.Stock||'') }; // inserta/actualiza
-  const idx=UBI.findIndex(u=> (u.NumeroArticulo||'').toString().trim()===num && (u.Centro===CENTER||u.Centro==='Calvia')); if(idx>=0) UBI[idx]=rec; else UBI.push(rec); reindex(); speak('Ubicación guardada. No olvides exportar Ubicaciones punto CSV.'); selectArticle(varSel) };
-
-delLocBtn.onclick=()=>{ if(!varSel) return; const num=(varSel.NumeroArticulo||'').toString().trim(); const before=UBI.length; UBI=UBI.filter(u=> (u.NumeroArticulo||'').toString().trim()!==num || !(u.Centro===CENTER || u.Centro==='Calvia')); reindex(); if(UBI.length<before){ speak('Ubicación eliminada.'); routeEl.textContent=''; pin.style.display='none' } };
-
-// =============== Import / Export ===============
-btnExcel.onclick=()=>{ const f=inpExcel.files?.[0]; if(!f){ alert('Selecciona un archivo Excel'); return } const reader=new FileReader(); reader.onload=e=>{ const wb=XLSX.read(new Uint8Array(e.target.result), {type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]]; const rows=XLSX.utils.sheet_to_json(ws, {defval:'', raw:false}); // mapeo de columnas
-    const mapRow=r=>({
-      NumeroArticulo: r.NumeroArticulo||r.numeroArticulo||r.Numero||r['Número']||r['Nº']||'',
-      ReferenciaProveedor: r.ReferenciaProveedor||r['Referencia Proveedor']||r.Ref||'',
-      Descripcion: r.Descripcion||r['Descripción']||r.Description||'',
-      CodigoEAN: r.CodigoEAN||r.EAN||r.Codigo||r.Código||'',
-      NombreProveedor: r.NombreProveedor||r.Proveedor||'',
-      ImagenURL: r.ImagenURL||r.Imagen||'',
-      FichaTecnica: r.FichaTecnica||r['Ficha Técnica']||'',
-      Manual: r.Manual||''
-    });
-    ART=rows.map(mapRow).filter(r=> r.Descripcion||r.ReferenciaProveedor||r.CodigoEAN); renderResults([]); alert('Excel importado. Ya puedes buscar y exportar Articulos.csv'); };
-  reader.readAsArrayBuffer(f) };
-
+// Import/Export
+function download(name,text){ const blob=new Blob([text],{type:'text/plain;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),800) }
+function exportCSV(name, rows, head){ const lines=[head.join(';')]; for(const r of rows){ lines.push(head.map(h=> String(r[h]??'').replaceAll('"','""')).map(v=> (/[,;"\n]/.test(v)? '"'+v+'"' : v)).join(';')) } download(name, lines.join('\n')) }
+btnExcel.onclick=()=> handleFile(inpExcel.files?.[0]);
 impUbi.onclick=async()=>{ const f=inpUbiCSV.files?.[0]; if(!f){ alert('Selecciona Ubicaciones.csv'); return } const text=await f.text(); UBI=parseCSV(text); reindex(); alert('Ubicaciones cargadas'); };
+expArt.onclick=()=>{ if(!ART.length){ alert('No hay artículos en memoria'); return } exportCSV('Articulos.csv', ART, ['NumeroArticulo','ReferenciaProveedor','Descripcion','CodigoEAN','NombreProveedor','ImagenURL','FichaTecnica','Manual']) };
+expUbi.onclick=()=>{ if(!UBI.length){ alert('No hay ubicaciones en memoria'); return } exportCSV('Ubicaciones.csv', UBI, ['NumeroArticulo','Centro','Pasillo','Lado','Estante','Balda','X','Y','Stock']) };
+;['dragenter','dragover'].forEach(e=> drop.addEventListener(e,ev=>{ ev.preventDefault(); drop.classList.add('drag') }));
+;['dragleave','drop'].forEach(e=> drop.addEventListener(e,ev=>{ ev.preventDefault(); drop.classList.remove('drag') }));
+drop.addEventListener('drop',ev=>{ const f=ev.dataTransfer.files?.[0]; if(f) handleFile(f) });
+async function handleFile(f){ if(!f){ alert('Selecciona un archivo Excel o CSV'); return } const name=f.name.toLowerCase(); if(name.endsWith('.csv')){ const t=await f.text(); ART=parseCSV(t); resultsEl.classList.add('hidden'); alert('CSV de artículos importado. Ya puedes buscar.'); return } const buf=await f.arrayBuffer(); const wb=XLSX.read(new Uint8Array(buf),{type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]]; const rows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false}); const mapRow=r=>({ NumeroArticulo:r.NumeroArticulo||r.numeroArticulo||r.Numero||r['Número']||r['Nº']||'', ReferenciaProveedor:r.ReferenciaProveedor||r['Referencia Proveedor']||r.Ref||'', Descripcion:r.Descripcion||r['Descripción']||r.Description||'', CodigoEAN:r.CodigoEAN||r.EAN||r.Codigo||r.Código||'', NombreProveedor:r.NombreProveedor||r.Proveedor||'', ImagenURL:r.ImagenURL||r.Imagen||'', FichaTecnica:r.FichaTecnica||r['Ficha Técnica']||'', Manual:r.Manual||'' }); ART=rows.map(mapRow).filter(r=> r.Descripcion||r.ReferenciaProveedor||r.CodigoEAN); resultsEl.classList.add('hidden'); alert('Excel importado. Ya puedes buscar y exportar Articulos.csv si quieres publicarlo.'); }
 
-function download(name, text){ const blob=new Blob([text],{type:'text/plain;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=> URL.revokeObjectURL(a.href), 1000) }
+// Admin: EAN
+setEAN.onclick=()=>{ const num=(admNum.value||'').trim(); const ean=(admEAN.value||'').trim(); if(!num||!ean){ alert('Rellena Número de artículo y EAN'); return } const a=ART.find(x=> (x.NumeroArticulo||'').toString().trim()===num); if(!a){ alert('Número de artículo no encontrado en la memoria. Importa el Excel o busca por descripción.'); return } a.CodigoEAN=ean; alert('EAN asignado a '+(a.Descripcion||num)); };
+admDescBtn.onclick=()=>{ const txt=(admDesc.value||'').trim(); const list=search(txt); renderAdminResults(list) };
+function renderAdminResults(list){ admResults.innerHTML=''; for(const a of list.slice(0,50)){ const d=document.createElement('div'); d.className='item'; d.innerHTML=`<div><strong>${a.Descripcion||'Sin descripción'}</strong></div><div class='sub'>Num: ${a.NumeroArticulo||'—'} · EAN: ${a.CodigoEAN||'—'} · Ref: ${a.ReferenciaProveedor||'—'}</div><div class='row'><button>Seleccionar</button></div>`; d.querySelector('button').onclick=()=>{ admNum.value=a.NumeroArticulo||''; varSel=a; speak('Artículo seleccionado para administración'); }; admResults.appendChild(d) } }
 
-expArt.onclick=()=>{ if(!ART.length){ alert('No hay artículos en memoria'); return } const head=['NumeroArticulo','ReferenciaProveedor','Descripcion','CodigoEAN','NombreProveedor','ImagenURL','FichaTecnica','Manual']; const lines=[head.join(';')]; for(const a of ART){ lines.push(head.map(h=> String(a[h]??'').replaceAll('"','""')).map(v=>(/[,;"\n]/.test(v)? '"'+v+'"' : v)).join(';')) } download('Articulos.csv', lines.join('\n')) };
+// Escáner Quagga
+let quaggaRunning=false; function startScan(){ if(quaggaRunning) return; scanArea.classList.remove('hidden'); try{ Quagga.init({ inputStream:{ name:'Live', type:'LiveStream', target:scanArea, constraints:{ facingMode:'environment' } }, decoder:{ readers:['ean_reader','ean_8_reader','upc_reader','code_128_reader'] } }, (err)=>{ if(err){ alert('No se pudo iniciar la cámara: '+err); scanArea.classList.add('hidden'); return } Quagga.start(); quaggaRunning=true; }); Quagga.onDetected((res)=>{ const code=res?.codeResult?.code; if(code){ admEAN.value=code; speak('Código detectado'); stopScan(); } }); }catch(e){ alert('Escáner no disponible en este navegador.'); } }
+function stopScan(){ if(!quaggaRunning) return; try{ Quagga.stop(); }catch{} quaggaRunning=false; scanArea.classList.add('hidden'); }
+scanStart.onclick=startScan; scanStop.onclick=stopScan;
 
-expUbi.onclick=()=>{ if(!UBI.length){ alert('No hay ubicaciones en memoria'); return } const head=['NumeroArticulo','Centro','Pasillo','Lado','Estante','Balda','X','Y','Stock']; const lines=[head.join(';')]; for(const u of UBI){ lines.push(head.map(h=> String(u[h]??'').replaceAll('"','""')).map(v=>(/[,;"\n]/.test(v)? '"'+v+'"' : v)).join(';')) } download('Ubicaciones.csv', lines.join('\n')) };
-
-// =============== Interacción ===============
-startBtn.onclick=()=>{ queryBox.style.display='grid'; resultsEl.classList.add('hidden'); right.classList.add('hidden'); speak(LANGS[lang].explainIntro(nameInput.value||'')) };
+// UI
+startBtn.onclick=()=>{ queryBox.style.display='grid'; resultsEl.classList.add('hidden'); right.classList.add('hidden'); speak(LANGS[lang].greet(nameInput.value||'')) };
 micBtn.onclick=()=> startListening();
 goBtn.onclick=()=> handleSearch();
 q.onkeydown=(e)=>{ if(e.key==='Enter') handleSearch() };
-againBtn.onclick=()=>{ q.value=''; resultsEl.classList.add('hidden'); right.classList.add('hidden'); routeEl.textContent=''; pin.style.display='none'; window.scrollTo(0,0) };
-
-adminToggle.onclick=()=>{ admin=!admin; adminToggle.classList.toggle('btn-brand', admin); adminPanel.classList.toggle('hidden', !admin); if(admin && varSel){ selectArticle(varSel) } };
-
+againBtn.onclick=()=>{ q.value=''; resultsEl.classList.add('hidden'); right.classList.add('hidden'); routeEl.textContent=''; pin.style.display='none'; window.scrollTo({top:0,behavior:'smooth'}) };
+adminToggle.onclick=()=>{ if(!adminGranted){ const p=prompt('Contraseña de administrador:'); if(p!=='0666'){ alert('Contraseña incorrecta'); return } adminGranted=true; } admin=!admin; adminToggle.classList.toggle('btn-brand', admin); adminPanel.classList.toggle('hidden', !admin); if(admin && varSel) selectArticle(varSel) };
 function handleSearch(){ stopListening(); setSphere('thinking'); const list=search(q.value||''); renderResults(list); setSphere('idle'); if(list.length){ const first=list[0]; speak(LANGS[lang].found(first.Descripcion||'')) } }
 
-// =============== Init + PWA ===============
-(async function(){ await loadData(); speak('Hola. Selecciona idioma, escribe o usa el micrófono. El plano aparecerá cuando elijamos producto.'); })();
-
-if('serviceWorker' in navigator){ const swCode=`self.addEventListener('install',e=>{e.waitUntil(caches.open('jarvis-kiosk-v2').then(c=>c.addAll([location.href]))) }); self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`; const blob=new Blob([swCode],{type:'text/javascript'}); const url=URL.createObjectURL(blob); navigator.serviceWorker.register(url).catch(()=>{}); }
+// Init + PWA
+(async function(){ await loadData(); speak(LANGS[lang].greet(nameInput.value||'')); })();
+if('serviceWorker' in navigator){ const sw=`self.addEventListener('install',e=>{e.waitUntil(caches.open('asistente-duran-v4').then(c=>c.addAll([location.href])))});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`; const blob=new Blob([sw],{type:'text/javascript'}); const url=URL.createObjectURL(blob); navigator.serviceWorker.register(url).catch(()=>{}); }
 </script>
 </body>
 </html>
