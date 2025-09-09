@@ -3,16 +3,13 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Asistente · Duran (v4)</title>
+<title>Asistente · Duran (v4.1)</title>
 <link rel="icon" href="logo-duran.png"/>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- Lector de códigos de barras (gratis) -->
 <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
 <style>
-:root{
-  --bg:#0b1324; --bg2:#0e1a35; --ink:#e6efff; --mut:#a9b7e6; --glass:rgba(255,255,255,.06);
-  --line:rgba(255,255,255,.12); --brand:#57a3ff; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
-}
+:root{ --bg:#0b1324; --bg2:#0e1a35; --ink:#e6efff; --mut:#a9b7e6; --glass:rgba(255,255,255,.06); --line:rgba(255,255,255,.12); --brand:#57a3ff; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; }
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;background:radial-gradient(1100px 600px at 50% -10%, #1a3a78 0%, #0e1a35 50%, #091326 100%);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial;color:var(--ink)}
@@ -59,7 +56,7 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px}
 .bad{color:#fca5a5}
 .drop{border:1px dashed var(--line);border-radius:12px;padding:.8em;text-align:center;color:var(--mut)}
 .drop.drag{background:rgba(255,255,255,.06)}
-#scanArea{position:relative; width:100%; aspect-ratio:4/3; background:#000; border-radius:12px; overflow:hidden;}
+#scanArea{position:relative; width:100%; aspect-ratio:4/3; background:#000; border-radius:12px; overflow:hidden}
 #scanArea video, #scanArea canvas{width:100%; height:100%; object-fit:cover}
 </style>
 </head>
@@ -121,9 +118,7 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px}
         <hr style="border-color:var(--line);opacity:.4">
         <div class="grid-two">
           <label>Pasillo <input id="fPasillo" type="number" min="0" step="1"></label>
-          <label>Lado
-            <select id="fLado"><option>Izquierda</option><option>Derecha</option></select>
-          </label>
+          <label>Lado <select id="fLado"><option>Izquierda</option><option>Derecha</option></select></label>
           <label>Estante <input id="fEst" type="number" min="0" step="1"></label>
           <label>Balda <input id="fBal" type="number" min="0" step="1"></label>
           <label>X <input id="fX" type="number" min="0" max="1" step="0.01"></label>
@@ -160,9 +155,7 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px}
             <label>Número de artículo <input id="admNum" type="text" placeholder="p.ej. 9286"></label>
             <label>EAN <input id="admEAN" type="text" placeholder="Escanear o escribir"></label>
           </div>
-          <div class="row">
-            <button id="setEAN" class="btn-brand">Asignar EAN al artículo</button>
-          </div>
+          <div class="row"><button id="setEAN" class="btn-brand">Asignar EAN al artículo</button></div>
           <div class="grid-two">
             <label>Buscar por descripción <input id="admDesc" type="text" placeholder="Texto libre"></label>
             <button id="admDescBtn">Buscar</button>
@@ -177,17 +170,16 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px}
 </div>
 
 <script>
+const APP_VERSION = 'v4.1-'+Date.now(); // cache-busting para GitHub Pages
 const CENTER = "Duran Calvià"; // Centro activo
 const LANGS={
  es:{name:"Español",tag:"es-ES",sphere:{idle:"Listo",listening:"Escuchando…",thinking:"Pensando…",speaking:"Hablando…"},
      greet:(name)=>{const h=new Date().getHours(); const hola=(h>=14?"Buenas tardes":"Buenos días"); return `${hola}${name?`, ${name}`:''}. ¿En qué puedo ayudarte?`},
-     found:d=>`He encontrado la mejor opción: ${d}.`,
-     side:s=> s==='I'?'Izquierda': s==='D'?'Derecha':(s||'—'),
+     found:d=>`He encontrado la mejor opción: ${d}.`, side:s=> s==='I'?'Izquierda': s==='D'?'Derecha':(s||'—'),
      guide:(p,l,e,b)=>`Desde tu posición, dirígete al pasillo ${p}, lado ${l}, estante ${e}, balda ${b}.`},
  ca:{name:"Mallorquí",tag:"ca-ES",sphere:{idle:"A punt",listening:"Escoltant…",thinking:"Pensant…",speaking:"Parlant…"},
      greet:(name)=>{const h=new Date().getHours(); const hola=(h>=14?"Bona tarda":"Bon dia"); return `${hola}${name?`, ${name}`:''}. En què et puc ajudar?`},
-     found:d=>`La millor opció és: ${d}.`,
-     side:s=> s==='I'?'Esquerra': s==='D'?'Dreta':(s||'—'),
+     found:d=>`La millor opció és: ${d}.`, side:s=> s==='I'?'Esquerra': s==='D'?'Dreta':(s||'—'),
      guide:(p,l,e,b)=>`Des de la teva ubicació, ves al passadís ${p}, costat ${l}, prestatge ${e}, balda ${b}.`},
  en:{name:"English",tag:"en-GB",sphere:{idle:"Ready",listening:"Listening…",thinking:"Thinking…",speaking:"Speaking…"},
      greet:(name)=>{const h=new Date().getHours(); const hello=(h>=14?"Good afternoon":"Good morning"); return `${hello}${name?`, ${name}`:''}. How can I help you?`},
@@ -249,14 +241,16 @@ function normalize(s){return (s||'').toString().toLowerCase().normalize('NFD').r
 const SYN=[["grupo de presion","grupo presion","grupo presión","presurizador","booster","hidrofor","estacion presion","estación presión"],["bomba","electrobomba","impulsor","scala","prisma"],["manguito","acople","acoplamiento","union","unión","enchufe","conector","racor"],["valvula","válvula","esfera","llave"],["tubo","tuberia","tubería","pe","polietileno","pvc","multicapa"],["codo","coudé","coude"],["te","tee","derivacion","derivación"],["filtro","filtros","e1"],["descalcificador","descalcificador myperla","myperla","bwt"]];
 function expandSyn(q){ let s=normalize(q); for(const g of SYN){ for(const w of g){ if(s.includes(normalize(w))){ s+=' '+g.join(' ') } } } return s }
 function parseNum(v){ if(v==null) return null; if(typeof v==='number') return v; const s=String(v).trim().replace(',','.'); const n=Number(s); return isFinite(n)? n : null }
-async function fetchText(url){ try{ const r=await fetch(url,{cache:'no-store'}); if(!r.ok) return null; return await r.text() }catch{ return null } }
+async function fetchText(url){ try{ const r=await fetch(url+`?v=${APP_VERSION}`,{cache:'no-store'}); if(!r.ok) return null; return await r.text() }catch{ return null } }
 function parseCSV(text){ const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim().length); const sep=(lines[0].match(/;/g)||[]).length>(lines[0].match(/,/g)||[]).length?';':','; const rows=[]; for(const line of lines){ rows.push(parseCSVLine(line,sep)) } const headers=rows.shift().map(h=>h.trim()); return rows.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').trim()); return o }) }
 function parseCSVLine(line,sep){ const out=[]; let cur=''; let inQ=false; for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else { inQ=!inQ } } else if(ch===sep && !inQ){ out.push(cur); cur='' } else { cur+=ch } } out.push(cur); return out }
-async function loadData(){ const a=await fetchText('Articulos.csv'); if(a){ ART=parseCSV(a) } const u=await fetchText('Ubicaciones.csv'); if(u){ UBI=parseCSV(u) } reindex(); }
+async function loadData(){ const a=await fetchText('Articulos.csv'); if(a){ ART=parseCSV(a) } const u=await fetchText('Ubicaciones.csv'); if(u){ UBI=parseCSV(u) } reindex(); // cache-busting en imagen del plano
+  try{ document.getElementById('mapImg').src = 'plano-calvia.jpg?v='+APP_VERSION }catch{}
+}
 function reindex(){ const only=UBI.filter(u=> (u.Centro===CENTER || u.Centro==='Calvia')); const map=new Map(); for(const u of only){ const k=(u.NumeroArticulo||'').toString().trim(); if(!map.has(k)) map.set(k,[]); map.get(k).push(u) } INDEX=Object.fromEntries(map) }
 function pickLocation(num){ const list=INDEX[(num||'').toString().trim()]; if(!list||!list.length) return null; return list.slice().sort((a,b)=>Number(b.Stock||0)-Number(a.Stock||0))[0] }
 function search(qraw){ const qn=expandSyn(qraw); const words=normalize(qn).split(/\s+/).filter(Boolean); const scored=[]; for(const a of ART){ const text=normalize(`${a.Descripcion} ${a.ReferenciaProveedor} ${a.CodigoEAN}`); let s=0; for(const w of words){ if(!w) continue; if(text.includes(w)) s+=2; if(text.startsWith(w)) s+=1 } if(s>0) scored.push({a,score:s}) } scored.sort((x,y)=>y.score-x.score); return scored.slice(0,50).map(x=>x.a) }
-function renderResults(list){ resultsEl.innerHTML=''; if(!list.length){ const d=document.createElement('div'); d.className='item'; d.innerHTML='<div>No se han encontrado artículos. Por favor, solicite ayuda a un vendedor.</div>'; resultsEl.appendChild(d); resultsEl.classList.remove('hidden'); right.classList.add('hidden'); return } for(const a of list){ const loc=pickLocation(a.NumeroArticulo); const sideFull = LANGS[lang].side((loc&&((loc.Lado&& (loc.Lado.Value||loc.Lado))||loc.Lado))||''); const sub=`Ref: ${a.ReferenciaProveedor||'—'} · EAN: ${a.CodigoEAN||'—'} · Proveedor: ${a.NombreProveedor||'—'} · Stock: ${(loc&&loc.Stock)||'—'}`; const card=document.createElement('div'); card.className='item'; card.innerHTML=`<div><strong>${a.Descripcion||'Sin descripción'}</strong></div><div class='sub'>${sub}</div><div class='row'><button class='goMap btn-brand'>Guíame</button> <button class='say'>Explicar</button></div>`; card.querySelector('.goMap').onclick=()=>selectArticle(a); card.querySelector('.say').onclick=()=>explainArticle(a); resultsEl.appendChild(card) } resultsEl.classList.remove('hidden'); right.classList.add('hidden') }
+function renderResults(list){ resultsEl.innerHTML=''; if(!list.length){ const d=document.createElement('div'); d.className='item'; d.innerHTML='<div>No se han encontrado artículos. Por favor, solicite ayuda a un vendedor.</div>'; resultsEl.appendChild(d); resultsEl.classList.remove('hidden'); right.classList.add('hidden'); return } for(const a of list){ const loc=pickLocation(a.NumeroArticulo); const sub=`Ref: ${a.ReferenciaProveedor||'—'} · EAN: ${a.CodigoEAN||'—'} · Proveedor: ${a.NombreProveedor||'—'} · Stock: ${(loc&&loc.Stock)||'—'}`; const card=document.createElement('div'); card.className='item'; card.innerHTML=`<div><strong>${a.Descripcion||'Sin descripción'}</strong></div><div class='sub'>${sub}</div><div class='row'><button class='goMap btn-brand'>Guíame</button> <button class='say'>Explicar</button></div>`; card.querySelector('.goMap').onclick=()=>selectArticle(a); card.querySelector('.say').onclick=()=>explainArticle(a); resultsEl.appendChild(card) } resultsEl.classList.remove('hidden'); right.classList.add('hidden') }
 function explainArticle(a){ speak(`${(a.Descripcion||'')}`.trim()) }
 function selectArticle(a){ varSel=a; right.classList.remove('hidden'); const loc=pickLocation(a.NumeroArticulo); if(!loc){ speak('No tengo ubicación registrada. Puedes capturarla en modo administrador.'); routeEl.textContent=''; pin.style.display='none'; if(admin) adminPanel.classList.remove('hidden'); return } const x=parseNum(loc.X), y=parseNum(loc.Y); if(x==null||y==null){ pin.style.display='none' } else { pin.style.left=(x*100)+'%'; pin.style.top=(y*100)+'%'; pin.style.display='block' } const ladoRaw=(loc.Lado && (loc.Lado.Value||loc.Lado)) || loc.Lado || '—'; const lado=LANGS[lang].side((ladoRaw||'').toString().substring(0,1).toUpperCase()); routeEl.textContent=LANGS[lang].guide(loc.Pasillo||'—', lado, loc.Estante||'—', loc.Balda||'—'); speak(LANGS[lang].found(a.Descripcion||'')); setTimeout(()=>speak(routeEl.textContent),1100); if(admin){ fPas.value=loc.Pasillo||''; fLado.value=lado; fEst.value=loc.Estante||''; fBal.value=loc.Balda||''; fX.value=(x??''); fY.value=(y??''); adminPanel.classList.remove('hidden') } }
 
@@ -296,10 +290,11 @@ againBtn.onclick=()=>{ q.value=''; resultsEl.classList.add('hidden'); right.clas
 adminToggle.onclick=()=>{ if(!adminGranted){ const p=prompt('Contraseña de administrador:'); if(p!=='0666'){ alert('Contraseña incorrecta'); return } adminGranted=true; } admin=!admin; adminToggle.classList.toggle('btn-brand', admin); adminPanel.classList.toggle('hidden', !admin); if(admin && varSel) selectArticle(varSel) };
 function handleSearch(){ stopListening(); setSphere('thinking'); const list=search(q.value||''); renderResults(list); setSphere('idle'); if(list.length){ const first=list[0]; speak(LANGS[lang].found(first.Descripcion||'')) } }
 
-// Init + PWA
+// Init
 (async function(){ await loadData(); speak(LANGS[lang].greet(nameInput.value||'')); })();
-if('serviceWorker' in navigator){ const sw=`self.addEventListener('install',e=>{e.waitUntil(caches.open('asistente-duran-v4').then(c=>c.addAll([location.href])))});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`; const blob=new Blob([sw],{type:'text/javascript'}); const url=URL.createObjectURL(blob); navigator.serviceWorker.register(url).catch(()=>{}); }
+
+// IMPORTANTE: evitar SW stale en GitHub Pages (anula anteriores y no registra uno nuevo por defecto)
+if('serviceWorker' in navigator){ navigator.serviceWorker.getRegistrations().then(rs=>{ rs.forEach(r=>r.unregister()) }); if(window.caches){ caches.keys().then(keys=> keys.forEach(k=>/^asistente-duran-/.test(k)&&caches.delete(k))) } }
 </script>
 </body>
 </html>
-
