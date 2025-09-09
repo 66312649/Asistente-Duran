@@ -3,65 +3,53 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Asistente · Duran (v5.4)</title>
+<title>Asistente · Duran (v5.5)</title>
 <link rel="icon" href="logo-duran.png"/>
 <style>
 :root{ --bg:#0b1324; --bg2:#0e1a35; --ink:#e6efff; --mut:#a9b7e6; --glass:rgba(255,255,255,.06); --line:rgba(255,255,255,.12); --brand:#57a3ff; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; }
-*{box-sizing:border-box}
-html,body{height:100%}
-body{margin:0;background:radial-gradient(1100px 600px at 50% -10%, #1a3a78 0%, #0e1a35 50%, #091326 100%);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial;color:var(--ink)}
+*{box-sizing:border-box} html,body{height:100%} body{margin:0;background:radial-gradient(1100px 600px at 50% -10%, #1a3a78 0%, #0e1a35 50%, #091326 100%);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial;color:var(--ink)}
 #logoTop{position:fixed;left:12px;top:12px;z-index:50;display:flex;align-items:center;gap:10px;pointer-events:none}
 #logoTop img{height:42px;filter:drop-shadow(0 2px 16px rgba(87,163,255,.35))}
 #logoTop .badge{padding:.45em .7em;border-radius:999px;border:1px solid var(--line);background:var(--glass);color:var(--ink);font-weight:600;font-size:12px}
 .app{min-height:100vh;display:grid;grid-template-rows:auto 1fr}
-@supports (height: 100dvh){ .app{min-height:100dvh} }
-header{display:flex;gap:14px;align-items:center;justify-content:flex-end;padding:clamp(8px,2vmin,16px)}
-.small{font-size:clamp(11px,1.6vmin,13px);color:var(--mut)}
+@supports (height:100dvh){.app{min-height:100dvh}}
+header{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:clamp(8px,2vmin,16px)}
+.centerTabs{display:flex;gap:8px;flex-wrap:wrap}
+.tab{padding:.45em .75em;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.06);cursor:pointer}
+.tab.active{background:rgba(87,163,255,.18);border-color:rgba(87,163,255,.55)}
+.small{font-size:12px;color:var(--mut)}
 button{padding:.7em 1em;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--ink);cursor:pointer;font:inherit}
-button:hover{background:rgba(255,255,255,.12)}
+button:hover{background:rgba(255,255,255,.12)} .btn-brand{border-color:rgba(87,163,255,.5);box-shadow:0 0 0 3px rgba(87,163,255,.12) inset}
 button.ghost{background:transparent;border-color:transparent;color:var(--mut)}
-.btn-brand{border-color:rgba(87,163,255,.5);box-shadow:0 0 0 3px rgba(87,163,255,.12) inset}
-.screen{display:none;min-height:calc(100svh - 70px);padding:clamp(12px,2vmin,18px)}
-.screen.active{display:grid;align-content:start;gap:clamp(12px,2vmin,18px)}
-.centered{place-items:center}
-.grid{display:grid;gap:clamp(10px,2vmin,16px)}
-.flags{display:grid;grid-template-columns:repeat(6,clamp(40px,6vmin,56px));gap:8px}
-.flags button{padding:0;border-radius:10px;overflow:hidden}
-.flags img{display:block;width:100%;height:clamp(28px,4.8vmin,44px);object-fit:cover}
-.row{display:flex;gap:clamp(8px,1.6vmin,12px);align-items:center;flex-wrap:wrap}
-input[type="text"], input[type="number"]{width:100%;padding:.8em 1em;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.2);color:var(--ink);outline:none;min-width:12ch;font:inherit}
+.screen{display:none;min-height:calc(100svh - 70px);padding:clamp(12px,2vmin,18px)} .screen.active{display:grid;align-content:start;gap:clamp(12px,2vmin,18px)}
+.grid{display:grid;gap:clamp(10px,2vmin,16px)} .row{display:flex;gap:clamp(8px,1.6vmin,12px);align-items:center;flex-wrap:wrap}
+.flags{display:flex;gap:8px;flex-wrap:wrap}
+.flag{width:clamp(40px,6vmin,56px);height:clamp(28px,4.8vmin,44px);border-radius:10px;border:1px solid var(--line);overflow:hidden;display:inline-flex;align-items:center;justify-content:center;background:#222}
+.flag img{display:block;width:100%;height:100%;object-fit:cover}
+input[type="text"],input[type="number"]{width:100%;padding:.8em 1em;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.2);color:var(--ink);outline:none;min-width:12ch;font:inherit}
 .sphere{width:clamp(120px,18vmin,200px);height:clamp(120px,18vmin,200px);border-radius:50%;margin:auto;border:1px solid rgba(255,255,255,.25);box-shadow:0 0 40px rgba(80,180,255,.28);position:relative;overflow:hidden}
 .sphere .g{position:absolute;inset:0;background:conic-gradient(from 0deg at 50% 50%, #60a5fa, #a78bfa, #f472b6, #60a5fa);filter:blur(16px);opacity:.85}
-.sphere.listening .g{animation:rot 8s linear infinite}
-@keyframes rot{to{transform:rotate(360deg)}}
+.sphere.listening .g{animation:rot 8s linear infinite} @keyframes rot{to{transform:rotate(360deg)}}
 .sphere .ring{position:absolute;left:50%;top:50%;width:60%;height:60%;transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(255,255,255,.45);opacity:.5}
-.sphere.listening .ring{animation:pulse 2s ease-in-out infinite}
-@keyframes pulse{0%{transform:translate(-50%,-50%) scale(1);opacity:.6}50%{transform:translate(-50%,-50%) scale(1.5);opacity:.1}100%{transform:translate(-50%,-50%) scale(1);opacity:.6}}
+.sphere.listening .ring{animation:pulse 2s ease-in-out infinite} @keyframes pulse{0%{transform:translate(-50%,-50%) scale(1);opacity:.6}50%{transform:translate(-50%,-50%) scale(1.5);opacity:.1}100%{transform:translate(-50%,-50%) scale(1);opacity:.6}}
 .list{display:grid;gap:10px;max-height:60svh;overflow:auto}
 .item{display:grid;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.04);padding:12px;border-radius:14px}
-.sub{color:var(--mut);font-size:clamp(11px,1.6vmin,13px)}
+.sub{color:var(--mut);font-size:12px}
 .mapWrap{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;height:clamp(320px,70dvh,900px);display:block}
 .mapWrap img{display:block;width:100%;height:100%;object-fit:contain;user-select:none;background:radial-gradient(600px 300px at 50% 0%, rgba(255,255,255,.03), transparent 60%)}
 .pin{position:absolute;width:clamp(12px,1.8vmin,16px);height:clamp(12px,1.8vmin,16px);background:#ef4444;border-radius:50%;box-shadow:0 0 0 5px rgba(239,68,68,.35);transform:translate(-50%, -50%);display:none}
 .pin.ref{background:#3b82f6; box-shadow:0 0 0 5px rgba(59,130,246,.35)}
 .panel{border:1px solid var(--line);background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04));backdrop-filter:blur(10px);border-radius:18px;padding:clamp(12px,2vmin,16px)}
-.grid-two{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-@media (max-width: 640px){ .grid-two{grid-template-columns:1fr} }
-.bad{color:#ffcd6b}
-footer{padding:8px 16px;color:var(--mut);font-size:12px}
+.grid-two{display:grid;grid-template-columns:repeat(2,1fr);gap:8px} @media(max-width:640px){.grid-two{grid-template-columns:1fr}}
+.bad{color:#ffcd6b} footer{padding:8px 16px;color:var(--mut);font-size:12px}
 </style>
 </head>
 <body>
-<div id="logoTop">
-  <img src="logo-duran.png" alt="DURAN"/>
-  <div class="badge small">Centro Duran Calvià</div>
-</div>
+<div id="logoTop"><img src="logo-duran.png" alt="DURAN"/><div class="badge small" id="centerBadge">Centro Duran Calvià</div></div>
 <div class="app">
   <header>
-    <div class="row small">
-      <span id="status">Cargando…</span>
-      <button id="adminToggle" class="ghost" title="Área de administración">⚙️ Admin</button>
-    </div>
+    <div class="centerTabs" id="centerTabs"></div>
+    <div class="row small"><span id="status">Cargando…</span><button id="adminToggle" class="ghost" title="Admin">⚙️ Admin</button></div>
   </header>
 
   <!-- HOME -->
@@ -70,16 +58,13 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px}
       <div class="small">Selecciona idioma</div>
       <div class="flags" id="flags"></div>
     </div>
-    <div class="row">
-      <input id="name" type="text" placeholder="Tu nombre (opcional)"/>
-      <button id="start" class="btn-brand">Empezar</button>
-    </div>
-    <div class="grid centered" id="voiceBox" style="display:none">
+    <div class="row"><input id="name" type="text" placeholder="Tu nombre (opcional)"/><button id="start" class="btn-brand">Empezar</button></div>
+    <div class="grid" id="voiceBox" style="display:none">
       <div class="sphere" id="sphere"><div class="g"></div><div class="ring"></div></div>
       <div id="spLabel" class="small">Listo</div>
     </div>
     <div class="row">
-      <input id="q" type="text" placeholder="Escribe o pulsa 🎙️ (ej. manguito 32, scala2, 8426621550199, 9286)"/>
+      <input id="q" type="text" placeholder="Escribe y pulsa Buscar (ej.: manguito 32, scala2, 8426621550199, 9286)"/>
       <button id="mic" title="Hablar">🎙️</button>
       <button id="go" class="btn-brand">Buscar</button>
       <button id="ask" class="ghost" title="Asesor especialista (opcional)">💡 Asesor</button>
@@ -89,30 +74,17 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px}
 
   <!-- RESULTADOS -->
   <section id="scrResults" class="screen">
-    <div class="row" style="justify-content:space-between">
-      <button id="backHome" class="ghost">← Inicio</button>
-      <div class="small" id="resCount"></div>
-    </div>
+    <div class="row" style="justify-content:space-between"><button id="backHome" class="ghost">← Inicio</button><div class="small" id="resCount"></div></div>
     <div id="results" class="list"></div>
   </section>
 
   <!-- MAPA -->
   <section id="scrMap" class="screen">
-    <div class="row" style="justify-content:space-between">
-      <button id="backResults" class="ghost">← Resultados</button>
-      <button id="again" class="ghost">↩︎ Nueva búsqueda</button>
-    </div>
-    <div class="mapWrap" id="mapBox">
-      <img id="mapImg" src="plano-calvia.jpg" alt="Plano Calvià"/>
-      <div id="pin" class="pin"></div>
-      <div id="pinRef" class="pin ref" style="display:none"></div>
-    </div>
+    <div class="row" style="justify-content:space-between"><button id="backResults" class="ghost">← Resultados</button><button id="again" class="ghost">↩︎ Nueva búsqueda</button></div>
+    <div class="mapWrap" id="mapBox"><img id="mapImg" src="plano-calvia.jpg" alt="Plano"/><div id="pin" class="pin"></div><div id="pinRef" class="pin ref" style="display:none"></div></div>
     <div id="route" class="small"></div>
-
-    <!-- PANEL ADMIN (simplificado) -->
     <div id="adminPanel" class="panel" style="display:none">
-      <div class="small">Acceso restringido. Contraseña requerida (0666).</div>
-      <hr style="border-color:var(--line);opacity:.4">
+      <div class="small">Acceso restringido. Contraseña (0666).</div><hr style="border-color:var(--line);opacity:.4">
       <div class="grid-two">
         <label>Pasillo <input id="fPasillo" type="number" min="0" step="1"></label>
         <label>Lado <select id="fLado"><option>Izquierda</option><option>Derecha</option></select></label>
@@ -120,17 +92,11 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px}
         <label>Balda <input id="fBal" type="number" min="0" step="1"></label>
         <label>X <input id="fX" type="number" min="0" max="1" step="0.01"></label>
         <label>Y <input id="fY" type="number" min="0" max="1" step="0.01"></label>
+        <label>Stock <input id="fStock" type="number" min="0" step="1"></label>
       </div>
-      <div class="row">
-        <button id="saveLoc" class="btn-brand">💾 Guardar ubicación del artículo</button>
-        <button id="delLoc">🗑️ Quitar ubicación</button>
-      </div>
+      <div class="row"><button id="saveLoc" class="btn-brand">💾 Guardar ubicación del artículo</button><button id="delLoc">🗑️ Quitar ubicación</button></div>
       <h4 class="small" style="margin:.6em 0 0">Posición del terminal</h4>
-      <div class="row">
-        <button id="setRefMode">📍 Fijar referencia tocando el plano</button>
-        <button id="clearRef" class="ghost">Borrar referencia</button>
-        <div id="refInfo" class="small"></div>
-      </div>
+      <div class="row"><button id="setRefMode">📍 Fijar referencia tocando el plano</button><button id="clearRef" class="ghost">Borrar referencia</button><div id="refInfo" class="small"></div></div>
     </div>
   </section>
 
@@ -138,97 +104,58 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px}
 </div>
 
 <script>
-const APP_VERSION='v5.4-'+Date.now();
-const CENTER="Duran Calvià"; // filtro de ubicaciones
-const AI_URL=''; // endpoint opcional para asesor
+const APP_VERSION='v5.5-'+Date.now();
+// === Centros (cada uno con sus propios CSV e imagen) ===
+const CENTERS={
+  calvia:{id:'calvia', label:'Duran Calvià', a:'calvia/Articulos.csv', u:'calvia/Ubicaciones.csv', map:'calvia/plano-calvia.jpg'},
+  palma:{id:'palma', label:'Duran Palma', a:'palma/Articulos.csv', u:'palma/Ubicaciones.csv', map:'palma/plano-palma.jpg'},
+  inca:{id:'inca', label:'Duran Inca', a:'inca/Articulos.csv', u:'inca/Ubicaciones.csv', map:'inca/plano-inca.jpg'},
+  manacor:{id:'manacor', label:'Duran Manacor', a:'manacor/Articulos.csv', u:'manacor/Ubicaciones.csv', map:'manacor/plano-manacor.jpg'}
+};
+let CENTER=CENTERS[localStorage.getItem('centerId')||'calvia'];
+
+// === APIs opcionales ===
+const AI_URL=''; // tu Worker para asesor (opcional)
+const UBI_API=''; // tu Worker para persistir ubicaciones (opcional)
 
 // ===== Idiomas =====
 const LANGS={
- es:{name:"Español",tag:"es-ES",sphere:{idle:"Listo",listening:"Escuchando…",thinking:"Pensando…",speaking:"Hablando…"},
-     greet:(name)=>{const h=new Date().getHours(); const hola=(h>=14?"Buenas tardes":"Buenos días"); return `${hola}${name?`, ${name}`:''}. ¿En qué puedo ayudarte?`},
-     side:s=> s==='I'?'Izquierda': s==='D'?'Derecha':(s||'—'),
-     guide:(p,l,e,b,dir)=>`Desde este terminal, ${dir}. Luego al pasillo ${p}, lado ${l}, estante ${e}, balda ${b}.`,
-     ask:"¿Quieres indicaciones para localizarlo?"},
- ca:{name:"Mallorquí",tag:"ca-ES",sphere:{idle:"A punt",listening:"Escoltant…",thinking:"Pensant…",speaking:"Parlant…"},
-     greet:(name)=>{const h=new Date().getHours(); const hola=(h>=14?"Bona tarda":"Bon dia"); return `${hola}${name?`, ${name}`:''}. En què et puc ajudar?`},
-     side:s=> s==='I'?'Esquerra': s==='D'?'Dreta':(s||'—'),
-     guide:(p,l,e,b,dir)=>`Des d'aquest terminal, ${dir}. Després al passadís ${p}, costat ${l}, prestatge ${e}, balda ${b}.`,
-     ask:"Vols que t'indiqui com arribar?"},
- en:{name:"English",tag:"en-GB",sphere:{idle:"Ready",listening:"Listening…",thinking:"Thinking…",speaking:"Speaking…"},
-     greet:(name)=>{const h=new Date().getHours(); const hello=(h>=14?"Good afternoon":"Good morning"); return `${hello}${name?`, ${name}`:''}. How can I help you?`},
-     side:s=> s==='I'?'Left': s==='D'?'Right':(s||'—'),
-     guide:(p,l,e,b,dir)=>`From this terminal, ${dir}. Then go to aisle ${p}, ${l} side, shelf ${e}, tier ${b}.`,
-     ask:"Would you like directions to find it?"},
- de:{name:"Deutsch",tag:"de-DE",sphere:{idle:"Bereit",listening:"Zuhören…",thinking:"Denken…",speaking:"Sprechen…"},
-     greet:(name)=>{const h=new Date().getHours(); const hallo=(h>=14?"Guten Tag":"Guten Morgen"); return `${hallo}${name?`, ${name}`:''}. Wie kann ich helfen?`},
-     side:s=> s==='I'?'Links': s==='D'?'Rechts':(s||'—'),
-     guide:(p,l,e,b,dir)=>`Von diesem Terminal ${dir}. Dann zum Gang ${p}, ${l}e Seite, Regal ${e}, Ebene ${b}.`,
-     ask:"Möchten Sie eine Wegbeschreibung?"},
- pl:{name:"Polski",tag:"pl-PL",sphere:{idle:"Gotowe",listening:"Słucham…",thinking:"Myślę…",speaking:"Mówię…"},
-     greet:(name)=>{const h=new Date().getHours(); const d=(h>=14?"Dzień dobry":"Dzień dobry"); return `${d}${name?`, ${name}`:''}. W czym mogę pomóc?`},
-     side:s=> s==='I'?'Lewa': s==='D'?'Prawa':(s||'—'),
-     guide:(p,l,e,b,dir)=>`Z tego terminala ${dir}. Następnie alejka ${p}, strona ${l}, półka ${e}, poziom ${b}.`,
-     ask:"Chcesz wskazówek jak tam dojść?"},
- ru:{name:"Русский",tag:"ru-RU",sphere:{idle:"Готово",listening:"Слушаю…",thinking:"Думаю…",speaking:"Говорю…"},
-     greet:(name)=>{const h=new Date().getHours(); const hi=(h>=14?"Добрый день":"Доброе утро"); return `${hi}${name?`, ${name}`:''}. Чем могу помочь?`},
-     side:s=> s==='I'?'Левая': s==='D'?'Правая':(s||'—'),
-     guide:(p,l,e,b,dir)=>`От этого терминала: ${dir}. Затем ряд ${p}, сторона ${l}, полка ${e}, уровень ${b}.`,
-     ask:"Показать маршрут?"}
+ es:{name:"Español",tag:"es-ES",sphere:{idle:"Listo",listening:"Escuchando…",thinking:"Pensando…",speaking:"Hablando…"}, greet:(name)=>{const h=new Date().getHours(); const hola=(h>=14?"Buenas tardes":"Buenos días"); return `${hola}${name?`, ${name}`:''}. ¿En qué puedo ayudarte?`}, side:s=> s==='I'?'Izquierda': s==='D'?'Derecha':(s||'—'), guide:(p,l,e,b,dir)=>`Desde este terminal, ${dir}. Luego al pasillo ${p}, lado ${l}, estante ${e}, balda ${b}.`, ask:"¿Quieres indicaciones para localizarlo?"},
+ ca:{name:"Mallorquí",tag:"ca-ES",sphere:{idle:"A punt",listening:"Escoltant…",thinking:"Pensant…",speaking:"Parlant…"}, greet:(name)=>{const h=new Date().getHours(); const hola=(h>=14?"Bona tarda":"Bon dia"); return `${hola}${name?`, ${name}`:''}. En què et puc ajudar?`}, side:s=> s==='I'?'Esquerra': s==='D'?'Dreta':(s||'—'), guide:(p,l,e,b,dir)=>`Des d'aquest terminal, ${dir}. Després al passadís ${p}, costat ${l}, prestatge ${e}, balda ${b}.`, ask:"Vols que t'indiqui com arribar?"},
+ en:{name:"English",tag:"en-GB",sphere:{idle:"Ready",listening:"Listening…",thinking:"Thinking…",speaking:"Speaking…"}, greet:(name)=>{const h=new Date().getHours(); const hello=(h>=14?"Good afternoon":"Good morning"); return `${hello}${name?`, ${name}`:''}. How can I help you?`}, side:s=> s==='I'?'Left': s==='D'?'Right':(s||'—'), guide:(p,l,e,b,dir)=>`From this terminal, ${dir}. Then go to aisle ${p}, ${l} side, shelf ${e}, tier ${b}.`, ask:"Would you like directions to find it?"},
+ de:{name:"Deutsch",tag:"de-DE",sphere:{idle:"Bereit",listening:"Zuhören…",thinking:"Denken…",speaking:"Sprechen…"}, greet:(name)=>{const h=new Date().getHours(); const hallo=(h>=14?"Guten Tag":"Guten Morgen"); return `${hallo}${name?`, ${name}`:''}. Wie kann ich helfen?`}, side:s=> s==='I'?'Links': s==='D'?'Rechts':(s||'—'), guide:(p,l,e,b,dir)=>`Von diesem Terminal ${dir}. Dann zum Gang ${p}, ${l}e Seite, Regal ${e}, Ebene ${b}.`, ask:"Möchten Sie eine Wegbeschreibung?"},
+ pl:{name:"Polski",tag:"pl-PL",sphere:{idle:"Gotowe",listening:"Słucham…",thinking:"Myślę…",speaking:"Mówię…"}, greet:(name)=>{const h=new Date().getHours(); const d=(h>=14?"Dzień dobry":"Dzień dobry"); return `${d}${name?`, ${name}`:''}. W czym mogę pomóc?`}, side:s=> s==='I'?'Lewa': s==='D'?'Prawa':(s||'—'), guide:(p,l,e,b,dir)=>`Z tego terminala ${dir}. Następnie alejka ${p}, strona ${l}, półka ${e}, poziom ${b}.`, ask:"Chcesz wskazówek jak tam dojść?"},
+ ru:{name:"Русский",tag:"ru-RU",sphere:{idle:"Готово",listening:"Слушаю…",thinking:"Думаю…",speaking:"Говорю…"}, greet:(name)=>{const h=new Date().getHours(); const hi=(h>=14?"Добрый день":"Доброе утро"); return `${hi}${name?`, ${name}`:''}. Чем могу помочь?`}, side:s=> s==='I'?'Левая': s==='D'?'Правая':(s||'—'), guide:(p,l,e,b,dir)=>`От этого терминала: ${dir}. Затем ряд ${p}, сторона ${l}, полка ${e}, уровень ${b}.`, ask:"Показать маршрут?"}
 };
 let lang='es', admin=false, adminGranted=false;
 
 // ===== DOM =====
-const statusEl=document.getElementById('status');
-const scrHome=document.getElementById('scrHome');
-const scrResults=document.getElementById('scrResults');
-const scrMap=document.getElementById('scrMap');
-const backHome=document.getElementById('backHome');
-const backResults=document.getElementById('backResults');
-const againBtn=document.getElementById('again');
-const adminToggle=document.getElementById('adminToggle');
-const adminPanel=document.getElementById('adminPanel');
-const flags=document.getElementById('flags');
-const nameInput=document.getElementById('name');
-const startBtn=document.getElementById('start');
-const voiceBox=document.getElementById('voiceBox');
-const sphere=document.getElementById('sphere');
-const spLabel=document.getElementById('spLabel');
-const q=document.getElementById('q');
-const goBtn=document.getElementById('go');
-const micBtn=document.getElementById('mic');
-const askBtn=document.getElementById('ask');
-const voiceWarn=document.getElementById('voiceWarn');
-const resultsEl=document.getElementById('results');
-const resCount=document.getElementById('resCount');
-const mapImg=document.getElementById('mapImg');
-const mapBox=document.getElementById('mapBox');
-const pin=document.getElementById('pin');
-const pinRef=document.getElementById('pinRef');
-const routeEl=document.getElementById('route');
-const fPas=document.getElementById('fPasillo');
-const fLado=document.getElementById('fLado');
-const fEst=document.getElementById('fEst');
-const fBal=document.getElementById('fBal');
-const fX=document.getElementById('fX');
-const fY=document.getElementById('fY');
-const saveLocBtn=document.getElementById('saveLoc');
-const delLocBtn=document.getElementById('delLoc');
-const setRefModeBtn=document.getElementById('setRefMode');
-const clearRefBtn=document.getElementById('clearRef');
-const refInfo=document.getElementById('refInfo');
+const statusEl=document.getElementById('status'); const centerBadge=document.getElementById('centerBadge'); const centerTabs=document.getElementById('centerTabs');
+const scrHome=document.getElementById('scrHome'); const scrResults=document.getElementById('scrResults'); const scrMap=document.getElementById('scrMap');
+const backHome=document.getElementById('backHome'); const backResults=document.getElementById('backResults'); const againBtn=document.getElementById('again');
+const adminToggle=document.getElementById('adminToggle'); const adminPanel=document.getElementById('adminPanel');
+const flags=document.getElementById('flags'); const nameInput=document.getElementById('name'); const startBtn=document.getElementById('start');
+const voiceBox=document.getElementById('voiceBox'); const sphere=document.getElementById('sphere'); const spLabel=document.getElementById('spLabel');
+const q=document.getElementById('q'); const goBtn=document.getElementById('go'); const micBtn=document.getElementById('mic'); const askBtn=document.getElementById('ask'); const voiceWarn=document.getElementById('voiceWarn');
+const resultsEl=document.getElementById('results'); const resCount=document.getElementById('resCount');
+const mapImg=document.getElementById('mapImg'); const mapBox=document.getElementById('mapBox'); const pin=document.getElementById('pin'); const pinRef=document.getElementById('pinRef'); const routeEl=document.getElementById('route');
+const fPas=document.getElementById('fPasillo'); const fLado=document.getElementById('fLado'); const fEst=document.getElementById('fEst'); const fBal=document.getElementById('fBal'); const fX=document.getElementById('fX'); const fY=document.getElementById('fY'); const fStock=document.getElementById('fStock');
+const saveLocBtn=document.getElementById('saveLoc'); const delLocBtn=document.getElementById('delLoc'); const setRefModeBtn=document.getElementById('setRefMode'); const clearRefBtn=document.getElementById('clearRef'); const refInfo=document.getElementById('refInfo');
 
-// ===== Banderas inline =====
+// ===== Banderas base64 =====
+function b64(svg){ return 'data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svg))) }
 const FLAGS={
- es:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='48' fill='#aa151b'/><rect y='16' width='80' height='16' fill='#f1bf00'/></svg>`)}`,
- ca:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='48' fill='#f7d117'/><g fill='#d40000'><rect y='4' width='80' height='6'/><rect y='14' width='80' height='6'/><rect y='24' width='80' height='6'/><rect y='34' width='80' height='6'/></g><rect x='0' y='0' width='20' height='20' fill='#5a2ca0'/><rect x='4' y='4' width='12' height='8' fill='white'/></svg>`)}`,
- en:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='48' fill='#00247d'/><path d='M0,0 80,48 M80,0 0,48' stroke='#fff' stroke-width='10'/><path d='M0,0 80,48 M80,0 0,48' stroke='#cf142b' stroke-width='6'/><rect x='34' width='12' height='48' fill='#fff'/><rect y='18' width='80' height='12' fill='#fff'/><rect x='36' width='8' height='48' fill='#cf142b'/><rect y='20' width='80' height='8' fill='#cf142b'/></svg>`)}`,
- de:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='16' fill='#000'/><rect y='16' width='80' height='16' fill='#dd0000'/><rect y='32' width='80' height='16' fill='#ffce00'/></svg>`)}`,
- pl:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='24' fill='#fff'/><rect y='24' width='80' height='24' fill='#dc143c'/></svg>`)}`,
- ru:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='16' fill='#fff'/><rect y='16' width='80' height='16' fill='#0039a6'/><rect y='32' width='80' height='16' fill='#d52b1e'/></svg>`)}`
+ es:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='48' fill='#aa151b'/><rect y='16' width='80' height='16' fill='#f1bf00'/></svg>`),
+ ca:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='48' fill='#f7d117'/><g fill='#d40000'><rect y='4' width='80' height='6'/><rect y='14' width='80' height='6'/><rect y='24' width='80' height='6'/><rect y='34' width='80' height='6'/></g><rect x='0' y='0' width='20' height='20' fill='#5a2ca0'/><rect x='4' y='4' width='12' height='8' fill='white'/></svg>`),
+ en:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='48' fill='#00247d'/><path d='M0,0 80,48 M80,0 0,48' stroke='#fff' stroke-width='10'/><path d='M0,0 80,48 M80,0 0,48' stroke='#cf142b' stroke-width='6'/><rect x='34' width='12' height='48' fill='#fff'/><rect y='18' width='80' height='12' fill='#fff'/><rect x='36' width='8' height='48' fill='#cf142b'/><rect y='20' width='80' height='8' fill='#cf142b'/></svg>`),
+ de:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='16' fill='#000'/><rect y='16' width='80' height='16' fill='#dd0000'/><rect y='32' width='80' height='16' fill='#ffce00'/></svg>`),
+ pl:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='24' fill='#fff'/><rect y='24' width='80' height='24' fill='#dc143c'/></svg>`),
+ ru:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='16' fill='#fff'/><rect y='16' width='80' height='16' fill='#0039a6'/><rect y='32' width='80' height='16' fill='#d52b1e'/></svg>`)
 };
-function initFlags(){ try{ flags.innerHTML=''; for(const code of Object.keys(LANGS)){
-  const b=document.createElement('button'); b.innerHTML=`<img alt='${code}' src='${FLAGS[code]}'/>`; b.title=LANGS[code].name; b.onclick=()=>{ lang=code; setSphere('idle'); speak(LANGS[lang].greet(nameInput.value||'')); }; flags.appendChild(b);
-} }catch(e){ console.error('Error creando banderas',e); const warn=document.createElement('div'); warn.className='small'; warn.textContent='(No se pudieron mostrar las banderas de idioma)'; flags?.parentElement?.appendChild(warn); } }
+function initFlags(){ flags.innerHTML=''; for(const code of Object.keys(LANGS)){ const b=document.createElement('button'); b.className='flag'; b.innerHTML=`<img alt='${code}' src='${FLAGS[code]}'/>`; b.title=LANGS[code].name; b.onclick=()=>{ lang=code; setSphere('idle'); speak(LANGS[lang].greet(nameInput.value||'')); }; flags.appendChild(b); } }
+
+// ===== Centros UI =====
+function drawCenters(){ centerTabs.innerHTML=''; for(const key of Object.keys(CENTERS)){ const c=CENTERS[key]; const el=document.createElement('button'); el.className='tab'+(c.id===CENTER.id?' active':''); el.textContent=c.label; el.onclick=()=>{ if(c.id===CENTER.id) return; CENTER=c; localStorage.setItem('centerId',c.id); centerBadge.textContent='Centro '+c.label; loadData(); }; centerTabs.appendChild(el) } }
 
 // ===== Voz (salida) =====
 let VOICES=[]; function refreshVoices(){ try{ VOICES=speechSynthesis.getVoices() }catch{} } refreshVoices(); speechSynthesis.onvoiceschanged=refreshVoices;
@@ -236,16 +163,16 @@ function pickVoice(tag){ tag=tag.toLowerCase(); const pool=VOICES.filter(v=> (v.
 function speak(text){ try{ const u=new SpeechSynthesisUtterance(text); const v=pickVoice(LANGS[lang].tag)||pickVoice('es-ES'); if(v) u.voice=v; u.lang=(v&&v.lang)||LANGS[lang].tag; u.rate=1; u.pitch=1; u.volume=1; speechSynthesis.cancel(); speechSynthesis.speak(u); setSphere('speaking'); const ms=Math.min(9000, Math.max(1800, text.split(/\s+/).length*340)); setTimeout(()=>setSphere('idle'), ms);}catch(e){console.warn(e)} }
 
 // ===== Voz (entrada) =====
-let rec=null, listening=false, recStart=0, lastTranscriptTs=0; 
-function startListening(){ const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR){ voiceWarn.style.display='block'; voiceWarn.textContent='Este navegador no soporta reconocimiento de voz. En Android usa Chrome/Edge. En iOS no está soportado.'; return } if(!location.protocol.startsWith('https')){ voiceWarn.style.display='block'; voiceWarn.textContent='La voz requiere HTTPS.'; return } rec=new SR(); rec.lang=LANGS[lang].tag; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1; rec.onstart=()=>{ setSphere('listening'); voiceWarn.style.display='none'; lastTranscriptTs=Date.now(); voiceBox.style.display='grid' }; rec.onresult=(ev)=>{ let interim=''; let final=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ const r=ev.results[i]; if(r.isFinal) final += r[0].transcript + ' '; else interim += r[0].transcript; } const any=(final+interim).trim(); if(any){ lastTranscriptTs=Date.now(); q.value=(q.value? q.value+' ' : '') + any; doSearch(); } }; rec.onerror=(e)=>{ voiceWarn.style.display='block'; if(e.error==='not-allowed') voiceWarn.textContent='Permiso de micrófono denegado.'; else if(e.error==='no-speech') voiceWarn.textContent='No se detectó voz.'; else if(e.error==='audio-capture') voiceWarn.textContent='No hay micrófono.'; else voiceWarn.textContent='Error de voz: '+e.error; stopListening(); }; rec.onend=()=>{ if(!listening){ setSphere('idle'); return } const elapsed=Date.now()-recStart; if(Date.now()-lastTranscriptTs>6000 && elapsed<15000){ rec.start(); } else { listening=false; setSphere('idle'); } }; listening=true; recStart=Date.now(); rec.start(); }
+let rec=null, listening=false, recStart=0, lastTranscriptTs=0;
+function startListening(){ const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR){ voiceWarn.style.display='block'; voiceWarn.textContent='Este navegador no soporta reconocimiento de voz. En Android usa Chrome/Edge. En iOS no está soportado.'; return } if(!location.protocol.startsWith('https')){ voiceWarn.style.display='block'; voiceWarn.textContent='La voz requiere HTTPS.'; return } rec=new SR(); rec.lang=LANGS[lang].tag; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1; rec.onstart=()=>{ setSphere('listening'); voiceWarn.style.display='none'; lastTranscriptTs=Date.now(); voiceBox.style.display='grid' }; rec.onresult=(ev)=>{ let interim=''; let final=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ const r=ev.results[i]; if(r.isFinal) final += r[0].transcript + ' '; else interim += r[0].transcript; } const any=(final+interim).trim(); if(any){ lastTranscriptTs=Date.now(); q.value=(q.value? q.value+' ' : '') + any; } }; rec.onerror=(e)=>{ voiceWarn.style.display='block'; if(e.error==='not-allowed') voiceWarn.textContent='Permiso de micrófono denegado.'; else if(e.error==='no-speech') voiceWarn.textContent='No se detectó voz.'; else if(e.error==='audio-capture') voiceWarn.textContent='No hay micrófono.'; else voiceWarn.textContent='Error de voz: '+e.error; stopListening(); }; rec.onend=()=>{ if(!listening){ setSphere('idle'); return } const elapsed=Date.now()-recStart; if(Date.now()-lastTranscriptTs>6000 && elapsed<15000){ rec.start(); } else { listening=false; setSphere('idle'); } }; listening=true; recStart=Date.now(); rec.start(); }
 function stopListening(){ try{ listening=false; rec&&rec.stop() }catch{} }
 function setSphere(mode){ sphere.classList.remove('listening','speaking'); if(mode==='listening') sphere.classList.add('listening'); if(mode==='speaking') sphere.classList.add('speaking'); spLabel.textContent=LANGS[lang].sphere[mode]||'…'; statusEl.textContent=spLabel.textContent }
 
-// ===== Datos & Búsqueda =====
+// ===== Datos =====
 let ART=[], UBI=[], INDEX={}; let varSel=null; let capturingRef=false; let termRef=loadRef();
-function loadRef(){ try{ const x=parseFloat(localStorage.getItem('terminalRefX')); const y=parseFloat(localStorage.getItem('terminalRefY')); if(!isNaN(x)&&!isNaN(y)) return {x,y}; }catch{} return null }
-function saveRef(x,y){ try{ localStorage.setItem('terminalRefX', x); localStorage.setItem('terminalRefY', y); termRef={x,y}; renderRefPin(); }catch{} }
-function clearRef(){ try{ localStorage.removeItem('terminalRefX'); localStorage.removeItem('terminalRefY'); termRef=null; renderRefPin(); }catch{} }
+function loadRef(){ try{ const x=parseFloat(localStorage.getItem('terminalRefX_'+CENTER.id)); const y=parseFloat(localStorage.getItem('terminalRefY_'+CENTER.id)); if(!isNaN(x)&&!isNaN(y)) return {x,y}; }catch{} return null }
+function saveRef(x,y){ try{ localStorage.setItem('terminalRefX_'+CENTER.id, x); localStorage.setItem('terminalRefY_'+CENTER.id, y); termRef={x,y}; renderRefPin(); }catch{} }
+function clearRef(){ try{ localStorage.removeItem('terminalRefX_'+CENTER.id); localStorage.removeItem('terminalRefY_'+CENTER.id); termRef=null; renderRefPin(); }catch{} }
 function renderRefPin(){ if(termRef){ const p=imgPointToPixels(termRef.x, termRef.y); pinRef.style.left=p.x+'px'; pinRef.style.top=p.y+'px'; pinRef.style.display='block'; refInfo.textContent=`Ref: X=${termRef.x.toFixed(2)} Y=${termRef.y.toFixed(2)}` } else { pinRef.style.display='none'; refInfo.textContent='Sin referencia' } }
 
 function normalize(s){return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
@@ -256,43 +183,39 @@ function formatEUR(n){ const x=Number(n); if(!isFinite(x)) return ''; return x.t
 async function fetchText(url){ try{ const r=await fetch(url+`?v=${APP_VERSION}`,{cache:'no-store'}); if(!r.ok){ console.warn('No se pudo cargar',url,r.status); return null } return await r.text() }catch(e){ console.warn('Error fetch',url,e); return null } }
 function parseCSV(text){ const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim().length); const sep=(lines[0].match(/;/g)||[]).length>(lines[0].match(/,/g)||[]).length?';':','; const rows=[]; for(const line of lines){ rows.push(parseCSVLine(line,sep)) } const headers=rows.shift().map(h=>h.trim()); return rows.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').trim()); return o }) }
 function parseCSVLine(line,sep){ const out=[]; let cur=''; let inQ=false; for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else { inQ=!inQ } } else if(ch===sep && !inQ){ out.push(cur); cur='' } else { cur+=ch } } out.push(cur); return out }
-async function loadData(){ const a=await fetchText('Articulos.csv'); if(a){ ART=parseCSV(a) } else { statusEl.textContent='No se encontró Articulos.csv'; }
-  const u=await fetchText('Ubicaciones.csv'); if(u){ UBI=parseCSV(u) } mergeUbiWithLocal(); reindex(); try{ mapImg.src='plano-calvia.jpg?v='+APP_VERSION }catch{} statusEl.textContent = `Artículos: ${ART.length} · Ubicaciones: ${UBI.length}`; }
+
+async function loadData(){ statusEl.textContent='Cargando datos…'; try{ const a=await fetchText(CENTER.a) || await fetchText('Articulos.csv'); ART=a? parseCSV(a) : []; const u=await fetchText(CENTER.u) || await fetchText('Ubicaciones.csv'); UBI=u? parseCSV(u) : []; mergeUbiWithLocal(); await mergeUbiWithRemote(); reindex(); try{ mapImg.src=(CENTER.map||'plano-calvia.jpg')+'?v='+APP_VERSION }catch{} centerBadge.textContent='Centro '+CENTER.label; statusEl.textContent=`Artículos: ${ART.length} · Ubicaciones: ${UBI.length}`; termRef=loadRef(); renderRefPin(); }catch(e){ console.warn(e); statusEl.textContent='Error cargando datos' } }
 
 // ===== Persistencia ubicaciones =====
-function saveUbiLocal(){ try{ localStorage.setItem('UBI@Calvia', JSON.stringify(UBI)) }catch(e){ console.warn('No se pudo guardar UBI en localStorage',e) } }
-function mergeUbiWithLocal(){ try{ const raw=localStorage.getItem('UBI@Calvia'); if(!raw) return; const loc=JSON.parse(raw); if(!Array.isArray(loc)) return; const byKey=(r)=>`${(r.NumeroArticulo||'').toString().trim()}|${r.Centro||''}`; const map=new Map(loc.map(r=>[byKey(r),r])); for(const r of UBI){ map.set(byKey(r),r) } UBI=[...map.values()] }catch(e){ console.warn('No se pudo leer UBI local',e) } }
+function saveUbiLocal(){ try{ localStorage.setItem('UBI@'+CENTER.id, JSON.stringify(UBI)) }catch(e){ console.warn('No se pudo guardar UBI en localStorage',e) } }
+function mergeUbiWithLocal(){ try{ const raw=localStorage.getItem('UBI@'+CENTER.id); if(!raw) return; const loc=JSON.parse(raw); if(!Array.isArray(loc)) return; const byKey=r=>`${(r.NumeroArticulo||'').toString().trim()}|${CENTER.id}`; const map=new Map(loc.map(r=>[byKey(r),r])); for(const r of UBI){ map.set(byKey(r),r) } UBI=[...map.values()] }catch(e){ console.warn('No se pudo leer UBI local',e) } }
+async function mergeUbiWithRemote(){ if(!UBI_API) return; try{ const r=await fetch(UBI_API+`/all?center=${CENTER.id}`); if(!r.ok) return; const rem=await r.json(); if(!Array.isArray(rem)) return; const byKey=r=>`${(r.NumeroArticulo||'').toString().trim()}|${CENTER.id}`; const map=new Map(UBI.map(x=>[byKey(x),x])); for(const x of rem){ map.set(byKey(x),x) } UBI=[...map.values()] }catch(e){ console.warn('Remoto no disponible',e) } }
 
-function reindex(){ const only=UBI.filter(u=> (u.Centro===CENTER || u.Centro==='Calvia')); const map=new Map(); for(const u of only){ const k=(u.NumeroArticulo||'').toString().trim(); if(!map.has(k)) map.set(k,[]); map.get(k).push(u) } INDEX=Object.fromEntries(map) }
+function reindex(){ const only=UBI.filter(u=> (u.Centro===CENTER.label || u.Centro===CENTER.id || u.Centro==='Calvia' && CENTER.id==='calvia')); const map=new Map(); for(const u of only){ const k=(u.NumeroArticulo||'').toString().trim(); if(!map.has(k)) map.set(k,[]); map.get(k).push(u) } INDEX=Object.fromEntries(map) }
 function pickLocation(num){ const list=INDEX[(num||'').toString().trim()]; if(!list||!list.length) return null; return list.slice().sort((a,b)=>Number(b.Stock||0)-Number(a.Stock||0))[0] }
 
-// ===== Búsqueda =====
+// ===== Búsqueda (manual: botón/Enter) =====
 function search(qraw){ const raw=(qraw||'').trim(); const qn=expandSyn(raw); const words=normalize(qn).split(/\s+/).filter(Boolean);
   const eanMatch=(raw.match(/\d{8,14}/)||[])[0]||null; const exactEAN=eanMatch? ART.find(a=> (a.CodigoEAN||'').replace(/\D/g,'')===eanMatch) : null;
   const exactNum=ART.find(a=> (a.NumeroArticulo||'').toString().trim()===raw);
   const exactRef=ART.find(a=> (a.ReferenciaProveedor||'').toString().trim().toLowerCase()===raw.toLowerCase());
   const scored=[]; for(const a of ART){ const text=normalize(`${a.Descripcion} ${a.ReferenciaProveedor} ${a.CodigoEAN}`); let s=0; for(const w of words){ if(!w) continue; if(text.includes(w)) s+=2; if(text.startsWith(w)) s+=1 } if(eanMatch && (a.CodigoEAN||'').replace(/\D/g,'')===eanMatch) s+=200; if(raw && (a.NumeroArticulo||'').toString().trim()===raw) s+=80; if(raw && (a.ReferenciaProveedor||'').toString().toLowerCase()===raw.toLowerCase()) s+=60; if(s>0) scored.push({a,score:s}) }
-  scored.sort((x,y)=>y.score-x.score);
-  const list=scored.map(x=>x.a);
-  if(exactEAN && !list.includes(exactEAN)) list.unshift(exactEAN);
-  if(exactNum && !list.includes(exactNum)) list.unshift(exactNum);
-  if(exactRef && !list.includes(exactRef)) list.unshift(exactRef);
+  scored.sort((x,y)=>y.score-x.score); const list=scored.map(x=>x.a);
+  if(exactEAN && !list.includes(exactEAN)) list.unshift(exactEAN); if(exactNum && !list.includes(exactNum)) list.unshift(exactNum); if(exactRef && !list.includes(exactRef)) list.unshift(exactRef);
   return list.slice(0,100)
 }
 
 function renderResults(list){ resultsEl.innerHTML=''; resCount.textContent=list.length? `${list.length} resultados` : '0 resultados'; if(!list.length){ const d=document.createElement('div'); d.className='item'; d.innerHTML='<div>No se han encontrado artículos (revisa Articulos.csv). Por favor, solicite ayuda a un vendedor.</div>'; resultsEl.appendChild(d); return }
-  for(const a of list){ const fabricante=a.NombreProveedor||'—'; const precio=formatEUR(a.Precio||a.PVP||a.PrecioConIva||a.PrecioSinIva||''); const card=document.createElement('div'); card.className='item'; card.innerHTML=`<div><strong>${a.Descripcion||'Sin descripción'}</strong></div><div class='sub'>Ref: ${a.ReferenciaProveedor||'—'} · Nº: ${a.NumeroArticulo||'—'} · EAN: ${a.CodigoEAN||'—'} · Fabricante: ${fabricante} · ${precio||''}</div><div class='row'><button class='select btn-brand'>Seleccionar</button><button class='say'>Explicar</button><button class='expert' ${AI_URL?'':'style="display:none"'}>💡 Asesor</button></div>`; card.querySelector('.select').onclick=()=> selectArticle(a); card.querySelector('.say').onclick=()=> speak((a.Descripcion||'').toString()); const exp=card.querySelector('.expert'); if(exp) exp.onclick=()=> askExpert(a); resultsEl.appendChild(card) }
+  for(const a of list){ const fabricante=a.NombreProveedor||'—'; const precio=formatEUR(a.Precio||a.PVP||a.PrecioConIva||a.PrecioSinIva||''); const stockTxt = (a.Stock && a.Stock!==''? ` · Stock: ${a.Stock}`:''); const card=document.createElement('div'); card.className='item'; card.innerHTML=`<div><strong>${a.Descripcion||'Sin descripción'}</strong></div><div class='sub'>Ref: ${a.ReferenciaProveedor||'—'} · Nº: ${a.NumeroArticulo||'—'} · EAN: ${a.CodigoEAN||'—'} · Fabricante: ${fabricante} · ${precio||''}${stockTxt}</div><div class='row'><button class='select btn-brand'>Seleccionar</button><button class='say'>Explicar</button><button class='expert' ${AI_URL?'':'style="display:none"'}>💡 Asesor</button></div>`; card.querySelector('.select').onclick=()=> selectArticle(a); card.querySelector('.say').onclick=()=> speak((a.Descripcion||'').toString()); const exp=card.querySelector('.expert'); if(exp) exp.onclick=()=> askExpert(a); resultsEl.appendChild(card) }
 }
 
-// ===== Selección con locución y pregunta =====
 function selectionSpeech(a, stock){ const precio=formatEUR(a.Precio||a.PVP||a.PrecioConIva||a.PrecioSinIva||''); const name=a.Descripcion||'este artículo'; const have= (stock!=null && stock!=='' && isFinite(Number(stock))) ? Number(stock) : null; switch(lang){ case 'ca': return `Has seleccionat ${name}. El seu preu és ${precio}. ${have!=null?`Actualment disposem de ${have} unitats en estoc.`:'No tenc estoc registrat per aquest producte.'} ${LANGS[lang].ask}`; case 'en': return `You selected ${name}. Price is ${precio}. ${have!=null?`We currently have ${have} units in stock.`:'We have no stock recorded for this item.'} ${LANGS[lang].ask}`; case 'de': return `Sie haben ${name} gewählt. Preis ist ${precio}. ${have!=null?`Aktuell haben wir ${have} Stück auf Lager.`:'Kein Lagerbestand erfasst.'} ${LANGS[lang].ask}`; case 'pl': return `Wybrano ${name}. Cena to ${precio}. ${have!=null?`Aktualnie mamy ${have} sztuk na stanie.`:'Brak zarejestrowanego stanu.'} ${LANGS[lang].ask}`; case 'ru': return `Вы выбрали ${name}. Цена ${precio}. ${have!=null?`Сейчас в наличии ${have} шт.`:'Нет данных о наличии.'} ${LANGS[lang].ask}`; default: return `Ha seleccionado ${name}. Su precio es ${precio}. ${have!=null?`Actualmente disponemos de ${have} unidades en stock.`:'Actualmente no tengo stock registrado para este artículo.'} ${LANGS[lang].ask}`; } }
-function selectArticle(a){ varSel=a; const loc=pickLocation(a.NumeroArticulo); const stock=loc? (loc.Stock||0) : null; const txt=selectionSpeech(a, stock); speak(txt); const ms=Math.min(9000, Math.max(1800, txt.split(/\s+/).length*340)); setTimeout(()=>{ if(confirm(LANGS[lang].ask)) goMap(a); }, ms); }
+function selectArticle(a){ varSel=a; const loc=pickLocation(a.NumeroArticulo); const stock= (loc && (loc.Stock||loc.stock)) ?? a.Stock ?? ''; const txt=selectionSpeech(a, stock); speak(txt); const ms=Math.min(9000, Math.max(1800, txt.split(/\s+/).length*340)); setTimeout(()=>{ if(confirm(LANGS[lang].ask)) goMap(a); }, ms); }
 
 // ===== Mapa =====
 function getImageDrawMetrics(){ const rect=mapBox.getBoundingClientRect(); const cw=rect.width, ch=rect.height; const nw=mapImg.naturalWidth||cw, nh=mapImg.naturalHeight||ch; const scale=Math.min(cw/nw, ch/nh); const dw=nw*scale, dh=nh*scale; const leftOffset=(cw-dw)/2; const topOffset=(ch-dh)/2; return {rect,cw,ch,nw,nh,scale,dw,dh,leftOffset,topOffset} }
 function imgPointToPixels(x,y){ const m=getImageDrawMetrics(); return { x: m.leftOffset + x*m.dw, y: m.topOffset + y*m.dh } }
 function placePinFromXY(x,y){ const p=imgPointToPixels(x,y); pin.style.left=p.x+'px'; pin.style.top=p.y+'px'; pin.style.display='block' }
-
 function dirFromRef(x,y){ if(!termRef||x==null||y==null) return 'sigue recto'; const dx=x-termRef.x, dy=y-termRef.y; const partX = Math.abs(dx)>0.05? (dx>0? (lang==='es'?'hacia la derecha':lang==='ca'?'cap a la dreta':'to the right') : (lang==='es'?'hacia la izquierda':lang==='ca'?'cap a l\'esquerra':'to the left')) : '';
   const partY = Math.abs(dy)>0.05? (dy>0? (lang==='es'?'hacia el fondo':lang==='ca'?'cap al fons':'forward') : (lang==='es'?'hacia la entrada':lang==='ca'?'cap a l\'entrada':'back')) : '';
   return [partX,partY].filter(Boolean).join(' y ') || (lang==='es'?'sigue recto':'go straight') }
@@ -300,21 +223,24 @@ function dirFromRef(x,y){ if(!termRef||x==null||y==null) return 'sigue recto'; c
 function goMap(a){ varSel=a; showScreen('map'); const loc=pickLocation(a.NumeroArticulo); if(!loc){ speak('No tengo ubicación registrada. Puedes capturarla en modo administrador.'); routeEl.textContent=''; pin.style.display='none'; if(admin) adminPanel.style.display='block'; renderRefPin(); return }
   const x=parseNum(loc.X), y=parseNum(loc.Y); if(x==null||y==null){ pin.style.display='none' } else { placePinFromXY(x,y) }
   const ladoRaw=(loc.Lado && (loc.Lado.Value||loc.Lado)) || loc.Lado || '—'; const lado=LANGS[lang].side((ladoRaw||'').toString().substring(0,1).toUpperCase()); const dir=dirFromRef(x,y);
-  routeEl.textContent=LANGS[lang].guide(loc.Pasillo||'—', lado, loc.Estante||'—', loc.Balda||'—', dir);
-  speak(routeEl.textContent);
-  if(admin){ fPas.value=loc.Pasillo||''; fLado.value=lado; fEst.value=loc.Estante||''; fBal.value=loc.Balda||''; fX.value=(x??''); fY.value=(y??''); adminPanel.style.display='block' }
-  renderRefPin(); }
+  routeEl.textContent=LANGS[lang].guide(loc.Pasillo||'—', lado, loc.Estante||'—', loc.Balda||'—', dir); speak(routeEl.textContent);
+  if(admin){ fPas.value=loc.Pasillo||''; fLado.value=lado; fEst.value=loc.Estante||''; fBal.value=loc.Balda||''; fX.value=(x??''); fY.value=(y??''); fStock.value=(loc.Stock||''); adminPanel.style.display='block' } renderRefPin(); }
 
 mapBox.addEventListener('click',ev=>{ const m=getImageDrawMetrics(); const cx=ev.clientX - m.rect.left; const cy=ev.clientY - m.rect.top; const xNorm=(cx - m.leftOffset)/m.dw; const yNorm=(cy - m.topOffset)/m.dh; if(xNorm<0||yNorm<0||xNorm>1||yNorm>1) return; if(capturingRef){ saveRef(xNorm,yNorm); capturingRef=false; speak('Posición de referencia del terminal guardada'); return } if(!admin||!varSel) return; fX.value=xNorm.toFixed(2); fY.value=yNorm.toFixed(2); placePinFromXY(xNorm,yNorm); });
 setRefModeBtn.onclick=()=>{ if(!adminGranted){ const p=prompt('Contraseña de administrador:'); if(p!=='0666'){ alert('Contraseña incorrecta'); return } adminGranted=true; } capturingRef=true; speak('Toca el plano para fijar la posición del terminal') };
 clearRefBtn.onclick=()=>{ clearRef(); speak('Referencia eliminada') };
 
-saveLocBtn.onclick=()=>{ if(!varSel){ alert('Selecciona un artículo en resultados.'); return } const num=(varSel.NumeroArticulo||'').toString().trim(); const ladoLetter=(fLado.value||'').toString().toUpperCase().startsWith('D')? 'D':'I'; const rec={ NumeroArticulo:num, Centro:CENTER, Pasillo:fPas.value||'', Lado:ladoLetter, Estante:fEst.value||'', Balda:fBal.value||'', X:fX.value||'', Y:fY.value||'', Stock:(pickLocation(num)?.Stock||'') }; const idx=UBI.findIndex(u=> (u.NumeroArticulo||'').toString().trim()===num && (u.Centro===CENTER||u.Centro==='Calvia')); if(idx>=0) UBI[idx]=rec; else UBI.push(rec); reindex(); saveUbiLocal(); speak('Ubicación guardada.'); goMap(varSel) };
+// ===== Guardar/Eliminar ubicación (local + remoto opcional) =====
+saveLocBtn.onclick=async()=>{ if(!varSel){ alert('Selecciona un artículo en resultados.'); return } const num=(varSel.NumeroArticulo||'').toString().trim(); const ladoLetter=(fLado.value||'').toString().toUpperCase().startsWith('D')? 'D':'I'; const rec={ NumeroArticulo:num, Centro:CENTER.id, Pasillo:fPas.value||'', Lado:ladoLetter, Estante:fEst.value||'', Balda:fBal.value||'', X:fX.value||'', Y:fY.value||'', Stock:fStock.value||'' };
+  const idx=UBI.findIndex(u=> (u.NumeroArticulo||'').toString().trim()===num && (u.Centro===CENTER.id||u.Centro===CENTER.label)); if(idx>=0) UBI[idx]=rec; else UBI.push(rec); reindex(); saveUbiLocal(); speak('Ubicación guardada.');
+  if(UBI_API){ try{ await fetch(UBI_API+'/set',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({center:CENTER.id, rec})}); }catch(e){ console.warn('No se pudo guardar remoto',e) } }
+  goMap(varSel)
+};
 
-delLocBtn.onclick=()=>{ if(!varSel) return; const num=(varSel.NumeroArticulo||'').toString().trim(); const before=UBI.length; UBI=UBI.filter(u=> (u.NumeroArticulo||'').toString().trim()!==num || !(u.Centro===CENTER||u.Centro==='Calvia')); reindex(); saveUbiLocal(); if(UBI.length<before){ speak('Ubicación eliminada.'); routeEl.textContent=''; pin.style.display='none' } };
+delLocBtn.onclick=async()=>{ if(!varSel) return; const num=(varSel.NumeroArticulo||'').toString().trim(); const before=UBI.length; UBI=UBI.filter(u=> (u.NumeroArticulo||'').toString().trim()!==num || !(u.Centro===CENTER.id||u.Centro===CENTER.label)); reindex(); saveUbiLocal(); if(UBI.length<before){ speak('Ubicación eliminada.'); routeEl.textContent=''; pin.style.display='none' } if(UBI_API){ try{ await fetch(UBI_API+'/del',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({center:CENTER.id, numero:num})}); }catch(e){ console.warn('No se pudo borrar remoto',e) } } };
 
 // ===== Expert (GPT opcional) =====
-async function askExpert(a){ if(!AI_URL){ alert('Asesor no configurado'); return } try{ const ctx={ numero:a.NumeroArticulo, ref:a.ReferenciaProveedor, desc:a.Descripcion, ean:a.CodigoEAN, fabricante:a.NombreProveedor, precio:a.Precio }; const body={ q:q.value||a.Descripcion||'', lang, context:ctx }; const r=await fetch(AI_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const t=await r.text(); speak(t); alert(t); }catch(e){ alert('No se pudo contactar con el asesor'); }
+async function askExpert(a){ if(!AI_URL){ alert('Asesor no configurado'); return } try{ const ctx={ center:CENTER.id, numero:a.NumeroArticulo, ref:a.ReferenciaProveedor, desc:a.Descripcion, ean:a.CodigoEAN, fabricante:a.NombreProveedor, precio:a.Precio, stock:a.Stock }; const body={ q:q.value||a.Descripcion||'', lang, context:ctx }; const r=await fetch(AI_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const t=await r.text(); speak(t); alert(t); }catch(e){ alert('No se pudo contactar con el asesor'); }
 }
 
 // ===== Navegación =====
@@ -323,17 +249,14 @@ startBtn.onclick=()=>{ voiceBox.style.display='grid'; speak(LANGS[lang].greet(na
 micBtn.onclick=()=> startListening();
 goBtn.onclick=()=> doSearch();
 q.onkeydown=(e)=>{ if(e.key==='Enter') doSearch() };
-q.addEventListener('input',()=>{ if(q.value.trim().length>=3) doSearch() });
 askBtn.onclick=()=>{ if(resultsEl.firstChild){ const first=resultsEl.firstChild.querySelector('.expert'); if(first) first.click(); else alert('No hay resultados aún.') } else alert('Busca primero.'); };
-backHome.onclick=()=> showScreen('home');
-backResults.onclick=()=> showScreen('results');
-againBtn.onclick=()=>{ q.value=''; showScreen('home'); resultsEl.innerHTML=''; routeEl.textContent=''; pin.style.display='none' };
+backHome.onclick=()=> showScreen('home'); backResults.onclick=()=> showScreen('results'); againBtn.onclick=()=>{ q.value=''; showScreen('home'); resultsEl.innerHTML=''; routeEl.textContent=''; pin.style.display='none' };
 adminToggle.onclick=()=>{ if(!adminGranted){ const p=prompt('Contraseña de administrador:'); if(p!=='0666'){ alert('Contraseña incorrecta'); return } adminGranted=true; } admin=!admin; adminToggle.classList.toggle('btn-brand', admin); adminPanel.style.display= admin? 'block':'none'; if(admin && varSel) goMap(varSel) };
 
 function doSearch(){ stopListening(); setSphere('thinking'); const list=search(q.value||''); renderResults(list); showScreen('results'); setSphere('idle'); }
 
 // ===== Init =====
-(function init(){ initFlags(); loadData().then(()=>{ speak(LANGS[lang].greet(nameInput.value||'')); renderRefPin(); }); })();
+(function init(){ drawCenters(); initFlags(); loadData().then(()=>{ speak(LANGS[lang].greet(nameInput.value||'')); }); })();
 
 // ===== SW/cache limpieza =====
 if('serviceWorker' in navigator){ navigator.serviceWorker.getRegistrations().then(rs=>{ rs.forEach(r=>r.unregister()) }); if(window.caches){ caches.keys().then(keys=> keys.forEach(k=>/^asistente-duran-/.test(k)&&caches.delete(k))) } }
