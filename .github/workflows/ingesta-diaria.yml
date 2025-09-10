@@ -1,0 +1,62 @@
+name: Ingesta diaria ERP → Articulos por centro
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # cada hora; filtramos dentro a 08:00 Europe/Madrid
+  push:
+    paths:
+      - "imports/**"
+      - "data/almacenes_map.csv"
+      - "data/overrides/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Calcular hora Europe/Madrid (solo en schedule)
+        id: gate
+        if: github.event_name == 'schedule'
+        run: |
+          export TZ=Europe/Madrid
+          NOW=$(date +'%H:%M')
+          echo "Ahora (Europe/Madrid): $NOW"
+          if [ "$NOW" = "08:00" ]; then
+            echo "run=yes" >> $GITHUB_OUTPUT
+          else
+            echo "run=no" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout
+        if: github.event_name != 'schedule' || steps.gate.outputs.run == 'yes'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        if: github.event_name != 'schedule' || steps.gate.outputs.run == 'yes'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        if: github.event_name != 'schedule' || steps.gate.outputs.run == 'yes'
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas openpyxl chardet unidecode
+
+      - name: Run ingestion
+        if: github.event_name != 'schedule' || steps.gate.outputs.run == 'yes'
+        run: |
+          python tools/ingesta.py
+
+      - name: Create PR with changes
+        if: github.event_name != 'schedule' || steps.gate.outputs.run == 'yes'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: auto/ingesta-diaria
+          commit-message: "auto: ingesta diaria ERP (stock/precios/proveedores) respeta
