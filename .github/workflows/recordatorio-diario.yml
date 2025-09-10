@@ -1,0 +1,46 @@
+name: Recordatorio diario de actualización
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # cada hora; filtramos dentro a 07:30 Europe/Madrid
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Calcular hora Europe/Madrid
+        id: gate
+        run: |
+          export TZ=Europe/Madrid
+          NOW=$(date +'%H:%M')
+          echo "Ahora (Europe/Madrid): $NOW"
+          if [ "$NOW" = "07:30" ]; then
+            echo "run=yes" >> $GITHUB_OUTPUT
+          else
+            echo "run=no" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Enviar email (SMTP Office 365)
+        if: steps.gate.outputs.run == 'yes'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.office365.com
+          server_port: 587
+          secure: true
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "Recordatorio: sube los ficheros del ERP a /imports"
+          to: ${{ secrets.SMTP_TO }}
+          from: ${{ secrets.SMTP_FROM }}
+          content_type: text/html
+          html_body: |
+            <p>Buenos días,</p>
+            <p>Recuerda subir esta mañana a <code>/imports/</code> los ficheros:</p>
+            <ul>
+              <li><b>REP - Listado de articulos y stock por almacen.csv</b></li>
+              <li><b>lista todos articulo precios.xlsx</b> (usamos solo la <b>columna M</b>)</li>
+              <li><b>Lista proveedores_*.xlsx</b></li>
+            </ul>
+            <p>La ingesta automática correrá a las <b>08:00</b> (Europe/Madrid) y creará un PR con los cambios.</p>
+            <p>Gracias.</p>
