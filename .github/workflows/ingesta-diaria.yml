@@ -59,4 +59,20 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           branch: auto/ingesta-diaria
-          commit-message: "auto: ingesta diaria ERP (stock/precios/proveedores) respeta
+          commit-message: "auto: ingesta diaria ERP (stock/precios/proveedores) respetando EAN del repo"
+          title: "auto: ingesta diaria ERP por centro"
+          body: |
+            Este PR actualiza /<centro>/Articulos.csv con:
+            - Stock por centro (Código almacén → Centro, entero)
+            - Precio (columna M “1. Lista Precio de Ventas”)
+            - Nombre de proveedor (cruce proveedores)
+            - Manteniendo EAN preferente (overrides/CSV) y sin tocar Ubicaciones ni fotos
+            Revisa /reports/ingesta_*.md para incidencias.
+          labels: auto-ingesta
+          add-paths: |
+            calvia/Articulos.csv
+            coll/Articulos.csv
+            alcudia/Articulos.csv
+            santanyi/Articulos.csv
+            reports/
+          delete-branch: true
