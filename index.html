@@ -1346,8 +1346,7 @@ async function processMessage(message) {
     console.error('💥 Error in processMessage:', {
       name: error.name,
       message: error.message,
-      stack: error.stack,
-      cause: error.cause
+      stack: error.stack
     });
     
     // Handle different types of errors
