@@ -28,12 +28,12 @@ function filterRequestData(incomingData) {
     result.conversation_id = incomingData.chat_id;
   } else if (incomingData.session_id) {
     result.conversation_id = incomingData.session_id;
-  } else if (incomingData.timestamp) {
-    // Use timestamp as fallback conversation identifier
-    result.conversation_id = incomingData.timestamp;
   } else if (incomingData.center) {
-    // Use center as conversation context identifier
-    result.conversation_id = `${incomingData.center}_${Date.now()}`;
+    // Use center as stable conversation context identifier
+    result.conversation_id = `conv_${incomingData.center}_001`;
+  } else {
+    // Generate a simple numeric code as fallback
+    result.conversation_id = "12345";
   }
 
   return result;
@@ -46,7 +46,7 @@ const exampleInput = {
   language: "es", 
   center: "calvia",
   centerLabel: "Duran Calvià",
-  timestamp: "2025-09-11T13:40:40.657Z",
+  timestamp: "2025-01-11T13:40:40.657Z",
   articles: [...],
   locations: [...],
   articlesCount: 18290,
@@ -60,7 +60,7 @@ console.log(JSON.stringify(filteredData, null, 2));
 // Expected output:
 // {
 //   "message": "hola",
-//   "conversation_id": "2025-09-11T13:40:40.657Z"
+//   "conversation_id": "conv_calvia_001"
 // }
 
 // Export for N8N usage
