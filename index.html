@@ -223,6 +223,7 @@ html, body {
   gap: 1rem;
   max-width: 100%;
   animation: messageSlideIn 0.3s ease-out;
+  margin-bottom: 2rem;
 }
 
 .message.user {
@@ -253,18 +254,21 @@ html, body {
 }
 
 .message-content {
-  background: var(--message-ai);
-  padding: 1rem 1.5rem;
-  border-radius: var(--border-radius);
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
   max-width: 70%;
   word-wrap: break-word;
-  border: 1px solid var(--border-color);
+  border: none;
   position: relative;
+  color: var(--text-primary);
+  line-height: 1.6;
 }
 
 .message.user .message-content {
-  background: var(--message-user);
-  border-color: var(--accent-primary);
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
 }
 
 /* Welcome message */
