@@ -1255,7 +1255,8 @@ async function processMessage(message) {
       console.log('   2. Set it to "JSON" mode');
       console.log('   3. Configure it to return: {"message": "Your AI response here"}');
       console.log('   4. Make sure your workflow is active and saved');
-      throw new Error('Empty response from webhook - N8N may not be returning data');
+      addMessage('He recibido tu mensaje, pero la respuesta está vacía. ¿Podrías intentarlo de nuevo?', 'ai');
+      return;
     }
     
     console.log('📥 Parsing JSON response...');
@@ -1272,21 +1273,19 @@ async function processMessage(message) {
       console.log('   - First 200 chars:', responseText.substring(0, 200));
       console.log('   - Response type:', typeof responseText);
       console.log('🔧 Expected JSON format: {"message": "AI response text"}');
-      throw new Error(`Invalid JSON response from webhook: ${jsonError.message}`);
+      // If it's not JSON, treat the raw text as the message
+      addMessage(responseText || 'He recibido tu mensaje, pero hubo un problema con la respuesta.', 'ai');
+      return;
     }
     
     // Validate response structure
     if (!aiResponse || typeof aiResponse !== 'object') {
       console.error('❌ Invalid response structure - expected object, got:', typeof aiResponse);
-      throw new Error('Invalid response structure from N8N webhook');
+      addMessage('He recibido tu mensaje, pero hubo un problema con el formato de la respuesta.', 'ai');
+      return;
     }
 
     if (!aiResponse.message) {
-      console.error('❌ Missing "message" field in N8N response');
-      console.log('🔧 N8N must return JSON with at least: {"message": "response text"}');
-      throw new Error('Missing message field in N8N response');
-    }
-    
     // Extract AI message from response
     let aiMessage = '';
     let showResultsData = null;
@@ -1301,8 +1300,18 @@ async function processMessage(message) {
     } else if (aiResponse.text) {
       aiMessage = aiResponse.text;
       console.log('💬 Using aiResponse.text');
+    } else if (aiResponse.content) {
+      aiMessage = aiResponse.content;
+      console.log('💬 Using aiResponse.content');
+    } else if (aiResponse.reply) {
+      aiMessage = aiResponse.reply;
+      console.log('💬 Using aiResponse.reply');
+    } else if (typeof aiResponse === 'string') {
+      aiMessage = aiResponse;
+      console.log('💬 Using aiResponse as string');
     } else {
-      aiMessage = 'He recibido tu mensaje, pero hubo un problema con la respuesta. ¿Podrías intentarlo de nuevo?';
+      // If no recognizable message field, try to use the whole response as text
+      aiMessage = JSON.stringify(aiResponse);
       console.warn('⚠️ No message field found in response, using fallback');
     }
 
