@@ -857,6 +857,16 @@ const mapSection = document.getElementById('mapSection');
  * Initialize the application
  */
 function initializeApp() {
+  console.log('🚀 Initializing Duran AI Assistant...');
+  console.log('🔧 Configuration:', {
+    version: APP_VERSION,
+    webhookUrl: N8N_WEBHOOK_URL,
+    timeout: WEBHOOK_TIMEOUT / 1000 + 's',
+    currentTheme,
+    currentLanguage,
+    currentCenter: currentCenter.id
+  });
+  
   setupTheme();
   setupLanguageSelector();
   setupCenterSelector();
@@ -869,6 +879,8 @@ function initializeApp() {
   
   // Setup textarea auto-resize
   setupTextareaResize();
+  
+  console.log('✅ Application initialized successfully');
 }
 
 /**
