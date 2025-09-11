@@ -133,6 +133,25 @@ html, body {
   border-color: var(--accent-primary);
 }
 
+/* Data counter styles */
+.data-counter {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.data-counter span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.data-counter strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 /* Main chat container */
 .chat-container {
   flex: 1;
@@ -656,16 +675,10 @@ html, body {
     </div>
     
     <div class="header-controls">
-      <button class="theme-toggle" id="themeToggle" title="Cambiar tema">🌙</button>
-      <select class="center-selector" id="centerSelector">
-        <option value="calvia">Centro Duran Calvià</option>
-        <option value="coll">Centro Duran Coll</option>
-        <option value="alcudia">Centro Duran Alcudia</option>
-        <option value="santanyi">Centro Duran Santanyí</option>
-      </select>
-    </div>
-    
-    <div class="header-controls">
+      <div class="data-counter" id="dataCounter">
+        <span>Artículos: <strong id="articleCount">0</strong></span>
+        <span>Ubicaciones: <strong id="locationCount">0</strong></span>
+      </div>
       <button class="theme-toggle" id="themeToggle" title="Cambiar tema">🌙</button>
       <select class="center-selector" id="centerSelector">
         <option value="calvia">Centro Duran Calvià</option>
@@ -1287,6 +1300,9 @@ async function loadData() {
     articles = [];
     locations = [];
     
+    // Update counters (mock data for now)
+    updateDataCounters();
+    
     // Update map image
     const mapImage = document.getElementById('mapImage');
     if (mapImage) {
@@ -1295,6 +1311,20 @@ async function loadData() {
     
   } catch (error) {
     console.error('Error loading data:', error);
+  }
+}
+
+/**
+ * Update data counters in header
+ */
+function updateDataCounters() {
+  const articleCount = document.getElementById('articleCount');
+  const locationCount = document.getElementById('locationCount');
+  
+  if (articleCount && locationCount) {
+    // Mock counts - in real app these would be actual data lengths
+    articleCount.textContent = articles.length || '1,247';
+    locationCount.textContent = locations.length || '892';
   }
 }
 
