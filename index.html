@@ -767,6 +767,10 @@ html, body {
 // Application state and configuration
 const APP_VERSION = 'v6.0-' + Date.now();
 
+// N8N Webhook Configuration
+const N8N_WEBHOOK_URL = 'https://your-n8n-instance.com/webhook/duran-ai-chat'; // Replace with your actual N8N webhook URL
+const WEBHOOK_TIMEOUT = 30000; // 30 seconds timeout
+
 // Center configuration
 const CENTERS = {
   calvia: { id: 'calvia', label: 'Duran Calvià', a: 'calvia/Articulos.csv', u: 'calvia/ubicaciones.csv', map: 'calvia/plano-calvia.jpg' },
@@ -1118,37 +1122,109 @@ function removeTypingIndicator(typingElement) {
  * Process user message and generate response
  */
 async function processMessage(message) {
-  // Simulate processing delay
-  await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-  
-  // Simple message processing logic
-  const normalizedMessage = message.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  
-  if (normalizedMessage.includes('hola') || normalizedMessage.includes('hello') || normalizedMessage.includes('hi')) {
-    const greeting = getTimeBasedGreeting();
-    addMessage(`${greeting}! Soy tu asistente AI de Duran. ¿En qué puedo ayudarte hoy?`, 'ai');
-  } else if (normalizedMessage.includes('buscar') || normalizedMessage.includes('encontrar') || normalizedMessage.includes('producto')) {
-    const results = searchProducts(message);
-    if (results.length > 0) {
-      addMessage(`He encontrado ${results.length} productos que coinciden con tu búsqueda. Te muestro los resultados más relevantes.`, 'ai');
-      showResults(results);
-    } else {
-      addMessage(LANGUAGES[currentLanguage].messages.noResults, 'ai');
+  try {
+    // Prepare the payload to send to N8N
+    const payload = {
+      message: message,
+      language: currentLanguage,
+      center: currentCenter.id,
+      centerLabel: currentCenter.label,
+      timestamp: new Date().toISOString(),
+      articles: articles.slice(0, 100), // Send first 100 articles for context (avoid payload too large)
+      locations: locations.slice(0, 100), // Send first 100 locations for context
+      articlesCount: articles.length,
+      locationsCount: locations.length
+    };
+
+    // Create AbortController for timeout handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT);
+
+    // Send message to N8N webhook
+    const response = await fetch(N8N_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    // Clear timeout if request completes
+    clearTimeout(timeoutId);
+
+    // Check if response is ok
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-  } else if (normalizedMessage.includes('ubicacion') || normalizedMessage.includes('donde') || normalizedMessage.includes('location')) {
-    addMessage('Para mostrarte la ubicación exacta, necesito que primero busques un producto específico. ¿Qué producto estás buscando?', 'ai');
-  } else if (normalizedMessage.includes('precio') || normalizedMessage.includes('cuesta') || normalizedMessage.includes('price')) {
-    addMessage('Puedo ayudarte con información de precios. Por favor, especifica el producto del que quieres conocer el precio.', 'ai');
-  } else if (normalizedMessage.includes('stock') || normalizedMessage.includes('disponible') || normalizedMessage.includes('inventory')) {
-    addMessage(`Consultando el stock del centro ${currentCenter.label}. ¿Qué producto específico te interesa?`, 'ai');
-  } else {
-    // Default search behavior
-    const results = searchProducts(message);
-    if (results.length > 0) {
-      addMessage(`He encontrado ${results.length} productos relacionados con "${message}". Aquí tienes los resultados:`, 'ai');
-      showResults(results);
+
+    // Parse the response from N8N
+    const aiResponse = await response.json();
+    
+    // Extract AI message from response
+    let aiMessage = '';
+    let showResultsData = null;
+    let showLocationData = null;
+
+    if (aiResponse.message) {
+      aiMessage = aiResponse.message;
+    } else if (aiResponse.response) {
+      aiMessage = aiResponse.response;
+    } else if (aiResponse.text) {
+      aiMessage = aiResponse.text;
     } else {
-      addMessage(`No he encontrado productos específicos para "${message}". ¿Podrías ser más específico o probar con otros términos de búsqueda?`, 'ai');
+      aiMessage = 'He recibido tu mensaje, pero hubo un problema con la respuesta. ¿Podrías intentarlo de nuevo?';
+    }
+
+    // Check if AI wants to show search results
+    if (aiResponse.showResults && Array.isArray(aiResponse.results)) {
+      showResultsData = aiResponse.results;
+    }
+
+    // Check if AI wants to show location
+    if (aiResponse.showLocation && aiResponse.locationData) {
+      showLocationData = aiResponse.locationData;
+    }
+
+    // Add AI message to chat
+    addMessage(aiMessage, 'ai');
+
+    // Show results if provided
+    if (showResultsData) {
+      showResults(showResultsData);
+    }
+
+    // Show location if provided
+    if (showLocationData) {
+      showProductLocation(showLocationData);
+    }
+
+  } catch (error) {
+    console.error('Error communicating with N8N:', error);
+    
+    // Handle different types of errors
+    let errorMessage = '';
+    
+    if (error.name === 'AbortError') {
+      errorMessage = 'La consulta está tardando demasiado. Por favor, inténtalo de nuevo con una pregunta más específica.';
+    } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      errorMessage = 'No puedo conectar con el servidor de IA en este momento. Por favor, verifica tu conexión a internet e inténtalo de nuevo.';
+    } else if (error.message.includes('HTTP error')) {
+      errorMessage = 'El servidor de IA está experimentando problemas. Por favor, inténtalo de nuevo en unos momentos.';
+    } else {
+      errorMessage = LANGUAGES[currentLanguage].messages.error;
+    }
+    
+    addMessage(errorMessage, 'ai');
+    
+    // Fallback to local search if webhook fails
+    if (error.name !== 'AbortError') {
+      addMessage('Mientras tanto, puedo intentar una búsqueda local...', 'ai');
+      const results = searchProducts(message);
+      if (results.length > 0) {
+        showResults(results);
+      }
     }
   }
 }
@@ -1169,34 +1245,53 @@ function getTimeBasedGreeting() {
  * Search products (simplified version)
  */
 function searchProducts(query) {
-  // This is a simplified search - in the real app this would use the actual search logic
-  const mockResults = [
-    {
-      id: '12345',
-      name: 'Manguito PE 32mm',
-      reference: 'PE-32-001',
-      price: '€2.50',
-      stock: 15,
-      location: 'Pasillo 3, Estante A, Balda 2'
-    },
-    {
-      id: '12346', 
-      name: 'Manguito PE 25mm',
-      reference: 'PE-25-001',
-      price: '€2.10',
-      stock: 8,
-      location: 'Pasillo 3, Estante A, Balda 1'
-    }
-  ];
-  
-  // Simple keyword matching
+  if (!articles || articles.length === 0) {
+    return [];
+  }
+
+  // Normalize query for better matching
+  const normalizedQuery = query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const keywords = query.toLowerCase().split(' ');
-  return mockResults.filter(product => 
-    keywords.some(keyword => 
-      product.name.toLowerCase().includes(keyword) ||
-      product.reference.toLowerCase().includes(keyword)
-    )
-  );
+  
+  // Search in actual articles data
+  const results = articles.filter(article => {
+    if (!article.Descripcion && !article.ReferenciaProveedor && !article.NumeroArticulo) {
+      return false;
+    }
+    
+    const description = (article.Descripcion || '').toLowerCase();
+    const reference = (article.ReferenciaProveedor || '').toLowerCase();
+    const articleNumber = (article.NumeroArticulo || '').toString().toLowerCase();
+    const ean = (article.CodigoEAN || '').toLowerCase();
+    
+    return keywords.some(keyword => 
+      description.includes(keyword) ||
+      reference.includes(keyword) ||
+      articleNumber.includes(keyword) ||
+      ean.includes(keyword)
+    );
+  }).slice(0, 10); // Limit to 10 results
+  
+  // Transform to expected format
+  return results.map(article => {
+    // Find location for this article
+    const location = locations.find(loc => loc.NumeroArticulo === article.NumeroArticulo);
+    const locationText = location ? 
+      `Pasillo ${location.Pasillo}, Lado ${location.Lado}, Estante ${location.Estante}, Balda ${location.Balda}` :
+      'Ubicación no disponible';
+    
+    return {
+      id: article.NumeroArticulo,
+      name: article.Descripcion || 'Sin descripción',
+      reference: article.ReferenciaProveedor || 'Sin referencia',
+      price: article.Precio ? `€${article.Precio}` : 'Precio no disponible',
+      stock: article.Stock || 0,
+      location: locationText,
+      ean: article.CodigoEAN || '',
+      provider: article.NombreProveedor || '',
+      coordinates: location ? { x: location.X, y: location.Y } : null
+    };
+  });
 }
 
 /**
