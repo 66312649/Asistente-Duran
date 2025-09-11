@@ -14,9 +14,9 @@
   --text-primary: #ffffff;
   --text-secondary: #b4b4b4;
   --text-muted: #6b7280;
-  --accent-primary: #10a37f;
-  --accent-secondary: #1a7f64;
-  --accent-tertiary: #0d8a6b;
+  --accent-primary: #333333;
+  --accent-secondary: #444444;
+  --accent-tertiary: #555555;
   --border-color: #2d2d2d;
   --message-user: #2f2f2f;
   --message-ai: #1e1e1e;
@@ -34,9 +34,9 @@
   --text-primary: #2d2d2d;
   --text-secondary: #4a4a4a;
   --text-muted: #6b7280;
-  --accent-primary: #10a37f;
-  --accent-secondary: #1a7f64;
-  --accent-tertiary: #0d8a6b;
+  --accent-primary: #333333;
+  --accent-secondary: #444444;
+  --accent-tertiary: #555555;
   --border-color: #e5e5e5;
   --message-user: #f0f0f0;
   --message-ai: #ffffff;
@@ -92,27 +92,7 @@ html, body {
 .logo {
   height: 40px;
   width: auto;
-  filter: drop-shadow(0 2px 8px rgba(16, 163, 127, 0.3));
-}
-
-.ai-branding {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Animated AI text with wave effects */
-.ai-text {
-  font-size: 1.5rem;
-  font-weight: 700;
-  background: linear-gradient(45deg, var(--accent-primary), var(--accent-secondary), var(--accent-tertiary));
-  background-size: 200% 200%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: gradientShift 3s ease-in-out infinite;
-  position: relative;
+  filter: drop-shadow(0 2px 8px rgba(51, 51, 51, 0.3));
 }
 
 /* Header controls */
@@ -309,7 +289,7 @@ html, body {
 
 /* Input area */
 .input-area {
-  padding: 1.5rem 2rem 2rem;
+  padding: 0.75rem 2rem 1rem;
   background: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
   position: sticky;
@@ -329,13 +309,13 @@ html, body {
   background: var(--bg-tertiary);
   border: 2px solid var(--border-color);
   border-radius: var(--border-radius);
-  padding: 1rem;
+  padding: 0.5rem;
   transition: var(--transition);
 }
 
 .input-wrapper:focus-within {
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
+  box-shadow: 0 0 0 3px rgba(51, 51, 51, 0.1);
 }
 
 .message-input {
@@ -348,7 +328,7 @@ html, body {
   line-height: 1.5;
   resize: none;
   min-height: 24px;
-  max-height: 120px;
+  max-height: 80px;
   font-family: inherit;
 }
 
@@ -366,7 +346,7 @@ html, body {
   background: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
-  padding: 0.75rem;
+  padding: 0.5rem;
   border-radius: 8px;
   cursor: pointer;
   transition: var(--transition);
@@ -403,12 +383,12 @@ html, body {
 /* Voice recording indicator */
 .voice-indicator {
   position: absolute;
-  top: -60px;
+  top: -50px;
   left: 50%;
   transform: translateX(-50%);
   background: var(--accent-primary);
   color: white;
-  padding: 0.75rem 1.5rem;
+  padding: 0.5rem 1rem;
   border-radius: 25px;
   font-size: 0.9rem;
   opacity: 0;
@@ -537,11 +517,6 @@ html, body {
 }
 
 /* Animations */
-@keyframes gradientShift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-
 @keyframes messageSlideIn {
   from {
     opacity: 0;
@@ -594,7 +569,7 @@ html, body {
   }
   
   .input-area {
-    padding: 1rem;
+    padding: 0.5rem;
   }
   
   .welcome-message {
@@ -616,15 +591,6 @@ html, body {
 }
 
 @media (max-width: 480px) {
-  .ai-text {
-    font-size: 1.2rem;
-  }
-  
-  .ai-waves {
-    width: 60px;
-    height: 60px;
-  }
-  
   .message {
     gap: 0.5rem;
   }
@@ -641,7 +607,7 @@ html, body {
   }
   
   .input-wrapper {
-    padding: 0.75rem;
+    padding: 0.5rem;
   }
   
   .control-btn {
@@ -687,9 +653,6 @@ html, body {
   <header class="header">
     <div class="header-left">
       <img src="logo-duran.png" alt="DURAN" class="logo"/>
-      <div class="ai-branding">
-        <div class="ai-text">AI</div>
-      </div>
     </div>
     
     <div class="header-controls">
