@@ -7,7 +7,8 @@
 <link rel="icon" href="logo-duran.png"/>
 <style>
 :root{ --bg:#0b1324; --bg2:#0e1a35; --ink:#e6efff; --mut:#a9b7e6; --glass:rgba(255,255,255,.06); --line:rgba(255,255,255,.12); --brand:#57a3ff; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; }
-*{box-sizing:border-box} html,body{height:100%} body{margin:0;background:radial-gradient(1100px 600px at 50% -10%, #1a3a78 0%, #0e1a35 50%, #091326 100%);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial;color:var(--ink)}
+*{box-sizing:border-box} html,body{height:100%}
+body{margin:0;background:radial-gradient(1100px 600px at 50% -10%, #243b82 0%, #2b1e66 45%, #0f1430 100%);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial;color:var(--ink)}
 .app{min-height:100vh;display:grid;grid-template-rows:auto 1fr}
 @supports (height:100dvh){.app{min-height:100dvh}}
 header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg, rgba(5,10,20,.9), rgba(5,10,20,.65));backdrop-filter:blur(8px);display:grid;grid-template-columns:1fr minmax(280px,740px) 1fr;gap:12px;align-items:center;padding:clamp(10px,2vmin,16px)}
@@ -29,11 +30,11 @@ button.ghost{background:transparent;border-color:transparent;color:var(--mut)}
 .flag{width:clamp(40px,6vmin,56px);height:clamp(28px,4.8vmin,44px);border-radius:10px;border:1px solid var(--line);overflow:hidden;display:inline-flex;align-items:center;justify-content:center;background:#222}
 .flag img{display:block;width:100%;height:100%;object-fit:cover}
 input[type="text"],input[type="number"]{width:100%;padding:.8em 1em;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.2);color:var(--ink);outline:none;min-width:12ch;font:inherit}
-.sphere{width:clamp(120px,18vmin,200px);height:clamp(120px,18vmin,200px);border-radius:50%;margin:auto;border:1px solid rgba(255,255,255,.25);box-shadow:0 0 40px rgba(80,180,255,.28);position:relative;overflow:hidden}
-.sphere .g{position:absolute;inset:0;background:conic-gradient(from 0deg at 50% 50%, #60a5fa, #a78bfa, #f472b6, #60a5fa);filter:blur(16px);opacity:.85}
-.sphere.listening .g{animation:rot 8s linear infinite} @keyframes rot{to{transform:rotate(360deg)}}
-.sphere .ring{position:absolute;left:50%;top:50%;width:60%;height:60%;transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(255,255,255,.45);opacity:.5}
-.sphere.listening .ring{animation:pulse 2s ease-in-out infinite} @keyframes pulse{0%{transform:translate(-50%,-50%) scale(1);opacity:.6}50%{transform:translate(-50%,-50%) scale(1.5);opacity:.1}100%{transform:translate(-50%,-50%) scale(1);opacity:.6}}
+.sphere{width:clamp(120px,18vmin,200px);height:clamp(120px,18vmin,200px);border-radius:50%;margin:auto;border:1px solid rgba(255,255,255,.25);box-shadow:0 0 40px rgba(80,180,255,.5);position:relative;overflow:hidden}
+.sphere .g{position:absolute;inset:0;background:conic-gradient(from 0deg at 50% 50%, #1ea0ff, #6b99ff, #b58aff, #1ea0ff);filter:blur(12px);opacity:.95}
+.sphere.listening .g{animation:rot 6s linear infinite} @keyframes rot{to{transform:rotate(360deg)}}
+.sphere .ring{position:absolute;left:50%;top:50%;width:64%;height:64%;transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(255,255,255,.55);opacity:.6}
+.sphere.listening .ring{animation:pulse 1.8s ease-in-out infinite} @keyframes pulse{0%{transform:translate(-50%,-50%) scale(1);opacity:.7}50%{transform:translate(-50%,-50%) scale(1.35);opacity:.15}100%{transform:translate(-50%,-50%) scale(1);opacity:.7}}
 .list{display:grid;gap:10px;max-height:60svh;overflow:auto}
 .item{display:grid;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.04);padding:12px;border-radius:14px}
 .sub{color:var(--mut);font-size:12px}
@@ -46,6 +47,8 @@ input[type="text"],input[type="number"]{width:100%;padding:.8em 1em;border-radiu
 .bad{color:#ffcd6b} footer{padding:8px 16px;color:var(--mut);font-size:12px}
 hr{border:0;border-top:1px solid var(--line)}
 .note{border:1px dashed var(--line);padding:10px;border-radius:10px;color:var(--mut)}
+#diag{display:none;position:fixed;right:12px;top:66px;z-index:50;max-width:min(92vw,560px);background:rgba(12,22,46,.95);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:14px;padding:12px}
+#diag pre{white-space:pre-wrap;word-break:break-word;font-size:12px;color:#cbe0ff;background:rgba(255,255,255,.03);border:1px solid var(--line);padding:8px;border-radius:8px;max-height:40vh;overflow:auto}
 </style>
 </head>
 <body>
@@ -53,10 +56,13 @@ hr{border:0;border-top:1px solid var(--line)}
   <header>
     <div class="header-left"><img src="logo-duran.png" alt="DURAN"/><div class="badge small" id="centerBadge">Centro Duran Calvià</div></div>
     <div class="centerTabs" id="centerTabs"></div>
-    <div class="rightBox"><span class="small" id="status">Listo</span><button id="adminToggle" class="ghost" title="Admin">⚙️ Admin</button></div>
+    <div class="rightBox">
+      <span class="small" id="status">Listo</span>
+      <button id="diagBtn" class="ghost" title="Diagnóstico">ℹ️</button>
+      <button id="adminToggle" class="ghost" title="Admin">⚙️ Admin</button>
+    </div>
   </header>
 
-  <!-- HOME -->
   <section id="scrHome" class="screen active">
     <div class="grid">
       <div class="small">Selecciona idioma</div>
@@ -76,13 +82,11 @@ hr{border:0;border-top:1px solid var(--line)}
     <div class="small bad" id="voiceWarn" style="display:none"></div>
   </section>
 
-  <!-- RESULTADOS -->
   <section id="scrResults" class="screen">
     <div class="row" style="justify-content:space-between"><button id="backHome" class="ghost">← Inicio</button><div class="small" id="resCount"></div></div>
     <div id="results" class="list"></div>
   </section>
 
-  <!-- MAPA + ADMIN -->
   <section id="scrMap" class="screen">
     <div class="row" style="justify-content:space-between"><button id="backResults" class="ghost">← Resultados</button><button id="again" class="ghost">↩︎ Nueva búsqueda</button></div>
     <div class="mapWrap" id="mapBox">
@@ -122,10 +126,20 @@ hr{border:0;border-top:1px solid var(--line)}
   <footer>Voz gratis (Web Speech). © DURAN</footer>
 </div>
 
-<script>
-const APP_VERSION='v5.11-'+Date.now();
+<!-- Panel diagnóstico -->
+<div id="diag" class="panel">
+  <div class="row" style="justify-content:space-between;align-items:center">
+    <strong>Diagnóstico de carga</strong>
+    <button id="diagClose" class="ghost">✖</button>
+  </div>
+  <div class="small">Muestra las rutas intentadas y la que se ha usado para cargar datos.</div>
+  <pre id="diagLog">Cargando…</pre>
+</div>
 
-// Centros (u -> ubicaciones.csv en minúscula)
+<script>
+const APP_VERSION='v5.12-'+Date.now();
+
+// === Centros: UBI en minúscula (y tolerancia en loader)
 const CENTERS={
   calvia:{id:'calvia',label:'Duran Calvià',a:'calvia/Articulos.csv',u:'calvia/ubicaciones.csv',map:'calvia/plano-calvia.jpg'},
   coll:{id:'coll',label:'Duran Coll',a:'coll/Articulos.csv',u:'coll/ubicaciones.csv',map:'coll/plano-coll.jpg'},
@@ -134,11 +148,11 @@ const CENTERS={
 };
 let CENTER=CENTERS[localStorage.getItem('centerId')||'calvia'];
 
-// Idiomas y banderas (igual que versiones previas)
+// === Idiomas mínimos
 const LANGS={ es:{name:"Español",tag:"es-ES",sphere:{idle:"Listo",listening:"Escuchando…",thinking:"Pensando…",speaking:"Hablando…"}, greet:(n)=>{const h=new Date().getHours(); const hola=(h>=14?"Buenas tardes":"Buenos días"); return `${hola}${n?`, ${n}`:''}. ¿En qué puedo ayudarte?`} }, ca:{name:"Mallorquí",tag:"ca-ES",sphere:{idle:"A punt",listening:"Escoltant…",thinking:"Pensant…",speaking:"Parlant…"}, greet:(n)=>{const h=new Date().getHours(); const hola=(h>=14?"Bona tarda":"Bon dia"); return `${hola}${n?`, ${n}`:''}. En què et puc ajudar?`} }, en:{name:"English",tag:"en-GB",sphere:{idle:"Ready",listening:"Listening…",thinking:"Thinking…",speaking:"Speaking…"}, greet:(n)=>{const h=new Date().getHours(); const hello=(h>=14?"Good afternoon":"Good morning"); return `${hello}${n?`, ${n}`:''}. How can I help you?`} } };
 let lang='es', admin=false, adminGranted=false;
 
-// DOM refs
+// === DOM
 const statusEl=document.getElementById('status'); const centerBadge=document.getElementById('centerBadge'); const centerTabs=document.getElementById('centerTabs');
 const scrHome=document.getElementById('scrHome'); const scrResults=document.getElementById('scrResults'); const scrMap=document.getElementById('scrMap');
 const backHome=document.getElementById('backHome'); const backResults=document.getElementById('backResults'); const againBtn=document.getElementById('again');
@@ -150,15 +164,16 @@ const resultsEl=document.getElementById('results'); const resCount=document.getE
 const mapImg=document.getElementById('mapImg'); const mapBox=document.getElementById('mapBox'); const mapNote=document.getElementById('mapNote');
 const pin=document.getElementById('pin'); const pinRef=document.getElementById('pinRef'); const routeEl=document.getElementById('route');
 const fPas=document.getElementById('fPasillo'); const fLado=document.getElementById('fLado'); const fEst=document.getElementById('fEst'); const fBal=document.getElementById('fBal'); const fX=document.getElementById('fX'); const fY=document.getElementById('fY'); const fStock=document.getElementById('fStock');
-const saveLocBtn=document.getElementById('saveLoc'); const delLocBtn=document.getElementById('delLoc'); const setRefModeBtn=document.getElementById('setRefMode'); const clearRefBtn=document.getElementById('clearRef'); const refInfo=document.getElementById('refInfo');
+const saveLocBtn=document.getElementById('saveLoc'); const delLocBtn=document.getElementById('delLoc'); const refInfo=document.getElementById('refInfo');
 const admEAN=document.getElementById('admEAN'); const admNum=document.getElementById('admNum'); const admText=document.getElementById('admText'); const admFind=document.getElementById('admFind'); const admAssign=document.getElementById('admAssign'); const admExport=document.getElementById('admExport'); const admInfo=document.getElementById('admInfo');
+const diagBtn=document.getElementById('diagBtn'); const diag=document.getElementById('diag'); const diagClose=document.getElementById('diagClose'); const diagLog=document.getElementById('diagLog');
 
-// Banderas mínimas
+// === Flags básicas
 function b64(svg){ return 'data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svg))) }
 const FLAGS={ es:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='48' fill='#aa151b'/><rect y='16' width='80' height='16' fill='#f1bf00'/></svg>`), ca:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='48' fill='#f7d117'/><g fill='#d40000'><rect y='4' width='80' height='6'/><rect y='14' width='80' height='6'/><rect y='24' width='80' height='6'/><rect y='34' width='80' height='6'/></g></svg>`), en:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='48' fill='#00247d'/><path d='M0,0 80,48 M80,0 0,48' stroke='#fff' stroke-width='10'/><path d='M0,0 80,48 M80,0 0,48' stroke='#cf142b' stroke-width='6'/><rect x='34' width='12' height='48' fill='#fff'/><rect y='18' width='80' height='12' fill='#fff'/><rect x='36' width='8' height='48' fill='#cf142b'/><rect y='20' width='80' height='8' fill='#cf142b'/></svg>`) };
 function initFlags(){ flags.innerHTML=''; for(const code of Object.keys(LANGS)){ const b=document.createElement('button'); b.className='flag'; b.innerHTML=`<img alt='${code}' src='${FLAGS[code]}'/>`; b.title=LANGS[code].name; b.onclick=()=>{ lang=code; setSphere('idle'); speak(LANGS[lang].greet(nameInput.value||'')); }; flags.appendChild(b); } }
 
-// Voz
+// === Voz
 let VOICES=[]; function refreshVoices(){ try{ VOICES=speechSynthesis.getVoices() }catch{} } refreshVoices(); speechSynthesis.onvoiceschanged=refreshVoices;
 function pickVoice(tag){ tag=tag.toLowerCase(); const pool=VOICES.filter(v=> (v.lang||'').toLowerCase().startsWith(tag.slice(0,2)) || (v.lang||'').toLowerCase()===tag ); const score=v=>{ let s=0; const n=(v.name||'').toLowerCase(); if((v.lang||'').toLowerCase().startsWith(tag)) s+=5; if(n.includes('google')||n.includes('microsoft')) s+=3; if(n.includes('natural')||n.includes('neural')) s+=2; return s }; return pool.sort((a,b)=>score(b)-score(a))[0]||pool[0]||null }
 function speak(text){ try{ const u=new SpeechSynthesisUtterance(text); const v=pickVoice(LANGS[lang].tag)||pickVoice('es-ES'); if(v) u.voice=v; u.lang=(v&&v.lang)||LANGS[lang].tag; u.rate=1; u.pitch=1; u.volume=1; speechSynthesis.cancel(); speechSynthesis.speak(u); setSphere('speaking'); const ms=Math.min(9000, Math.max(1800, text.split(/\s+/).length*340)); setTimeout(()=>setSphere('idle'), ms);}catch(e){console.warn(e)} }
@@ -167,48 +182,60 @@ function startListening(){ const SR=window.SpeechRecognition||window.webkitSpeec
 function stopListening(){ try{ listening=false; rec&&rec.stop() }catch{} }
 function setSphere(mode){ sphere.classList.remove('listening','speaking'); if(mode==='listening') sphere.classList.add('listening'); if(mode==='speaking') sphere.classList.add('speaking'); spLabel.textContent=(LANGS[lang].sphere[mode]||'…'); statusEl.textContent=spLabel.textContent }
 
-// Utils
+// === Utils / fetch
 function normalize(s){return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
 function parseNum(v){ if(v==null) return null; if(typeof v==='number') return v; const s=String(v).trim().replace(',','.'); const n=Number(s); return isFinite(n)? n : null }
 function formatEUR(n){ const x=Number(n); if(!isFinite(x)) return ''; return x.toLocaleString('es-ES',{style:'currency',currency:'EUR'})+ ' + IVA' }
 
 async function fetchText(url){ try{ const r=await fetch(url,{cache:'no-store'}); if(!r.ok){ return null } return await r.text() }catch(e){ return null } }
 function withCacheBuster(url){ return url + (url.includes('?')?'&':'?') + 'v=' + APP_VERSION }
-async function fetchAny(paths){ for(const p of paths){ const t=await fetchText(p); if(t!=null) return t } return null }
+async function fetchAny(paths, logArr){ for(const p of paths){ logArr && logArr.push('• intento: '+p); const t=await fetchText(p); if(t!=null){ logArr && logArr.push('  ✔️ cargado: '+p); return {text:t, used:p} } } logArr && logArr.push('  ❌ ninguno cargado'); return {text:null, used:null} }
 
-function parseCSV(text){ const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim().length); if(!lines.length) return []; const sep=(lines[0].match(/;/g)||[]).length>(lines[0].match(/,/g)||[]).length?';':','; const rows=[]; for(const line of lines){ rows.push(parseCSVLine(line,sep)) } const headers=rows.shift().map(h=>h.trim()); return rows.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').trim()); return o }) }
+// === CSV
+function parseCSV(text){ const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim().length); if(!lines.length) return []; const sep=(lines[0].match(/;/g)||[]).length>(lines[0].match(/,/g)||[]).length?';':','; const rows=[]; for(const line of lines){ rows.push(parseCSVLine(line,sep)) } const headers=rows.shift().map(h=>h.trim()); if(!headers.length){ return [] } return rows.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').trim()); return o }) }
 function parseCSVLine(line,sep){ const out=[]; let cur=''; let inQ=false; for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch=='"'){ if(inQ && line[i+1]=='"'){ cur+='"'; i++; } else { inQ=!inQ } } else if(ch===sep && !inQ){ out.push(cur); cur='' } else { cur+=ch } } out.push(cur); return out }
 
-let ART=[], UBI=[], INDEX={}; let varSel=null; let capturingRef=false; let termRef=loadRef();
-
+// === Estado
+let ART=[], UBI=[], INDEX={}; let varSel=null; let termRef=loadRef();
 function loadRef(){ try{ const x=parseFloat(localStorage.getItem('terminalRefX_'+CENTER.id)); const y=parseFloat(localStorage.getItem('terminalRefY_'+CENTER.id)); if(!isNaN(x)&&!isNaN(y)) return {x,y}; }catch{} return null }
 function saveRef(x,y){ try{ localStorage.setItem('terminalRefX_'+CENTER.id, x); localStorage.setItem('terminalRefY_'+CENTER.id, y); termRef={x,y}; renderRefPin(); }catch{} }
 function clearRef(){ try{ localStorage.removeItem('terminalRefX_'+CENTER.id); localStorage.removeItem('terminalRefY_'+CENTER.id); termRef=null; renderRefPin(); }catch{} }
 function renderRefPin(){ if(termRef){ const p=imgPointToPixels(termRef.x, termRef.y); pinRef.style.left=p.x+'px'; pinRef.style.top=p.y+'px'; pinRef.style.display='block'; refInfo.textContent=`Ref: X=${termRef.x.toFixed(2)} Y=${termRef.y.toFixed(2)}` } else { pinRef.style.display='none'; refInfo.textContent='Sin referencia' } }
 
-// Merge ubicaciones locales
+// === Mezcla ubicaciones locales
 function saveUbiLocal(){ try{ localStorage.setItem('UBI@'+CENTER.id, JSON.stringify(UBI)) }catch(e){} }
 function mergeUbiWithLocal(){ try{ const raw=localStorage.getItem('UBI@'+CENTER.id); if(!raw) return; const loc=JSON.parse(raw); if(!Array.isArray(loc)) return; const byKey=r=>`${(r.NumeroArticulo||'').toString().trim()}|${CENTER.id}`; const map=new Map(loc.map(r=>[byKey(r),r])); for(const r of UBI){ map.set(byKey(r),r) } UBI=[...map.values()] }catch(e){} }
 function reindex(){ const only=UBI.filter(u=> (u.Centro===CENTER.label || u.Centro===CENTER.id)); const map=new Map(); for(const u of only){ const k=(u.NumeroArticulo||'').toString().trim(); if(!map.has(k)) map.set(k,[]); map.get(k).push(u) } INDEX=Object.fromEntries(map) }
 function pickLocation(num){ const list=INDEX[(num||'').toString().trim()]; if(!list||!list.length) return null; return list.slice().sort((a,b)=>Number(b.Stock||0)-Number(a.Stock||0))[0] }
 
-// === CARGA DE DATOS ROBUSTA ===
+// === Loader robusto con diagnóstico
 async function loadData(){
+  const log=[];
   statusEl.textContent='Cargando datos…';
   mapNote.style.display='none';
   try{
-    // Artículos: centro → raíz
-    const aText = await fetchAny([withCacheBuster(CENTER.a), withCacheBuster('Articulos.csv')]);
-    ART = aText ? parseCSV(aText) : [];
-
-    // Ubicaciones: minúscula → mayúscula → raíz
-    const uText = await fetchAny([
-      withCacheBuster(CENTER.u),
-      withCacheBuster(CENTER.u.replace('/ubicaciones.', '/Ubicaciones.')),
+    const artCandidates=[
+      withCacheBuster(CENTER.a),
+      withCacheBuster('Articulos.csv') // fallback raíz
+    ];
+    const ubiCandidates=[
+      withCacheBuster(CENTER.u), // minúscula
+      withCacheBuster(CENTER.u.replace('/ubicaciones.','/Ubicaciones.')), // mayúscula
       withCacheBuster('ubicaciones.csv'),
       withCacheBuster('Ubicaciones.csv')
-    ]);
-    UBI = uText ? parseCSV(uText) : [];
+    ];
+
+    log.push('Centro: '+CENTER.label);
+    log.push('Articulos.csv:');
+    const aRes = await fetchAny(artCandidates, log);
+    ART = aRes.text ? parseCSV(aRes.text) : [];
+    log.push('Total artículos: '+ART.length+(aRes.used?` (usado: ${aRes.used})`:' (ninguno)'));
+
+    log.push('');
+    log.push('Ubicaciones.csv:');
+    const uRes = await fetchAny(ubiCandidates, log);
+    UBI = uRes.text ? parseCSV(uRes.text) : [];
+    log.push('Total ubicaciones: '+UBI.length+(uRes.used?` (usado: ${uRes.used})`:' (ninguno)'));
 
     mergeUbiWithLocal();
     reindex();
@@ -223,13 +250,17 @@ async function loadData(){
     statusEl.textContent=`Artículos: ${ART.length} · Ubicaciones: ${UBI.length}`;
     termRef=loadRef();
     renderRefPin();
+
+    diagLog.textContent = log.join('\n');
   }catch(e){
     console.error(e);
     statusEl.textContent='Error cargando datos';
+    log.push('\nERROR: '+(e&&e.message?e.message:e));
+    diagLog.textContent = log.join('\n');
   }
 }
 
-// === BÚSQUEDA (igual que anterior) ===
+// === Búsqueda
 const MATERIALS={ pe:['pe','polietileno','polietil','hdpe','pe100','pe-100','pe 100','polietileno negro'], pvc:['pvc','rigido','rígido','presion','presión','pvc-u','u-pvc'], laton:['laton','latón','brass','cromado','laton cromado'], multicapa:['multicapa','pex','alupex','pe-x','mlcp'] };
 const FAMILY={ manguito:['manguito','union','unión','acople','acoplamiento','enchufe','conector','racor'] };
 const INCH_TO_MM={ '1/2':15, '3/4':20, '1':25, '1 1/4':32, '1 1/2':40, '2':50 };
@@ -275,20 +306,25 @@ function imgPointToPixels(x,y){ const m=getImageDrawMetrics(); return { x: m.lef
 function placePinFromXY(x,y){ const p=imgPointToPixels(x,y); pin.style.left=p.x+'px'; pin.style.top=p.y+'px'; pin.style.display='block' }
 function dirFromRef(x,y){ if(!termRef||x==null||y==null) return 'sigue recto'; const dx=x-termRef.x, dy=y-termRef.y; const partX = Math.abs(dx)>0.05? (dx>0? (lang==='ca'?'cap a la dreta':'hacia la derecha') : (lang==='ca'?'cap a l\'esquerra':'hacia la izquierda')) : ''; const partY = Math.abs(dy)>0.05? (dy>0? (lang==='ca'?'cap al fons':'hacia el fondo') : (lang==='ca'?'cap a l\'entrada':'hacia la entrada')) : ''; return [partX,partY].filter(Boolean).join(' y ') || (lang==='ca'?'segueix recte':'sigue recto') }
 function goMap(a){ varSel=a; showScreen('map'); const loc=pickLocation(a.NumeroArticulo); if(!loc){ speak('No tengo ubicación registrada. Puedes capturarla en modo administrador.'); routeEl.textContent=''; pin.style.display='none'; if(admin) adminPanel.style.display='block'; renderRefPin(); return } const x=parseNum(loc.X), y=parseNum(loc.Y); if(x==null||y==null){ pin.style.display='none' } else { placePinFromXY(x,y) } const ladoRaw=(loc.Lado && (loc.Lado.Value||loc.Lado)) || loc.Lado || '—'; const lado=(ladoRaw||'').toString().toUpperCase().startsWith('D')? (lang==='ca'?'Dreta':'Derecha') : (lang==='ca'?'Esquerra':'Izquierda'); const dir=dirFromRef(x,y); routeEl.textContent = (lang==='ca' ? `Des d'aquest terminal, ${dir}. Després al passadís ${loc.Pasillo||'—'}, costat ${lado}, prestatge ${loc.Estante||'—'}, balda ${loc.Balda||'—'}.` : `Desde este terminal, ${dir}. Luego al pasillo ${loc.Pasillo||'—'}, lado ${lado}, estante ${loc.Estante||'—'}, balda ${loc.Balda||'—'}.`); speak(routeEl.textContent); if(admin){ fPas.value=loc.Pasillo||''; fLado.value=lado; fEst.value=loc.Estante||''; fBal.value=loc.Balda||''; fX.value=(x??''); fY.value=(y??''); fStock.value=(loc.Stock||''); adminPanel.style.display='block' } renderRefPin(); }
-mapBox.addEventListener('click',ev=>{ const m=getImageDrawMetrics(); const cx=ev.clientX - m.rect.left; const cy=ev.clientY - m.rect.top; const xNorm=(cx - m.leftOffset)/m.dw; const yNorm=(cy - m.topOffset)/m.dh; if(xNorm<0||yNorm<0||xNorm>1||yNorm>1) return; if(capturingRef){ saveRef(xNorm,yNorm); capturingRef=false; speak('Posición de referencia del terminal guardada'); return } if(!admin||!varSel) return; fX.value=xNorm.toFixed(2); fY.value=yNorm.toFixed(2); placePinFromXY(xNorm,yNorm); });
+mapBox.addEventListener('click',ev=>{ const m=getImageDrawMetrics(); const cx=ev.clientX - m.rect.left; const cy=ev.clientY - m.rect.top; const xNorm=(cx - m.leftOffset)/m.dw; const yNorm=(cy - m.topOffset)/m.dh; if(xNorm<0||yNorm<0||xNorm>1||yNorm>1) return; if(!admin||!varSel) return; fX.value=xNorm.toFixed(2); fY.value=yNorm.toFixed(2); placePinFromXY(xNorm,yNorm); });
 
-// Guardar/eliminar ubicaciones
+// === Guardar/eliminar ubicaciones
 function saveUbi(rec){ const idx=UBI.findIndex(u=> (u.NumeroArticulo||'').toString().trim()===rec.NumeroArticulo && (u.Centro===CENTER.id||u.Centro===CENTER.label)); if(idx>=0) UBI[idx]=rec; else UBI.push(rec); reindex(); saveUbiLocal(); }
 saveLocBtn.onclick=()=>{ if(!varSel){ alert('Selecciona un artículo en resultados.'); return } const num=(varSel.NumeroArticulo||'').toString().trim(); const ladoLetter=(fLado.value||'').toString().toUpperCase().startsWith('D')? 'D':'I'; const rec={ NumeroArticulo:num, Centro:CENTER.id, Pasillo:fPas.value||'', Lado:ladoLetter, Estante:fEst.value||'', Balda:fBal.value||'', X:fX.value||'', Y:fY.value||'', Stock:fStock.value||'' }; saveUbi(rec); speak('Ubicación guardada.'); goMap(varSel) };
 delLocBtn.onclick=()=>{ if(!varSel) return; const num=(varSel.NumeroArticulo||'').toString().trim(); const before=UBI.length; UBI=UBI.filter(u=> (u.NumeroArticulo||'').toString().trim()!==num || !(u.Centro===CENTER.id||u.Centro===CENTER.label)); reindex(); saveUbiLocal(); if(UBI.length<before){ speak('Ubicación eliminada.'); routeEl.textContent=''; pin.style.display='none' } };
 
-// Admin EAN
-function findByAdmin(){ const e=admEAN.value.trim(); const n=admNum.value.trim(); const t=admText.value.trim().toLowerCase(); let list=[]; if(e){ list = ART.filter(a=> (a.CodigoEAN||'').replace(/\D/g,'')===e.replace(/\D/g,'')); } if(!list.length && n){ list = ART.filter(a=> (a.NumeroArticulo||'').toString().trim()===n); } if(!list.length && t){ const toks=t.split(/\s+/).filter(Boolean); list = ART.filter(a=> toks.every(w=> (a.Descripcion||'').toLowerCase().includes(w))); } admInfo.innerHTML = list.length? `${list.length} resultado(s).` : 'Sin resultados.'; if(list.length){ const ul=document.createElement('ul'); ul.style.margin='6px 0'; ul.style.paddingLeft='18px'; list.slice(0,10).forEach(a=>{ const li=document.createElement('li'); li.textContent=`Nº ${a.NumeroArticulo} · Ref ${a.ReferenciaProveedor} · ${a.Descripcion}`; li.style.cursor='pointer'; li.onclick=()=>{ admNum.value=(a.NumeroArticulo||'').toString().trim(); if(!admEAN.value) admEAN.value=a.CodigoEAN||''; admInfo.innerHTML=`Seleccionado Nº ${admNum.value}.`; }; ul.appendChild(li) }); admInfo.appendChild(ul); } }
+// === Admin EAN
+function findByAdmin(){ const e=admEAN.value.trim(); const n=admNum.value.trim(); const t=admText.value.trim().toLowerCase(); let list=[]; if(e){ list = ART.filter(a=> (a.CodigoEAN||'').replace(/\D/g,'')===e.replace(/\D/g,'')); }
+  if(!list.length && n){ list = ART.filter(a=> (a.NumeroArticulo||'').toString().trim()===n); }
+  if(!list.length && t){ const toks=t.split(/\s+/).filter(Boolean); list = ART.filter(a=> toks.every(w=> (a.Descripcion||'').toLowerCase().includes(w))); }
+  admInfo.innerHTML = list.length? `${list.length} resultado(s).` : 'Sin resultados.';
+  if(list.length){ const ul=document.createElement('ul'); ul.style.margin='6px 0'; ul.style.paddingLeft='18px'; list.slice(0,10).forEach(a=>{ const li=document.createElement('li'); li.textContent=`Nº ${a.NumeroArticulo} · Ref ${a.ReferenciaProveedor} · ${a.Descripcion}`; li.style.cursor='pointer'; li.onclick=()=>{ admNum.value=(a.NumeroArticulo||'').toString().trim(); if(!admEAN.value) admEAN.value=a.CodigoEAN||''; admInfo.innerHTML=`Seleccionado Nº ${admNum.value}.`; }; ul.appendChild(li) }); admInfo.appendChild(ul); }
+}
 admFind.onclick=findByAdmin;
 admAssign.onclick=()=>{ const num=admNum.value.trim(); const e=admEAN.value.trim(); if(!num||!e){ alert('Rellena Nº artículo y EAN'); return } const a=ART.find(x=> (x.NumeroArticulo||'').toString().trim()===num); if(!a){ alert('No se encontró el artículo en Articulos.csv'); return } a.CodigoEAN=e; admInfo.innerHTML=`Asignado EAN ${e} al artículo Nº ${num}. Recuerda Exportar para guardar el CSV.`; }
 admExport.onclick=()=>{ if(!ART||!ART.length){ alert('No hay datos de artículos cargados'); return } const headers=['NumeroArticulo','ReferenciaProveedor','Descripcion','CodigoEAN','NombreProveedor','ImagenURL','FichaTecnica','Manual','Precio','Stock']; const rows=[headers.join(';')]; for(const a of ART){ const line=headers.map(h=> ((a[h]??'').toString().includes(';')|| (a[h]??'').toString().includes('"'))? '"'+(a[h]??'').toString().replace(/"/g,'""')+'"' : (a[h]??'') ).join(';'); rows.push(line) } const blob=new Blob([rows.join('\n')],{type:'text/csv;charset=utf-8'}); const url=URL.createObjectURL(blob); const link=document.createElement('a'); link.href=url; link.download='Articulos.csv'; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url); };
 
-// Navegación y búsqueda (limpia el input al buscar)
+// === Navegación y búsqueda (limpia input)
 function showScreen(which){ scrHome.classList.remove('active'); scrResults.classList.remove('active'); scrMap.classList.remove('active'); if(which==='home') scrHome.classList.add('active'); else if(which==='results') scrResults.classList.add('active'); else if(which==='map') scrMap.classList.add('active'); window.scrollTo({top:0,behavior:'smooth'}) }
 startBtn.onclick=()=>{ voiceBox.style.display='grid'; speak(LANGS[lang].greet(nameInput.value||'')) };
 micBtn.onclick=()=> startListening();
@@ -298,12 +334,15 @@ q.onkeydown=(e)=>{ if(e.key==='Enter') doSearch() };
 backHome.onclick=()=> { q.value=''; showScreen('home'); };
 backResults.onclick=()=> showScreen('results');
 againBtn.onclick=()=>{ q.value=''; showScreen('home'); resultsEl.innerHTML=''; routeEl.textContent=''; pin.style.display='none' };
-adminToggle.onclick=()=>{ if(!adminGranted){ const p=prompt('Contraseña de administrador:'); if(p!=='0666'){ alert('Contraseña incorrecta'); return } adminGranted=true; } admin=!admin; adminToggle.classList.toggle('btn-brand', admin); adminPanel.style.display= admin? 'block':'none'; if(admin && varSel) goMap(varSel) };
 
-// Tabs centros
-function drawCenters(){ centerTabs.innerHTML=''; for(const key of Object.keys(CENTERS)){ const c=CENTERS[key]; const el=document.createElement('button'); el.className='tab'+(c.id===CENTER.id?' active':''); el.textContent=c.label; el.onclick=()=>{ if(c.id===CENTER.id) return; CENTER=c; localStorage.setItem('centerId',c.id); centerBadge.textContent='Centro '+c.label; loadData(); }; centerTabs.appendChild(el) } }
+// === Tabs centros
+function drawCenters(){ centerTabs.innerHTML=''; for(const key of Object.keys(CENTERS)){ const c=CENTERS[key]; const el=document.createElement('button'); el.className='tab'+(c.id===CENTER.id?' active':''); el.textContent=c.label; el.onclick=()=>{ if(c.id===CENTER.id) return; CENTER=c; localStorage.setItem('centerId',c.id); centerBadge.textContent='Centro '+c.label; varSel=null; resultsEl.innerHTML=''; routeEl.textContent=''; pin.style.display='none'; loadData(); }; centerTabs.appendChild(el) } }
 
-// Init
+// === Diagnóstico UI
+diagBtn.onclick=()=>{ diag.style.display='block' };
+diagClose.onclick=()=>{ diag.style.display='none' };
+
+// === Init
 (function init(){ drawCenters(); initFlags(); loadData().then(()=>{ speak(LANGS[lang].greet(nameInput.value||'')); }); })();
 
 // Limpia SW/cachés viejos
