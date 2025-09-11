@@ -30,7 +30,7 @@ function filterRequestData(incomingData) {
     result.conversation_id = incomingData.session_id;
   } else if (incomingData.center) {
     // Use center as stable conversation context identifier
-    result.conversation_id = `conv_${incomingData.center}_001`;
+    result.conversation_id = "conv_" + incomingData.center + "_001";
   } else {
     // Generate a simple numeric code as fallback
     result.conversation_id = "12345";
