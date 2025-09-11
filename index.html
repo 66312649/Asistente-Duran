@@ -835,6 +835,7 @@ const LANGUAGES = {
 let currentLanguage = 'es';
 let currentCenter = CENTERS[localStorage.getItem('centerId') || 'calvia'];
 let currentTheme = localStorage.getItem('theme') || 'dark';
+let conversationId = null;
 let isListening = false;
 let recognition = null;
 let articles = [];
@@ -858,13 +859,18 @@ const mapSection = document.getElementById('mapSection');
  */
 function initializeApp() {
   console.log('🚀 Initializing Duran AI Assistant...');
+  
+  // Initialize conversation ID for this session
+  initializeConversationId();
+  
   console.log('🔧 Configuration:', {
     version: APP_VERSION,
     webhookUrl: N8N_WEBHOOK_URL,
     timeout: WEBHOOK_TIMEOUT / 1000 + 's',
     currentTheme,
     currentLanguage,
-    currentCenter: currentCenter.id
+    currentCenter: currentCenter.id,
+    conversationId: conversationId
   });
   
   setupTheme();
@@ -881,6 +887,29 @@ function initializeApp() {
   setupTextareaResize();
   
   console.log('✅ Application initialized successfully');
+}
+
+/**
+ * Initialize conversation ID for persistent chat sessions
+ */
+function initializeConversationId() {
+  // Check if we already have a conversation ID for this session
+  const existingId = sessionStorage.getItem('duran_conversation_id');
+  
+  if (existingId) {
+    // Use existing conversation ID from this browser session
+    conversationId = existingId;
+    console.log('📝 Using existing conversation ID:', conversationId);
+  } else {
+    // Generate new conversation ID for this session
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 1000);
+    conversationId = `conv_${currentCenter.id}_${timestamp}_${random}`;
+    
+    // Store in sessionStorage (persists until tab is closed)
+    sessionStorage.setItem('duran_conversation_id', conversationId);
+    console.log('🆕 Generated new conversation ID:', conversationId);
+  }
 }
 
 /**
@@ -933,6 +962,14 @@ function setupCenterSelector() {
   centerSelector.addEventListener('change', (e) => {
     currentCenter = CENTERS[e.target.value];
     localStorage.setItem('centerId', currentCenter.id);
+    
+    // Generate new conversation ID when center changes
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 1000);
+    conversationId = `conv_${currentCenter.id}_${timestamp}_${random}`;
+    sessionStorage.setItem('duran_conversation_id', conversationId);
+    console.log('🔄 Center changed, new conversation ID:', conversationId);
+    
     loadData();
   });
 }
@@ -1140,6 +1177,7 @@ async function processMessage(message) {
     // Prepare the payload to send to N8N
     const payload = {
       message: message,
+      conversation_id: conversationId,
       language: currentLanguage,
       center: currentCenter.id,
       centerLabel: currentCenter.label,
@@ -1152,6 +1190,7 @@ async function processMessage(message) {
 
     console.log('📦 Payload prepared for N8N:', {
       ...payload,
+      conversation_id: payload.conversation_id,
       articles: `${payload.articles.length} articles (truncated for logging)`,
       locations: `${payload.locations.length} locations (truncated for logging)`
     });
