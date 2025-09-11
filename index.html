@@ -1123,6 +1123,8 @@ function removeTypingIndicator(typingElement) {
  */
 async function processMessage(message) {
   try {
+    console.log('🚀 Starting processMessage with:', { message, language: currentLanguage, center: currentCenter.id });
+    
     // Prepare the payload to send to N8N
     const payload = {
       message: message,
@@ -1136,16 +1138,30 @@ async function processMessage(message) {
       locationsCount: locations.length
     };
 
+    console.log('📦 Payload prepared for N8N:', {
+      ...payload,
+      articles: `${payload.articles.length} articles (truncated for logging)`,
+      locations: `${payload.locations.length} locations (truncated for logging)`
+    });
+    console.log('🌐 Sending request to:', N8N_WEBHOOK_URL);
+
     // Create AbortController for timeout handling
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT);
+    const timeoutId = setTimeout(() => {
+      console.error('⏰ Request timed out after', WEBHOOK_TIMEOUT / 1000, 'seconds');
+      controller.abort();
+    }, WEBHOOK_TIMEOUT);
+
+    console.log('📡 Making fetch request...');
+    const startTime = Date.now();
 
     // Send message to N8N webhook
     const response = await fetch(N8N_WEBHOOK_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'User-Agent': 'Duran-AI-Assistant/1.0'
       },
       body: JSON.stringify(payload),
       signal: controller.signal
@@ -1153,14 +1169,32 @@ async function processMessage(message) {
 
     // Clear timeout if request completes
     clearTimeout(timeoutId);
+    const responseTime = Date.now() - startTime;
+    console.log(`✅ Response received in ${responseTime}ms, status:`, response.status, response.statusText);
 
     // Check if response is ok
     if (!response.ok) {
+      console.error('❌ HTTP Error Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      
+      let errorBody = '';
+      try {
+        errorBody = await response.text();
+        console.error('❌ Error response body:', errorBody);
+      } catch (bodyError) {
+        console.error('❌ Could not read error response body:', bodyError);
+      }
+      
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
+    console.log('📥 Parsing JSON response...');
     // Parse the response from N8N
     const aiResponse = await response.json();
+    console.log('✨ Parsed AI response:', aiResponse);
     
     // Extract AI message from response
     let aiMessage = '';
@@ -1169,23 +1203,31 @@ async function processMessage(message) {
 
     if (aiResponse.message) {
       aiMessage = aiResponse.message;
+      console.log('💬 Using aiResponse.message');
     } else if (aiResponse.response) {
       aiMessage = aiResponse.response;
+      console.log('💬 Using aiResponse.response');
     } else if (aiResponse.text) {
       aiMessage = aiResponse.text;
+      console.log('💬 Using aiResponse.text');
     } else {
       aiMessage = 'He recibido tu mensaje, pero hubo un problema con la respuesta. ¿Podrías intentarlo de nuevo?';
+      console.warn('⚠️ No message field found in response, using fallback');
     }
 
     // Check if AI wants to show search results
     if (aiResponse.showResults && Array.isArray(aiResponse.results)) {
       showResultsData = aiResponse.results;
+      console.log('📊 Will show results:', showResultsData.length, 'items');
     }
 
     // Check if AI wants to show location
     if (aiResponse.showLocation && aiResponse.locationData) {
       showLocationData = aiResponse.locationData;
+      console.log('📍 Will show location:', showLocationData);
     }
+
+    console.log('✅ Processing completed successfully');
 
     // Add AI message to chat
     addMessage(aiMessage, 'ai');
@@ -1201,18 +1243,32 @@ async function processMessage(message) {
     }
 
   } catch (error) {
-    console.error('Error communicating with N8N:', error);
+    console.error('💥 Error in processMessage:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause
+    });
     
     // Handle different types of errors
     let errorMessage = '';
     
     if (error.name === 'AbortError') {
+      console.error('⏰ Request was aborted due to timeout');
       errorMessage = 'La consulta está tardando demasiado. Por favor, inténtalo de nuevo con una pregunta más específica.';
     } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      console.error('🌐 Network connectivity issue detected');
       errorMessage = 'No puedo conectar con el servidor de IA en este momento. Por favor, verifica tu conexión a internet e inténtalo de nuevo.';
     } else if (error.message.includes('HTTP error')) {
-      errorMessage = 'El servidor de IA está experimentando problemas. Por favor, inténtalo de nuevo en unos momentos.';
+      console.error('🚫 HTTP error from server');
+      const statusMatch = error.message.match(/status: (\d+)/);
+      const status = statusMatch ? statusMatch[1] : 'unknown';
+      errorMessage = `El servidor de IA respondió con error ${status}. Por favor, inténtalo de nuevo en unos momentos.`;
+    } else if (error.message.includes('JSON')) {
+      console.error('📄 JSON parsing error - invalid response format');
+      errorMessage = 'El servidor envió una respuesta en formato incorrecto. Por favor, inténtalo de nuevo.';
     } else {
+      console.error('❓ Unknown error type');
       errorMessage = LANGUAGES[currentLanguage].messages.error;
     }
     
@@ -1220,10 +1276,14 @@ async function processMessage(message) {
     
     // Fallback to local search if webhook fails
     if (error.name !== 'AbortError') {
+      console.log('🔄 Attempting fallback to local search...');
       addMessage('Mientras tanto, puedo intentar una búsqueda local...', 'ai');
       const results = searchProducts(message);
       if (results.length > 0) {
+        console.log('📋 Local search found', results.length, 'results');
         showResults(results);
+      } else {
+        console.log('🔍 Local search returned no results');
       }
     }
   }
@@ -1388,48 +1448,55 @@ function speakMessage(text) {
  */
 async function loadData() {
   try {
-    console.log(`Loading data for center: ${currentCenter.label}`);
+    console.log(`📂 Loading data for center: ${currentCenter.label}`);
     
     // Load articles CSV
     try {
+      console.log('📄 Fetching articles from:', currentCenter.a);
       const articlesResponse = await fetch(currentCenter.a);
       if (articlesResponse.ok) {
         const articlesText = await articlesResponse.text();
         articles = parseCSV(articlesText);
+        console.log('✅ Articles loaded:', articles.length, 'items');
       } else {
-        console.warn(`Could not load articles for ${currentCenter.id}`);
+        console.warn(`⚠️ Could not load articles for ${currentCenter.id}, status:`, articlesResponse.status);
         articles = [];
       }
     } catch (error) {
-      console.warn(`Error loading articles: ${error.message}`);
+      console.warn(`❌ Error loading articles: ${error.message}`);
       articles = [];
     }
     
     // Load locations CSV
     try {
+      console.log('📍 Fetching locations from:', currentCenter.u);
       const locationsResponse = await fetch(currentCenter.u);
       if (locationsResponse.ok) {
         const locationsText = await locationsResponse.text();
         locations = parseCSV(locationsText);
+        console.log('✅ Locations loaded:', locations.length, 'items');
       } else {
-        console.warn(`Could not load locations for ${currentCenter.id}`);
+        console.warn(`⚠️ Could not load locations for ${currentCenter.id}, status:`, locationsResponse.status);
         locations = [];
       }
     } catch (error) {
-      console.warn(`Error loading locations: ${error.message}`);
+      console.warn(`❌ Error loading locations: ${error.message}`);
       locations = [];
     }
-    // Update counters (mock data for now)
+    
+    // Update counters with real data
+    console.log('🔢 Updating data counters...');
     updateDataCounters();
     
     // Update map image
     const mapImage = document.getElementById('mapImage');
     if (mapImage) {
       mapImage.src = currentCenter.map;
+      console.log('🗺️ Map image updated to:', currentCenter.map);
     }
     
   } catch (error) {
-    console.error('Error loading data:', error);
+    console.error('💥 Error loading data:', error);
   }
 }
 
