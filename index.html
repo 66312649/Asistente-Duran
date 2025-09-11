@@ -710,7 +710,7 @@ html, body {
             <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc4MCcgaGVpZ2h0PSc0OCc+PHJlY3Qgd2lkdGg9JzgwJyBoZWlnaHQ9JzQ4JyBmaWxsPScjZjdkMTE3Jy8+PGcgZmlsbD0nI2Q0MDAwMCc+PHJlY3QgeT0nNCcgd2lkdGg9JzgwJyBoZWlnaHQ9JzYnLz48cmVjdCB5PScxNCcgd2lkdGg9JzgwJyBoZWlnaHQ9JzYnLz48cmVjdCB5PScyNCcgd2lkdGg9JzgwJyBoZWlnaHQ9JzYnLz48cmVjdCB5PSczNCcgd2lkdGg9JzgwJyBoZWlnaHQ9JzYnLz48L2c+PC9zdmc+" alt="Mallorquí"/>
           </button>
           <button class="language-flag" data-lang="en" title="English">
-            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc4MCcgaGVpZ2h0PSc0OCc+PHJlY3Qgd2lkdGg9JzgwJyBoZWlnaHQ9JzQ4JyBmaWxsPScjMDAyNDdkJy8+PHBhdGggZD0nTTAsMCA4MCw0OCBNODAsMCAwLDQ4JyBzdHJva2U9JyNmZmYnIHN0cm9rZS13aWR0aD0nMTAnLz48cGF0aCBkPSdNMCwwIDgwLDQ4IE04MCwwIDAsNDgnIHN0cm9rZT0nI2NmMTQyYicgc3Ryb2tlLXdpZHRoPSc2Jy8+PHJlY3QgeD0nMzQnIHdpZHRoPScxMicgaGVpZ2h0PSc0OCcgZmlsbD0nI2ZmZicvPjxyZWN0IHk9JzE4JyB3aWR0aD0nODAnIGhlaWdodD0nMTInIGZpbGw9JyNmZmYnLz48cmVjdCB4PSczNicgd2lkdGg9JzgnIGhlaWdodD0nNDgnIGZpbGw9JyNjZjE0MmInLz48cmVjdCB5PScyMCcgd2lkdGg9JzgwJyBoZWlnaHQ9JzgnIGZpbGw9JyNjZjE0MmInLz48L3N2Zz4=" alt="English"/>
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc4MCcgaGVpZ2h0PSc0OCc+PHJlY3Qgd2lkdGg9JzgwJyBoZWlnaHQ9JzQ4JyBmaWxsPScjMDAyNDdkJy8+PHBhdGggZD0nTTAsMCA4MCw0OCBNODAsMCAwLDQ4JyBzdHJva2U9JyNmZmYnIHN0cm9rZS13aWR0aD0nMTAnLz48cGF0aCBkPSdNMCwwIDgwLDQ4IE04MCwwIDAsNDgnIHN0cm9rZT0nI2NmMTQyYicgc3Ryb2tlLXdpZHRoPSc2Jy8+PHJlY3QgeD0nMzQnIHdpZHRoPScxMicgaGVpZ2h0PSc0OCcgZmlsbD0nI2ZmZicvPjxyZWN0IHk9JzE4JyB3aWR0aD0nODAnIGhlaWdodD0nMTEnIGZpbGw9JyNmZmYnLz48cmVjdCB4PSczNicgd2lkdGg9JzgnIGhlaWdodD0nNDgnIGZpbGw9JyNjZjE0MmInLz48cmVjdCB5PScyMCcgd2lkdGg9JzgwJyBoZWlnaHQ9JzgnIGZpbGw9JyNjZjE0MmInLz48L3N2Zz4=" alt="English"/>
           </button>
         </div>
       </div>
@@ -1211,6 +1211,11 @@ async function processMessage(message) {
     // Check if response is empty or contains only whitespace
     if (!responseText || responseText.trim() === '') {
       console.error('❌ Empty response received from N8N webhook');
+      console.error('🔧 N8N Configuration Required:');
+      console.error('   1. Add a "Respond to Webhook" node at the end of your N8N workflow');
+      console.error('   2. Set it to "JSON" mode');
+      console.error('   3. Configure it to return: {"message": "Your AI response here"}');
+      console.error('   4. Make sure your workflow is active and saved');
       throw new Error('Empty response from webhook - N8N may not be returning data');
     }
     
@@ -1222,8 +1227,25 @@ async function processMessage(message) {
       console.log('✨ Parsed AI response:', aiResponse);
     } catch (jsonError) {
       console.error('❌ JSON parsing failed:', jsonError);
-      console.error('❌ Response text that failed to parse:', responseText);
+      console.error('📄 JSON parsing error - invalid response format');
+      console.error('🔧 N8N Response Debug Info:');
+      console.error('   - Response length:', responseText.length);
+      console.error('   - First 200 chars:', responseText.substring(0, 200));
+      console.error('   - Response type:', typeof responseText);
+      console.error('🔧 Expected JSON format: {"message": "AI response text"}');
       throw new Error(`Invalid JSON response from webhook: ${jsonError.message}`);
+    }
+    
+    // Validate response structure
+    if (!aiResponse || typeof aiResponse !== 'object') {
+      console.error('❌ Invalid response structure - expected object, got:', typeof aiResponse);
+      throw new Error('Invalid response structure from N8N webhook');
+    }
+
+    if (!aiResponse.message) {
+      console.error('❌ Missing "message" field in N8N response');
+      console.error('🔧 N8N must return JSON with at least: {"message": "response text"}');
+      throw new Error('Missing message field in N8N response');
     }
     
     // Extract AI message from response
@@ -1293,13 +1315,19 @@ async function processMessage(message) {
       console.error('🚫 HTTP error from server');
       const statusMatch = error.message.match(/status: (\d+)/);
       const status = statusMatch ? statusMatch[1] : 'unknown';
-      errorMessage = `El servidor de IA respondió con error ${status}. Por favor, inténtalo de nuevo en unos momentos.`;
+      errorMessage = `❌ Error de conexión con el servidor. Por favor, verifica que tu webhook de N8N esté configurado correctamente y activo.`;
     } else if (error.message.includes('JSON') || error.message.includes('Empty response') || error.message.includes('Invalid JSON')) {
       console.error('📄 JSON parsing error - invalid response format');
       errorMessage = 'El servidor de IA envió una respuesta vacía o en formato incorrecto. Verifica que tu flujo N8N esté configurado para devolver una respuesta JSON válida.';
     } else {
       console.error('❓ Unknown error type');
-      errorMessage = LANGUAGES[currentLanguage].messages.error;
+      console.error('🔧 N8N Webhook Configuration Help:');
+      console.error('   1. Open your N8N workflow');
+      console.error('   2. Add "Respond to Webhook" node at the end');
+      console.error('   3. Set Response Mode to "JSON"');
+      console.error('   4. Set Response Body to: {"message": "{{ $json.your_ai_response_field }}"}');
+      console.error('   5. Save and activate the workflow');
+      errorMessage = '❌ Error procesando la consulta. Revisa la consola para más detalles.';
     }
     
     addMessage(errorMessage, 'ai');
