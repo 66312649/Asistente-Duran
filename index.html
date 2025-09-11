@@ -1293,13 +1293,37 @@ function speakMessage(text) {
  */
 async function loadData() {
   try {
-    // This would load the actual CSV data in the real application
     console.log(`Loading data for center: ${currentCenter.label}`);
     
-    // Mock data loading
-    articles = [];
-    locations = [];
+    // Load articles CSV
+    try {
+      const articlesResponse = await fetch(currentCenter.a);
+      if (articlesResponse.ok) {
+        const articlesText = await articlesResponse.text();
+        articles = parseCSV(articlesText);
+      } else {
+        console.warn(`Could not load articles for ${currentCenter.id}`);
+        articles = [];
+      }
+    } catch (error) {
+      console.warn(`Error loading articles: ${error.message}`);
+      articles = [];
+    }
     
+    // Load locations CSV
+    try {
+      const locationsResponse = await fetch(currentCenter.u);
+      if (locationsResponse.ok) {
+        const locationsText = await locationsResponse.text();
+        locations = parseCSV(locationsText);
+      } else {
+        console.warn(`Could not load locations for ${currentCenter.id}`);
+        locations = [];
+      }
+    } catch (error) {
+      console.warn(`Error loading locations: ${error.message}`);
+      locations = [];
+    }
     // Update counters (mock data for now)
     updateDataCounters();
     
@@ -1322,9 +1346,9 @@ function updateDataCounters() {
   const locationCount = document.getElementById('locationCount');
   
   if (articleCount && locationCount) {
-    // Mock counts - in real app these would be actual data lengths
-    articleCount.textContent = articles.length || '1,247';
-    locationCount.textContent = locations.length || '892';
+    // Display actual counts from loaded CSV data
+    articleCount.textContent = articles.length.toLocaleString();
+    locationCount.textContent = locations.length.toLocaleString();
   }
 }
 
