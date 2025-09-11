@@ -682,6 +682,9 @@ html, body {
       <button class="control-btn" id="localSearchToggle" title="Alternar búsqueda local">
         🔍 Local
       </button>
+      <button class="control-btn" id="voiceToggle" title="Activar/Desactivar voz">
+        🔊 Voz
+      </button>
       <button class="theme-toggle" id="themeToggle" title="Cambiar tema">🌙</button>
       <select class="center-selector" id="centerSelector">
         <option value="calvia">Centro Duran Calvià</option>
@@ -844,6 +847,7 @@ let recognition = null;
 let articles = [];
 let locations = [];
 let isLocalSearchMode = false;
+let isVoiceEnabled = true;
 
 // DOM elements
 const chatMessages = document.getElementById('chatMessages');
@@ -858,6 +862,7 @@ const welcomeMessage = document.getElementById('welcomeMessage');
 const resultsSection = document.getElementById('resultsSection');
 const mapSection = document.getElementById('mapSection');
 const localSearchToggle = document.getElementById('localSearchToggle');
+const voiceToggle = document.getElementById('voiceToggle');
 
 /**
  * Initialize the application
@@ -883,6 +888,7 @@ function initializeApp() {
   setupCenterSelector();
   setupVoiceRecognition();
   setupLocalSearchToggle();
+  setupVoiceToggle();
   setupInputHandlers();
   loadData();
   
@@ -999,6 +1005,54 @@ function setupLocalSearchToggle() {
       addMessage('Modo de búsqueda local desactivado. Volviendo al modo IA normal.', 'ai');
     }
   });
+}
+
+/**
+ * Setup voice toggle functionality
+ */
+function setupVoiceToggle() {
+  // Set initial state
+  updateVoiceToggleButton();
+  
+  voiceToggle.addEventListener('click', () => {
+    isVoiceEnabled = !isVoiceEnabled;
+    updateVoiceToggleButton();
+    
+    if (isVoiceEnabled) {
+      addMessage('Voz activada. Ahora escucharás las respuestas del asistente.', 'ai');
+    } else {
+      // Stop any current speech
+      if ('speechSynthesis' in window) {
+        speechSynthesis.cancel();
+      }
+      addMessage('Voz desactivada. Las respuestas serán silenciosas.', 'ai');
+    }
+    
+    // Save preference
+    localStorage.setItem('voiceEnabled', isVoiceEnabled.toString());
+  });
+  
+  // Load saved preference
+  const savedVoiceEnabled = localStorage.getItem('voiceEnabled');
+  if (savedVoiceEnabled !== null) {
+    isVoiceEnabled = savedVoiceEnabled === 'true';
+    updateVoiceToggleButton();
+  }
+}
+
+/**
+ * Update voice toggle button appearance
+ */
+function updateVoiceToggleButton() {
+  if (isVoiceEnabled) {
+    voiceToggle.style.background = 'var(--accent-primary)';
+    voiceToggle.style.color = 'white';
+    voiceToggle.textContent = '🔊 Voz ✓';
+  } else {
+    voiceToggle.style.background = '';
+    voiceToggle.style.color = '';
+    voiceToggle.textContent = '🔇 Voz';
+  }
 }
 
 /**
@@ -1573,7 +1627,7 @@ function showProductLocation(product) {
  * Speak message using Web Speech API
  */
 function speakMessage(text) {
-  if ('speechSynthesis' in window) {
+  if ('speechSynthesis' in window && isVoiceEnabled) {
     // Cancel any ongoing speech
     speechSynthesis.cancel();
     
