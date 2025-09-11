@@ -679,6 +679,9 @@ html, body {
         <span>Artículos: <strong id="articleCount">0</strong></span>
         <span>Ubicaciones: <strong id="locationCount">0</strong></span>
       </div>
+      <button class="control-btn" id="localSearchToggle" title="Alternar búsqueda local">
+        🔍 Local
+      </button>
       <button class="theme-toggle" id="themeToggle" title="Cambiar tema">🌙</button>
       <select class="center-selector" id="centerSelector">
         <option value="calvia">Centro Duran Calvià</option>
@@ -840,6 +843,7 @@ let isListening = false;
 let recognition = null;
 let articles = [];
 let locations = [];
+let isLocalSearchMode = false;
 
 // DOM elements
 const chatMessages = document.getElementById('chatMessages');
@@ -853,6 +857,7 @@ const languageSelector = document.getElementById('languageSelector');
 const welcomeMessage = document.getElementById('welcomeMessage');
 const resultsSection = document.getElementById('resultsSection');
 const mapSection = document.getElementById('mapSection');
+const localSearchToggle = document.getElementById('localSearchToggle');
 
 /**
  * Initialize the application
@@ -877,6 +882,7 @@ function initializeApp() {
   setupLanguageSelector();
   setupCenterSelector();
   setupVoiceRecognition();
+  setupLocalSearchToggle();
   setupInputHandlers();
   loadData();
   
@@ -971,6 +977,27 @@ function setupCenterSelector() {
     console.log('🔄 Center changed, new conversation ID:', conversationId);
     
     loadData();
+  });
+}
+
+/**
+ * Setup local search toggle functionality
+ */
+function setupLocalSearchToggle() {
+  localSearchToggle.addEventListener('click', () => {
+    isLocalSearchMode = !isLocalSearchMode;
+    
+    if (isLocalSearchMode) {
+      localSearchToggle.style.background = 'var(--accent-primary)';
+      localSearchToggle.style.color = 'white';
+      localSearchToggle.textContent = '🔍 Local ✓';
+      addMessage('Modo de búsqueda local activado. Ahora buscaré directamente en la base de datos local sin usar IA.', 'ai');
+    } else {
+      localSearchToggle.style.background = '';
+      localSearchToggle.style.color = '';
+      localSearchToggle.textContent = '🔍 Local';
+      addMessage('Modo de búsqueda local desactivado. Volviendo al modo IA normal.', 'ai');
+    }
   });
 }
 
@@ -1085,7 +1112,11 @@ async function handleSendMessage() {
   
   // Process the message
   try {
-    await processMessage(message);
+    if (isLocalSearchMode) {
+      await processLocalSearch(message);
+    } else {
+      await processMessage(message);
+    }
   } catch (error) {
     console.error('Error processing message:', error);
     addMessage(LANGUAGES[currentLanguage].messages.error, 'ai');
@@ -1164,6 +1195,26 @@ function showTypingIndicator() {
 function removeTypingIndicator(typingElement) {
   if (typingElement && typingElement.parentNode) {
     typingElement.parentNode.removeChild(typingElement);
+  }
+}
+
+/**
+ * Process message using local search only
+ */
+async function processLocalSearch(message) {
+  console.log('🔍 Processing local search for:', message);
+  
+  // Simulate some processing time
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // Search in local data
+  const results = searchProducts(message);
+  
+  if (results.length > 0) {
+    addMessage(`He encontrado ${results.length} resultado(s) en la búsqueda local:`, 'ai');
+    showResults(results);
+  } else {
+    addMessage('No he encontrado productos que coincidan con tu búsqueda en la base de datos local. Intenta con otros términos como referencia, descripción o código de artículo.', 'ai');
   }
 }
 
