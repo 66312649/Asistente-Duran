@@ -1203,10 +1203,28 @@ async function processMessage(message) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
+    console.log('📥 Reading response body...');
+    // Read response body as text first to handle empty responses
+    const responseText = await response.text();
+    console.log('📄 Raw response text:', responseText);
+    
+    // Check if response is empty or contains only whitespace
+    if (!responseText || responseText.trim() === '') {
+      console.error('❌ Empty response received from N8N webhook');
+      throw new Error('Empty response from webhook - N8N may not be returning data');
+    }
+    
     console.log('📥 Parsing JSON response...');
     // Parse the response from N8N
-    const aiResponse = await response.json();
-    console.log('✨ Parsed AI response:', aiResponse);
+    let aiResponse;
+    try {
+      aiResponse = JSON.parse(responseText);
+      console.log('✨ Parsed AI response:', aiResponse);
+    } catch (jsonError) {
+      console.error('❌ JSON parsing failed:', jsonError);
+      console.error('❌ Response text that failed to parse:', responseText);
+      throw new Error(`Invalid JSON response from webhook: ${jsonError.message}`);
+    }
     
     // Extract AI message from response
     let aiMessage = '';
@@ -1276,9 +1294,9 @@ async function processMessage(message) {
       const statusMatch = error.message.match(/status: (\d+)/);
       const status = statusMatch ? statusMatch[1] : 'unknown';
       errorMessage = `El servidor de IA respondió con error ${status}. Por favor, inténtalo de nuevo en unos momentos.`;
-    } else if (error.message.includes('JSON')) {
+    } else if (error.message.includes('JSON') || error.message.includes('Empty response') || error.message.includes('Invalid JSON')) {
       console.error('📄 JSON parsing error - invalid response format');
-      errorMessage = 'El servidor envió una respuesta en formato incorrecto. Por favor, inténtalo de nuevo.';
+      errorMessage = 'El servidor de IA envió una respuesta vacía o en formato incorrecto. Verifica que tu flujo N8N esté configurado para devolver una respuesta JSON válida.';
     } else {
       console.error('❓ Unknown error type');
       errorMessage = LANGUAGES[currentLanguage].messages.error;
