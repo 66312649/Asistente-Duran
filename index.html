@@ -1250,11 +1250,11 @@ async function processMessage(message) {
     // Check if response is empty or contains only whitespace
     if (!responseText || responseText.trim() === '') {
       console.error('❌ Empty response received from N8N webhook');
-      console.error('🔧 N8N Configuration Required:');
-      console.error('   1. Add a "Respond to Webhook" node at the end of your N8N workflow');
-      console.error('   2. Set it to "JSON" mode');
-      console.error('   3. Configure it to return: {"message": "Your AI response here"}');
-      console.error('   4. Make sure your workflow is active and saved');
+      console.log('🔧 N8N Configuration Required:');
+      console.log('   1. Add a "Respond to Webhook" node at the end of your N8N workflow');
+      console.log('   2. Set it to "JSON" mode');
+      console.log('   3. Configure it to return: {"message": "Your AI response here"}');
+      console.log('   4. Make sure your workflow is active and saved');
       throw new Error('Empty response from webhook - N8N may not be returning data');
     }
     
@@ -1265,13 +1265,13 @@ async function processMessage(message) {
       aiResponse = JSON.parse(responseText);
       console.log('✨ Parsed AI response:', aiResponse);
     } catch (jsonError) {
-      console.error('❌ JSON parsing failed:', jsonError);
-      console.error('📄 JSON parsing error - invalid response format');
-      console.error('🔧 N8N Response Debug Info:');
-      console.error('   - Response length:', responseText.length);
-      console.error('   - First 200 chars:', responseText.substring(0, 200));
-      console.error('   - Response type:', typeof responseText);
-      console.error('🔧 Expected JSON format: {"message": "AI response text"}');
+      console.log('❌ JSON parsing failed:', jsonError);
+      console.log('📄 JSON parsing error - invalid response format');
+      console.log('🔧 N8N Response Debug Info:');
+      console.log('   - Response length:', responseText.length);
+      console.log('   - First 200 chars:', responseText.substring(0, 200));
+      console.log('   - Response type:', typeof responseText);
+      console.log('🔧 Expected JSON format: {"message": "AI response text"}');
       throw new Error(`Invalid JSON response from webhook: ${jsonError.message}`);
     }
     
@@ -1283,7 +1283,7 @@ async function processMessage(message) {
 
     if (!aiResponse.message) {
       console.error('❌ Missing "message" field in N8N response');
-      console.error('🔧 N8N must return JSON with at least: {"message": "response text"}');
+      console.log('🔧 N8N must return JSON with at least: {"message": "response text"}');
       throw new Error('Missing message field in N8N response');
     }
     
@@ -1351,21 +1351,21 @@ async function processMessage(message) {
       console.error('🌐 Network connectivity issue detected');
       errorMessage = 'No puedo conectar con el servidor de IA en este momento. Por favor, verifica tu conexión a internet e inténtalo de nuevo.';
     } else if (error.message.includes('HTTP error')) {
-      console.error('🚫 HTTP error from server');
+      console.log('🚫 HTTP error from server');
       const statusMatch = error.message.match(/status: (\d+)/);
       const status = statusMatch ? statusMatch[1] : 'unknown';
       errorMessage = `❌ Error de conexión con el servidor. Por favor, verifica que tu webhook de N8N esté configurado correctamente y activo.`;
     } else if (error.message.includes('JSON') || error.message.includes('Empty response') || error.message.includes('Invalid JSON')) {
-      console.error('📄 JSON parsing error - invalid response format');
+      console.log('📄 JSON parsing error - invalid response format');
       errorMessage = 'El servidor de IA envió una respuesta vacía o en formato incorrecto. Verifica que tu flujo N8N esté configurado para devolver una respuesta JSON válida.';
     } else {
-      console.error('❓ Unknown error type');
-      console.error('🔧 N8N Webhook Configuration Help:');
-      console.error('   1. Open your N8N workflow');
-      console.error('   2. Add "Respond to Webhook" node at the end');
-      console.error('   3. Set Response Mode to "JSON"');
-      console.error('   4. Set Response Body to: {"message": "{{ $json.your_ai_response_field }}"}');
-      console.error('   5. Save and activate the workflow');
+      console.log('❓ Unknown error type');
+      console.log('🔧 N8N Webhook Configuration Help:');
+      console.log('   1. Open your N8N workflow');
+      console.log('   2. Add "Respond to Webhook" node at the end');
+      console.log('   3. Set Response Mode to "JSON"');
+      console.log('   4. Set Response Body to: {"message": "{{ $json.your_ai_response_field }}"}');
+      console.log('   5. Save and activate the workflow');
       errorMessage = '❌ Error procesando la consulta. Revisa la consola para más detalles.';
     }
     
