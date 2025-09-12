@@ -1,10 +1,12 @@
 name: Build data (Excel → CSV por centro)
 
 on:
-  workflow_dispatch: {}   # permitir lanzarlo a mano
+  workflow_dispatch:
   schedule:
-    # 06:30 UTC ≈ 07:30-08:30 en España (según horario de verano)
-    - cron: "30 6 * * *"
+    - cron: "30 6 * * *" # 06:30 UTC (07:30/08:30 España)
+
+permissions:
+  contents: write  # ← imprescindible para poder hacer push
 
 jobs:
   build:
@@ -13,30 +15,54 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Mostrar árbol de carpetas
+        run: |
+          echo "=== ROOT ==="
+          ls -la
+          echo "=== data ==="
+          ls -la data || true
+          echo "=== data/incoming ==="
+          ls -la "data/incoming" || true
+          echo "=== scripts ==="
+          ls -la scripts || true
+
+      - name: Comprobación de ficheros requeridos
+        run: |
+          set -e
+          test -f "scripts/build_data.py" || { echo "::error::No existe scripts/build_data.py"; exit 1; }
+          test -f "data/incoming/Base articulos precio.xlsx" || { echo "::error::Falta data/incoming/Base articulos precio.xlsx"; exit 1; }
+          test -f "data/incoming/Importacion Stock.xlsx" || { echo "::error::Falta data/incoming/Importacion Stock.xlsx"; exit 1; }
+          test -f "data/incoming/Lista proveedores_05092025.xlsx" || { echo "::error::Falta data/incoming/Lista proveedores_05092025.xlsx"; exit 1; }
 
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Instalar dependencias
         run: |
-          python -m pip install --upgrade pip
-          pip install pandas openpyxl
+          python -V
+          pip install -U pip
+          pip install pandas openpyxl numpy pyarrow
 
-      - name: Ejecutar conversión
+      - name: Inspección rápida de los Excel
         run: |
-          python scripts/build_data.py
-
-      - name: Commit & push si hay cambios
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          # Solo si hay cambios
-          git add -A
-          if ! git diff --cached --quiet; then
-            git commit -m "data: refresh Articulos.csv por centro (auto)"
-            git push
-          else
-            echo "Sin cambios para commitear."
-          fi
+          python - << 'PY'
+          import pandas as pd
+          for p in [
+              "data/incoming/Base articulos precio.xlsx",
+              "data/incoming/Importacion Stock.xlsx",
+              "data/incoming/Lista proveedores_05092025.xlsx",
+          ]:
+              try:
+                  xl = pd.ExcelFile(p)
+                  print(">>>", p, "| hojas:", xl.sheet_names)
+                  # lee solo la primera hoja para mostrar cabeceras
+                  df = xl.parse(xl.sheet_names[0], nrows=2)
+                  print("   columnas:", list(df.columns))
+              except Exception as e:
+                  print("!!! E
