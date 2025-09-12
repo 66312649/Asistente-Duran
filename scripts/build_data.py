@@ -102,32 +102,42 @@ def sniff_format(path: str) -> str:
 
 def read_table(path: str, verbose=False) -> pd.DataFrame:
     """
-    Lee una tabla Excel (xlsx/xls) o CSV de forma tolerante, devolviendo dataframe con dtype=str.
+    Lee una tabla Excel (xlsx/xls) o CSV/TSV con varios separadores/codificaciones.
+    Devuelve dataframe con dtype=str o lanza RuntimeError si no hay forma humana de leerlo.
     """
     kind = sniff_format(path)
     log(f"   → {path} detectado: {kind}", verbose)
 
-    # Intentos por orden
+    # 1) Excel nativo
     if kind == 'xlsx':
         try:
             return pd.read_excel(path, sheet_name=0, engine='openpyxl', dtype=str)
         except Exception as e:
-            log(f"   ⚠️ openpyxl falló ({e}), probando como CSV…", verbose)
+            log(f"   ⚠️ openpyxl falló ({e}), probando como CSV/TSV…", verbose)
     elif kind == 'xls':
         try:
             return pd.read_excel(path, sheet_name=0, engine='xlrd', dtype=str)
         except Exception as e:
-            log(f"   ⚠️ xlrd falló ({e}), probando como CSV…", verbose)
+            log(f"   ⚠️ xlrd falló ({e}), probando como CSV/TSV…", verbose)
 
-    # Fallback CSV con ; y , si no era Excel válido
-    for sep in [';', ',']:
+    # 2) CSV/TSV con varios separadores y codificaciones
+    attempts = []
+    for sep in [';', ',', '\t']:
+        for enc in ['utf-8-sig', 'utf-8', 'latin-1', 'utf-16', 'utf-16le', 'utf-16be']:
+            attempts.append((sep, enc))
+
+    last = None
+    for sep, enc in attempts:
         try:
-            df = pd.read_csv(path, sep=sep, dtype=str)
-            log(f"   leído como CSV (sep='{sep}') filas={len(df)}", verbose)
-            return df
+            df = pd.read_csv(path, sep=sep, dtype=str, encoding=enc, engine='python')
+            # si no tiene columnas reales, pasa al siguiente intento
+            if df is not None and len(df.columns) > 0:
+                log(f"   leído como texto (sep='{sep}', enc='{enc}') filas={len(df)}", verbose)
+                return df
         except Exception as e:
             last = e
-    raise RuntimeError(f"No se pudo leer {path} ni como Excel ni como CSV: {last}")
+
+    raise RuntimeError(f"No se pudo leer {path} ni como Excel ni como CSV/TSV: {last}")
 
 def normalize_cols(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
