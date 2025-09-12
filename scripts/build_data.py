@@ -1,242 +1,291 @@
-import sys
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Genera Articulos.csv por centro a partir de:
+- imports/Base articulos precio.xlsx
+- imports/Importacion Stock.xlsx
+- imports/Lista proveedores_05092025.xlsx
+
+Reglas:
+- Solo almacenes {1,2,3,4} => {coll, calvia, alcudia, santanyi}
+- Columnas salida:
+  NumeroArticulo;ReferenciaProveedor;Descripcion;CodigoEAN;NombreProveedor;Precio;Stock
+- El EAN maestro es el del repo (*/Articulos.csv) o overrides/ean/<centro>.json si existen.
+- Precio: columna "1. Lista Precio de Ventas" (alias tolerantes).
+- Stock: entero (sin decimales).
+"""
+
 import os
-from pathlib import Path
+import sys
+import json
+import math
+import argparse
+from datetime import datetime
 import pandas as pd
 
-# === Entradas esperadas ===
-BASE_DIR = Path(__file__).resolve().parents[1]  # raíz del repo
-IN_DIR = BASE_DIR / "data" / "incoming"
+# --------------------------- Configuración ---------------------------
 
-FILE_ARTICULOS = IN_DIR / "Base articulos precio.xlsx"
-FILE_STOCK = IN_DIR / "Importacion Stock.xlsx"
-FILE_PROV = IN_DIR / "Lista proveedores_05092025.xlsx"
-
-# === Salidas ===
-OUT_DIRS = {
-    "calvia": BASE_DIR / "calvia",
-    "coll": BASE_DIR / "coll",
-    "alcudia": BASE_DIR / "alcudia",
-    "santanyi": BASE_DIR / "santanyi",
+IMPORTS = {
+    "base_precios": "imports/Base articulos precio.xlsx",
+    "stock": "imports/Importacion Stock.xlsx",
+    "proveedores": "imports/Lista proveedores_05092025.xlsx",
 }
 
-# === Mapeo almacén → centro ===
-# Solo admitimos los almacenes 1–4 como pediste:
+CENTERS = {
+    "coll": {"id": "coll", "almacen": "1", "out_dir": "coll"},
+    "calvia": {"id": "calvia", "almacen": "2", "out_dir": "calvia"},
+    "alcudia": {"id": "alcudia", "almacen": "3", "out_dir": "alcudia"},
+    "santanyi": {"id": "santanyi", "almacen": "4", "out_dir": "santanyi"},
+}
+
 ALMACEN_TO_CENTER = {
-    1: "coll",
-    2: "calvia",
-    3: "alcudia",
-    4: "santanyi",
+    "1": "coll",
+    "2": "calvia",
+    "3": "alcudia",
+    "4": "santanyi",
 }
 
-# === Utilidades de normalización de cabeceras ===
-def norm(s: str) -> str:
-    if s is None:
-        return ""
-    return (
-        str(s).strip()
-        .lower()
-        .replace(" ", "")
-        .replace("\t", "")
-        .replace(".", "")
-        .replace("_", "")
-        .replace("-", "")
-        .replace("º", "")
-        .replace("°", "")
-    )
+# Alias de columnas — tolerantes a diferentes nombres
+ALIAS = {
+    "NumeroArticulo": {
+        "numeroarticulo", "númeroartículo", "numero_articulo", "articulo", "artículo",
+        "codigo", "código", "cod articulo", "cod. articulo", "nº artículo", "nº articulo"
+    },
+    "ReferenciaProveedor": {
+        "referenciaproveedor", "refproveedor", "referencia proveedor", "ref. fabricante",
+        "catalogo", "nº catalogo", "nº catálogo", "referencia", "ref fabricante"
+    },
+    "Descripcion": {
+        "descripcion", "descripción", "descripcion articulo", "descripción artículo",
+        "articulo descripcion", "nombre", "nombre articulo"
+    },
+    "CodigoEAN": {
+        "codigoean", "ean", "codigo ean", "código ean", "cod. barras", "codigo barras", "código barras"
+    },
+    "Precio": {
+        "1. lista precio de ventas", "precio", "pvp", "precio venta", "precio de venta"
+    },
+    "NombreProveedor": {
+        "nombreproveedor", "proveedor", "nombre proveedor", "razon social proveedor", "razón social proveedor"
+    },
+    "CodigoProveedor": {
+        "codigoproveedor", "cod proveedor", "código proveedor", "id proveedor"
+    },
+    # Stock
+    "CodigoAlmacen": {
+        "codigo almacen", "almacen", "almacén", "código almacén", "cod. almacén", "cod almacen"
+    },
+    "EnStock": {
+        "en stock", "stock", "existencias", "cantidad", "disponible", "qty"
+    },
+}
 
-def read_xlsx_required(path: Path) -> pd.DataFrame:
-    if not path.exists():
-        print(f"[ERROR] No se encontró el archivo requerido: {path}", file=sys.stderr)
-        sys.exit(2)
-    return pd.read_excel(path)
+# --------------------------- Utilidades ---------------------------
 
-def rename_cols(df: pd.DataFrame, mapping_candidates: dict) -> pd.DataFrame:
-    """
-    mapping_candidates: {dest_key: [posibles nombres en el Excel]}
-    Devuelve df con columnas renombradas a las claves 'dest_key' si encuentra coincidencias.
-    """
-    current = {norm(c): c for c in df.columns}
-    rename_map = {}
-    for dest, candidates in mapping_candidates.items():
-        found = None
-        for cand in candidates:
-            if norm(cand) in current:
-                found = current[norm(cand)]
-                break
-        if found:
-            rename_map[found] = dest
-    return df.rename(columns=rename_map)
+def log(msg, verbose):
+    if verbose:
+        print(msg)
 
-def ensure_columns(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
-    for c in cols:
-        if c not in df.columns:
-            df[c] = ""
+def pick_engine(path: str):
+    ext = os.path.splitext(path)[1].lower()
+    if ext in (".xlsx", ".xlsm"):
+        return "openpyxl"
+    if ext == ".xls":
+        return "xlrd"
+    return None  # quizá CSV
+
+def read_table(path: str, verbose=False) -> pd.DataFrame:
+    """Lee una tabla Excel o CSV de forma tolerante, devolviendo dataframe con dtype=str."""
+    eng = pick_engine(path)
+    try:
+        if eng:
+            df = pd.read_excel(path, sheet_name=0, engine=eng, dtype=str)
+            log(f"   leído Excel con {eng}: {path}  filas={len(df)}", verbose)
+            return df
+        # Fallback CSV con ; o ,
+        try:
+            df = pd.read_csv(path, sep=";", dtype=str)
+            log(f"   leído CSV (;) : {path}  filas={len(df)}", verbose)
+            return df
+        except Exception:
+            df = pd.read_csv(path, dtype=str)
+            log(f"   leído CSV (,) : {path}  filas={len(df)}", verbose)
+            return df
+    except Exception as e:
+        raise RuntimeError(f"ERROR leyendo {path} -> {e}")
+
+def normalize_cols(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    df.columns = [str(c).strip() for c in df.columns]
     return df
 
-def coerce_int(x):
-    try:
-        if pd.isna(x):
-            return 0
-        return int(float(str(x).replace(",", ".").strip()))
-    except Exception:
-        return 0
+def find_col(df: pd.DataFrame, target_key: str) -> str | None:
+    """Devuelve el nombre real de la columna que encaja con un alias lógico."""
+    wants = ALIAS[target_key]
+    # primero intentamos match exacto (ignorando mayúsculas y tildes básicas)
+    norm = {c: strip(c) for c in df.columns}
+    for col, n in norm.items():
+        if n in wants:
+            return col
+    # fallback: contiene todas las palabras
+    for col, n in norm.items():
+        for w in wants:
+            if w in n:
+                return col
+    return None
 
-def coerce_price(x):
-    if pd.isna(x) or x == "":
-        return ""
+def strip(s: str) -> str:
+    t = s.lower().strip()
+    t = t.replace("á","a").replace("é","e").replace("í","i").replace("ó","o").replace("ú","u").replace("ü","u").replace("ñ","n")
+    t = t.replace(":", "").replace(".", "").replace("-", " ")
+    t = " ".join(t.split())
+    return t
+
+def to_int(x) -> int:
+    if x is None:
+        return 0
+    s = str(x).strip().replace(",", ".")
+    if s == "" or s.lower() == "nan":
+        return 0
     try:
-        return float(str(x).replace(",", "."))
+        v = float(s)
+        if math.isnan(v):
+            return 0
+        return int(round(v))
     except Exception:
-        return ""
+        # a veces vienen "12.0 uds"
+        num = "".join(ch for ch in s if (ch.isdigit() or ch in ".-"))
+        try:
+            return int(round(float(num)))
+        except Exception:
+            return 0
+
+def safe_read_existing_csv(path: str) -> pd.DataFrame | None:
+    if not os.path.isfile(path):
+        return None
+    try:
+        return pd.read_csv(path, sep=";", dtype=str)
+    except Exception:
+        try:
+            return pd.read_csv(path, dtype=str)
+        except Exception:
+            return None
+
+def load_overrides_ean(center_id: str) -> dict:
+    path = os.path.join("overrides", "ean", f"{center_id}.json")
+    if os.path.isfile(path):
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except Exception:
+            return {}
+    return {}
+
+# --------------------------- Proceso ---------------------------
 
 def main():
-    # 1) Leer Excel base de artículos (precios, EAN, refs, descripciones)
-    df_art = read_xlsx_required(FILE_ARTICULOS)
-    df_art = rename_cols(
-        df_art,
-        {
-            "NumeroArticulo": ["NumeroArticulo", "Nº articulo", "Numero articulo", "Articulo", "NumArticulo"],
-            "ReferenciaProveedor": ["ReferenciaProveedor", "Ref Proveedor", "Referencia prov", "ref"],
-            "Descripcion": ["Descripcion", "Descripción", "Desc"],
-            "CodigoEAN": ["CodigoEAN", "EAN", "Codigo EAN", "Código EAN", "codigobarras"],
-            "ProveedorId": ["CodigoProveedor", "Cod Proveedor", "Proveedor", "IdProveedor", "ProveedorId"],
-            # Precio: clave exacta "1. Lista Precio de Ventas" (tolerante)
-            "ListaPrecioVentas": ["1. Lista Precio de Ventas", "1 Lista Precio de Ventas", "Lista Precio Ventas", "Tarifa Ventas"],
-        },
-    )
-    # Asegurar columnas base
-    df_art = ensure_columns(
-        df_art,
-        ["NumeroArticulo", "ReferenciaProveedor", "Descripcion", "CodigoEAN", "ProveedorId", "ListaPrecioVentas"],
-    )
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--verbose", action="store_true")
+    args = ap.parse_args()
+    verbose = args.verbose
 
-    # 2) Leer Excel de stock y quedarnos solo con almacenes 1–4
-    df_stock = read_xlsx_required(FILE_STOCK)
-    df_stock = rename_cols(
-        df_stock,
-        {
-            "NumeroArticulo": ["NumeroArticulo", "Articulo", "NumArticulo", "Código", "Codigo"],
-            "Almacen": ["Codigo almacen", "Cod Almacen", "Almacen", "Almacén", "CodAlmacen"],
-            "Stock": ["Stock", "Existencias", "En stock", "Cantidad"],
-        },
-    )
-    df_stock = ensure_columns(df_stock, ["NumeroArticulo", "Almacen", "Stock"])
+    print("▶ Iniciando build_data.py")
 
-    # Normalizar tipos
-    df_stock["Almacen"] = df_stock["Almacen"].apply(coerce_int)
-    df_stock["Stock"] = df_stock["Stock"].apply(coerce_int)
-    df_stock["NumeroArticulo"] = df_stock["NumeroArticulo"].astype(str).str.strip()
+    # 1) Leer tablas de imports/
+    base = read_table(IMPORTS["base_precios"], verbose=verbose)
+    base = normalize_cols(base)
+    stock = read_table(IMPORTS["stock"], verbose=verbose)
+    stock = normalize_cols(stock)
+    provs = read_table(IMPORTS["proveedores"], verbose=verbose)
+    provs = normalize_cols(provs)
 
-    # Filtrar almacenes válidos 1–4
-    df_stock = df_stock[df_stock["Almacen"].isin(ALMACEN_TO_CENTER.keys())].copy()
+    # 2) Resolver columnas en cada tabla
+    # Base precios
+    col_num = find_col(base, "NumeroArticulo")
+    col_ref = find_col(base, "ReferenciaProveedor")
+    col_desc = find_col(base, "Descripcion")
+    col_ean = find_col(base, "CodigoEAN")
+    col_precio = find_col(base, "Precio")
+    col_nomprov_base = find_col(base, "NombreProveedor")  # si existe
+    col_codprov_base = find_col(base, "CodigoProveedor")  # para mapear con 'provs'
 
-    # Sumar stock por artículo y almacén
-    df_stock_grp = df_stock.groupby(["NumeroArticulo", "Almacen"], as_index=False)["Stock"].sum()
+    needed = [("NumeroArticulo", col_num), ("ReferenciaProveedor", col_ref),
+              ("Descripcion", col_desc), ("Precio", col_precio)]
+    missing = [k for (k,v) in needed if v is None]
+    if missing:
+        raise RuntimeError(f"En 'Base articulos precio.xlsx' faltan columnas clave: {missing}")
 
-    # 3) Leer Excel de proveedores (mapear nombre proveedor)
-    df_prov = read_xlsx_required(FILE_PROV)
-    df_prov = rename_cols(
-        df_prov,
-        {
-            "ProveedorId": ["CodigoProveedor", "Cod Proveedor", "Proveedor", "IdProveedor", "ProveedorId", "Codigo"],
-            "NombreProveedor": ["NombreProveedor", "Nombre Proveedor", "ProveedorNombre", "Nombre"],
-        },
-    )
-    df_prov = ensure_columns(df_prov, ["ProveedorId", "NombreProveedor"])
-    # Limpiar ids a str
-    df_prov["ProveedorId"] = df_prov["ProveedorId"].astype(str).str.strip()
+    # Proveedores
+    col_codprov_prov = find_col(provs, "CodigoProveedor")
+    col_nomprov_prov = find_col(provs, "NombreProveedor")
 
-    # 4) Normalizar/base artículos
-    df_art["NumeroArticulo"] = df_art["NumeroArticulo"].astype(str).str.strip()
-    df_art["ProveedorId"] = df_art["ProveedorId"].astype(str).str.strip()
+    # Stock
+    col_num_s = find_col(stock, "NumeroArticulo") or col_num  # a veces coincide
+    col_alm = find_col(stock, "CodigoAlmacen")
+    col_stk = find_col(stock, "EnStock")
+    needed_s = [("NumeroArticulo", col_num_s), ("CodigoAlmacen", col_alm), ("EnStock", col_stk)]
+    miss_s = [k for (k,v) in needed_s if v is None]
+    if miss_s:
+        raise RuntimeError(f"En 'Importacion Stock.xlsx' faltan columnas clave: {miss_s}")
 
-    # Precio: normalizar a float (string si vacío)
-    df_art["ListaPrecioVentas"] = df_art["ListaPrecioVentas"].apply(coerce_price)
+    # 3) Base de artículos y precios (subset y renombrado)
+    df_base = pd.DataFrame({
+        "NumeroArticulo": base[col_num].astype(str).str.strip(),
+        "ReferenciaProveedor": base[col_ref].astype(str).str.strip() if col_ref else "",
+        "Descripcion": base[col_desc].astype(str).str.strip(),
+        "CodigoEAN": base[col_ean].astype(str).str.strip() if col_ean else "",
+        "Precio": base[col_precio].astype(str).str.strip(),
+    })
 
-    # Join nombre proveedor
-    df = pd.merge(
-        df_art,
-        df_prov[["ProveedorId", "NombreProveedor"]],
-        on="ProveedorId",
-        how="left",
-    )
+    # NombreProveedor
+    df_base["NombreProveedor"] = ""
+    if col_nomprov_base:
+        df_base["NombreProveedor"] = base[col_nomprov_base].astype(str).str.strip()
+    elif col_codprov_base and col_codprov_prov and col_nomprov_prov:
+        # Mapeo por código de proveedor
+        m = provs[[col_codprov_prov, col_nomprov_prov]].dropna()
+        m.columns = ["CodigoProveedor", "NombreProveedor"]
+        base_aux = pd.DataFrame({
+            "NumeroArticulo": df_base["NumeroArticulo"],
+            "CodigoProveedor": base[col_codprov_base].astype(str).str.strip()
+        })
+        df_base = df_base.merge(base_aux, on="NumeroArticulo", how="left")
+        df_base = df_base.merge(m, on="CodigoProveedor", how="left")
+        df_base.drop(columns=["CodigoProveedor"], inplace=True)
+        df_base["NombreProveedor"] = df_base["NombreProveedor"].fillna("")
+    # Normalizar precio a texto
+    df_base["Precio"] = df_base["Precio"].fillna("").astype(str).str.replace(",", ".", regex=False)
 
-    # Columnas extra requeridas por el frontal (con valores vacíos si no hay)
-    for extra in ["ImagenURL", "FichaTecnica", "Manual"]:
-        if extra not in df.columns:
-            df[extra] = ""
+    # 4) Stock por almacén (filtrar 1..4 y agrupar por NumeroArticulo & Almacén)
+    st = stock[[col_num_s, col_alm, col_stk]].dropna()
+    st.columns = ["NumeroArticulo", "CodigoAlmacen", "EnStock"]
+    st["NumeroArticulo"] = st["NumeroArticulo"].astype(str).str.strip()
+    st["CodigoAlmacen"] = st["CodigoAlmacen"].astype(str).str.strip()
+    st["EnStock"] = st["EnStock"].map(to_int)
 
-    # 5) Construir un CSV por centro
-    # Preparamos un índice por artículo → { centro: stock }
-    # Creamos un diccionario NumeroArticulo -> {center_id: stock}
-    stock_map = {}
-    for _, row in df_stock_grp.iterrows():
-        art = str(row["NumeroArticulo"]).strip()
-        alm = int(row["Almacen"])
-        center = ALMACEN_TO_CENTER.get(alm)
-        if center is None:
-            continue
-        stock_map.setdefault(art, {}).setdefault(center, 0)
-        stock_map[art][center] += int(row["Stock"])
+    st = st[st["CodigoAlmacen"].isin(ALMACEN_TO_CENTER.keys())]
+    # Sumar por artículo y almacén
+    st = st.groupby(["NumeroArticulo", "CodigoAlmacen"], as_index=False)["EnStock"].sum()
 
-    # Asegurar directorios de salida
-    for cdir in OUT_DIRS.values():
-        os.makedirs(cdir, exist_ok=True)
+    # 5) Cargar EAN maestro existente por centro + overrides
+    existing_ean = {}  # center -> {NumeroArticulo: EAN}
+    for center in CENTERS:
+        path_csv = os.path.join(CENTERS[center]["out_dir"], "Articulos.csv")
+        df_prev = safe_read_existing_csv(path_csv)
+        if df_prev is not None and "NumeroArticulo" in df_prev.columns:
+            m = {}
+            col_e_prev = "CodigoEAN" if "CodigoEAN" in df_prev.columns else None
+            for _, row in df_prev.iterrows():
+                num = str(row.get("NumeroArticulo","")).strip()
+                ean_prev = str(row.get(col_e_prev,"")).strip() if col_e_prev else ""
+                if num and ean_prev:
+                    m[num] = ean_prev
+            existing_ean[center] = m
+        else:
+            existing_ean[center] = {}
+        # Overrides
+        override = load_overrides_ean(center)
+        existing_ean[center].update({k:str(v).strip() for k,v in override.items()})
 
-    # Para cada centro, volcamos todos los artículos con su stock correspondiente (o 0)
-    # y columnas en el orden que espera el index.html
-    out_cols = [
-        "NumeroArticulo",
-        "ReferenciaProveedor",
-        "Descripcion",
-        "CodigoEAN",
-        "NombreProveedor",
-        "ImagenURL",
-        "FichaTecnica",
-        "Manual",
-        "1. Lista Precio de Ventas",
-        "Precio",
-        "Stock",
-    ]
-
-    # Crear duplicado "1. Lista..." y "Precio" desde ListaPrecioVentas
-    df["1. Lista Precio de Ventas"] = df["ListaPrecioVentas"].apply(
-        lambda x: ("" if x == "" else f"{x:.2f}")
-    )
-    df["Precio"] = df["1. Lista Precio de Ventas"]
-
-    # Rellenos mínimos
-    df["ReferenciaProveedor"] = df["ReferenciaProveedor"].fillna("").astype(str)
-    df["Descripcion"] = df["Descripcion"].fillna("").astype(str)
-    df["CodigoEAN"] = df["CodigoEAN"].fillna("").astype(str)
-    df["NombreProveedor"] = df["NombreProveedor"].fillna("").astype(str)
-
-    # Volcar por centro
-    for center_id, center_dir in OUT_DIRS.items():
-        # Calcular stock de ese centro para cada artículo
-        stock_list = []
-        for _, r in df.iterrows():
-            art = str(r["NumeroArticulo"]).strip()
-            s = stock_map.get(art, {}).get(center_id, 0)
-            stock_list.append(int(s))
-
-        df_out = df.copy()
-        df_out["Stock"] = stock_list
-
-        # Orden y selección de columnas
-        for c in out_cols:
-            if c not in df_out.columns:
-                df_out[c] = ""  # por si faltara algo, no romper
-
-        df_out = df_out[out_cols].copy()
-
-        # Guardar como ; y sin índice
-        out_path = center_dir / "Articulos.csv"
-        df_out.to_csv(out_path, sep=";", index=False)
-        print(f"[OK] Escrito: {out_path}")
-
-    print("\n✅ Conversión finalizada sin errores.")
-
-if __name__ == "__main__":
-    main()
-
+    # 6) E
