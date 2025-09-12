@@ -1,700 +1,314 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Asistente Duran</title>
-<link rel="icon" href="logo-duran.png"/>
-<style>
-:root{
-  --bg:#0b0f22; /* más claro y mezcla azul-morado */
-  --bg2:#101738;
-  --ink:#eaf2ff;
-  --mut:#a9b7e6;
-  --glass:rgba(255,255,255,.06);
-  --line:rgba(255,255,255,.12);
-  --brand:#57a3ff; /* azul eléctrico */
-  --ok:#22c55e;--warn:#f59e0b;--err:#ef4444;
-}
-*{box-sizing:border-box} html,body{height:100%}
-body{margin:0;background:
-  radial-gradient(1200px 800px at 50% -10%, #2847b7 0%, #1a2d6b 45%, #101738 70%, #0b0f22 100%),
-  linear-gradient(180deg,#0b0f22,#101738);
-font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial;color:var(--ink)}
-.app{min-height:100vh;display:grid;grid-template-rows:auto 1fr}
-@supports(height:100dvh){.app{min-height:100dvh}}
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HUD Voz – Prototipo v2</title>
+  <style>
+    :root{ --bg:#05070a; --fg:#eaf7ff; --muted:#88a2ad; --accent:#3cf5ff; --accent2:#ff4b7d; }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0; background:radial-gradient(1200px 800px at 65% 40%, #0b1117 0%, #080d12 40%, #05070a 70% , #030508 100%); color:var(--fg); font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial}
 
-header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg, rgba(8,14,30,.95), rgba(8,14,30,.65));
-backdrop-filter:blur(10px);display:grid;grid-template-columns:1fr minmax(280px,800px) 1fr;gap:12px;align-items:center;
-padding:clamp(10px,2vmin,16px);border-bottom:1px solid var(--line)}
-.header-left{display:flex;align-items:center;gap:10px}
-.header-left img{height:40px;filter:drop-shadow(0 2px 16px rgba(87,163,255,.35))}
-.badge{padding:.35em .7em;border-radius:999px;border:1px solid var(--line);background:var(--glass);color:var(--ink);font-weight:600;font-size:12px;white-space:nowrap}
-.centerTabs{grid-column:2/3;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-.tab{padding:.45em .75em;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.06);cursor:pointer;white-space:nowrap}
-.tab.active{background:rgba(87,163,255,.18);border-color:rgba(87,163,255,.55)}
-.rightBox{display:flex;gap:10px;justify-content:flex-end;align-items:center}
-.small{font-size:12px;color:var(--mut)}
-button{padding:.7em 1em;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--ink);cursor:pointer;font:inherit}
-button:hover{background:rgba(255,255,255,.12)} .btn-brand{border-color:rgba(87,163,255,.5);box-shadow:0 0 0 3px rgba(87,163,255,.12) inset}
-button.ghost{background:transparent;border-color:transparent;color:var(--mut)}
-.hide{display:none!important}
+    /* Layout */
+    .hud{position:relative; width:100vw; height:100vh; overflow:hidden}
+    .topbar{position:absolute; inset:0 0 auto 0; display:flex; justify-content:space-between; padding:18px 22px; pointer-events:none}
+    .brand{font-weight:800; letter-spacing:.6px; font-size:14px; color:#9bb2bb}
+    .datetime{font-variant-numeric:tabular-nums; color:#9bb2bb}
 
-.screen{display:none;min-height:calc(100svh - 70px);padding:clamp(12px,2vmin,18px)}
-.screen.active{display:grid;align-content:start;gap:clamp(12px,2vmin,18px)}
+    /* Core mic */
+    .core{position:absolute; inset:0; display:grid; place-items:center}
+    .wrap{position:relative; width:min(64vmin,720px); aspect-ratio:1/1}
+    .mic-btn{position:absolute; inset:0; border:none; background:transparent; cursor:pointer}
+    svg{position:absolute; inset:0; width:100%; height:100%}
+    .ring{filter:drop-shadow(0 0 18px rgba(60,245,255,.65))}
+    .ticks{opacity:.6}
+    .pulse{transform-origin:50% 50%; transition:transform .08s ease-out}
 
-.grid{display:grid;gap:clamp(10px,2vmin,16px)}
-.row{display:flex;gap:clamp(8px,1.6vmin,12px);align-items:center;flex-wrap:wrap}
+    /* Equalizador circular (sustituye aros flotando) */
+    .bar { transform-origin:50% 50%; }
 
-.flags{display:flex;gap:8px;flex-wrap:wrap}
-.flag{width:clamp(40px,6vmin,56px);height:clamp(28px,4.8vmin,44px);border-radius:10px;border:1px solid var(--line);overflow:hidden;display:inline-flex;align-items:center;justify-content:center;background:#222}
-.flag img{display:block;width:100%;height:100%;object-fit:cover}
+    /* Greeting */
+    .greet{position:absolute; left:24px; bottom:24px; font-size:18px; font-weight:700}
+    .greet small{display:block; color:#9bb2bb; font-weight:500; font-size:12px; margin-top:6px}
 
-input[type="text"],input[type="number"]{width:100%;padding:.8em 1em;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.2);color:var(--ink);outline:none;min-width:12ch;font:inherit}
+    /* Branches (almacenes) */
+    .branches{position:absolute; left:24px; bottom:140px; width:min(520px, 60vw)}
+    .branch{display:flex; align-items:center; gap:12px; margin:14px 0}
+    .branch .line{flex:1; height:2px; background:linear-gradient(90deg, #2a424a, var(--accent)); box-shadow:0 0 10px rgba(60,245,255,.35)}
+    .branch button{all:unset; cursor:pointer; font-weight:800; letter-spacing:.5px; padding:10px 14px; border:1px solid #16323a; border-radius:999px; background:linear-gradient(180deg,#0c1419, #0a1014); box-shadow: inset 0 0 0 1px #17323a, 0 0 12px rgba(60,245,255,.18)}
+    .branch button:hover{box-shadow: inset 0 0 0 1px var(--accent), 0 0 18px rgba(60,245,255,.35)}
 
-.sphere{width:clamp(130px,20vmin,220px);height:clamp(130px,20vmin,220px);border-radius:50%;margin:auto;border:1px solid rgba(120,180,255,.45);box-shadow:
-  0 0 25px rgba(80,180,255,.45),
-  inset 0 0 30px rgba(80,180,255,.25);
-position:relative;overflow:hidden;background:radial-gradient(160px 80px at 50% 20%, rgba(120,180,255,.35), transparent 60%)}
-.sphere .g{position:absolute;inset:-30%;background:
-  conic-gradient(from 0deg at 50% 50%, #4ea3ff, #7cc5ff, #a78bfa, #5ab3ff, #4ea3ff);
-filter:blur(18px);opacity:.95;animation:spin 8s linear infinite}
-.sphere.listening .g{animation:spin 4s linear infinite}
-.sphere .ring{position:absolute;left:50%;top:50%;width:65%;height:65%;transform:translate(-50%,-50%);border-radius:50%;
-border:1px solid rgba(120,180,255,.65);box-shadow:0 0 18px rgba(120,180,255,.45) inset;animation:pulse 2.2s ease-in-out infinite}
-.sphere.listening .ring{animation:pulse 1.4s ease-in-out infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes pulse{0%{transform:translate(-50%,-50%) scale(0.95);opacity:.85}50%{transform:translate(-50%,-50%) scale(1.1);opacity:.45}100%{transform:translate(-50%,-50%) scale(0.95);opacity:.85}}
+    /* Idiomas (ramas derechas) */
+    .langs{position:absolute; right:24px; bottom:140px; width:min(520px, 60vw)}
+    .langs .title{font-size:12px; color:#9bb2bb; text-transform:uppercase; letter-spacing:1px; margin:0 0 8px 0}
+    .langs .branch{justify-content:flex-end}
+    .langs .branch .line{background:linear-gradient(90deg, var(--accent), #2a424a)}
 
-.list{display:grid;gap:12px;max-height:60svh;overflow:auto}
-.item{display:grid;gap:8px;border:1px solid var(--line);background:rgba(255,255,255,.05);padding:12px;border-radius:14px}
-.sub{color:var(--mut);font-size:12px}
-.item .row img.card-thumb{width:72px;height:72px;border-radius:10px;border:1px solid var(--line);object-fit:cover;background:#1b2347}
+    /* Panel transcripción */
+    .panel{position:absolute; left:24px; top:24px; width:min(520px, 55vw); border:1px solid #162229; background:rgba(5,8,11,.75); backdrop-filter: blur(6px); border-radius:16px; padding:14px 16px; box-shadow:0 0 0 1px #0d2026, 0 20px 60px rgba(0,0,0,.5)}
+    .panel h3{margin:0 0 6px 0; font-size:12px; color:#9bb2bb; letter-spacing:1px; text-transform:uppercase}
+    .bubble{margin:8px 0 0 0; border:1px dashed #28424a; border-radius:12px; padding:12px; color:#bcd1d8; min-height:48px; font-size:14px}
 
-.mapWrap{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;height:clamp(320px,70dvh,900px);display:block;background:#0b0f22}
-.mapWrap img{display:block;width:100%;height:100%;object-fit:contain;user-select:none;background:radial-gradient(600px 300px at 50% 0%, rgba(255,255,255,.03), transparent 60%)}
-.pin{position:absolute;width:clamp(12px,1.8vmin,16px);height:clamp(12px,1.8vmin,16px);background:#ef4444;border-radius:50%;box-shadow:0 0 0 5px rgba(239,68,68,.35);transform:translate(-50%,-50%);display:none}
-.pin.ref{background:#3b82f6; box-shadow:0 0 0 5px rgba(59,130,246,.35)}
-.panel{border:1px solid var(--line);background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04));backdrop-filter:blur(10px);border-radius:18px;padding:clamp(12px,2vmin,16px)}
-.grid-two{display:grid;grid-template-columns:repeat(2,1fr);gap:8px} @media(max-width:640px){.grid-two{grid-template-columns:1fr}}
-.bad{color:#ffcd6b} footer{padding:8px 16px;color:var(--mut);font-size:12px}
-hr{border:0;border-top:1px solid var(--line)}
-.note{border:1px dashed var(--line);padding:10px;border-radius:10px;color:var(--mut)}
-</style>
+    /* Estado */
+    .status{position:absolute; left:24px; bottom:84px; display:flex; align-items:center; gap:10px; font-size:12px; color:#9bb2bb}
+    .led{width:10px; height:10px; border-radius:50%; background:#3a454c}
+    .active .led{background:var(--accent); box-shadow:0 0 10px rgba(60,245,255,.9)}
+
+    /* Reloj lateral ultramoderno */
+    .sideclock{position:absolute; right:24px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; align-items:flex-end; gap:6px; pointer-events:none}
+    .sideclock .time{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:56px; letter-spacing:2px; text-shadow:0 0 20px rgba(60,245,255,.55), 0 0 60px rgba(60,245,255,.25)}
+    .sideclock .date{font-size:12px; color:#9bb2bb; letter-spacing:2px; text-transform:uppercase}
+    .sideclock .bar{width:220px; height:3px; background:linear-gradient(90deg, var(--accent), transparent); box-shadow:0 0 10px rgba(60,245,255,.5)}
+
+    /* Small */
+    @media (max-width: 1000px){
+      .panel{left:24px; right:24px; width:auto; top:auto; bottom:24px}
+      .branches{bottom:210px}
+      .langs{bottom:210px}
+      .sideclock{right:18px}
+    }
+  </style>
 </head>
 <body>
-<div class="app">
-  <header>
-    <div class="header-left"><img src="logo-duran.png" alt="DURAN"/><div class="badge small" id="centerBadge">Centro Duran Calvià</div></div>
-    <div class="centerTabs" id="centerTabs"></div>
-    <div class="rightBox">
-      <span class="small" id="status">Listo</span>
-      <button id="adminToggle" class="ghost" title="Admin">⚙️ Admin</button>
-      <button id="fs" class="ghost" title="Pantalla completa">⤢</button>
-    </div>
-  </header>
-
-  <!-- HOME -->
-  <section id="scrHome" class="screen active">
-    <div class="grid">
-      <div class="small">Selecciona idioma</div>
-      <div class="flags" id="flags"></div>
-    </div>
-    <div class="row"><input id="name" type="text" placeholder="Tu nombre (opcional)"/><button id="start" class="btn-brand">Empezar</button></div>
-    <div class="grid" id="voiceBox" style="display:none">
-      <div class="sphere" id="sphere"><div class="g"></div><div class="ring"></div></div>
-      <div id="spLabel" class="small">Listo</div>
-    </div>
-    <div class="row" style="gap:8px">
-      <input id="q" type="text" placeholder="Escribe y pulsa Buscar (ej.: manguito 32 mm polietileno, scala2, 8426621550199, 9286)"/>
-      <button id="mic" title="Hablar">🎙️</button>
-      <button id="go" class="btn-brand">Buscar</button>
-      <button id="ask" class="ghost hide" title="Asesor especialista (próximamente)">💡 Asesor</button>
-    </div>
-    <div class="small bad" id="voiceWarn" style="display:none"></div>
-  </section>
-
-  <!-- RESULTADOS -->
-  <section id="scrResults" class="screen">
-    <div class="row" style="justify-content:space-between">
-      <button id="backHome" class="ghost">← Inicio</button>
-      <div class="small" id="resCount"></div>
-    </div>
-    <div id="results" class="list"></div>
-  </section>
-
-  <!-- MAPA + ADMIN -->
-  <section id="scrMap" class="screen">
-    <div class="row" style="justify-content:space-between">
-      <button id="backResults" class="ghost">← Resultados</button>
-      <button id="again" class="ghost">↩︎ Nueva búsqueda</button>
+  <div class="hud" role="application" aria-label="Prototipo HUD con reconocimiento de voz y selección de almacén">
+    <div class="topbar">
+      <div class="brand">HUD · Prototipo</div>
+      <div class="datetime" id="datetime">--:--</div>
     </div>
 
-    <div class="mapWrap" id="mapBox">
-      <img id="mapImg" src="calvia/plano-calvia.jpg" alt="Plano"/>
-      <div id="pin" class="pin"></div><div id="pinRef" class="pin ref" style="display:none"></div>
-    </div>
-    <div id="route" class="small"></div>
-    <div class="panel note" id="mapNote" style="display:none"></div>
+    <!-- Centro: esfera con ecualizador circular -->
+    <div class="core">
+      <div class="wrap" id="coreWrap" aria-label="Esfera de micrófono: pulsa para activar o detener.">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <defs>
+            <radialGradient id="g" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#0cf"/>
+              <stop offset="50%" stop-color="#0cf" stop-opacity=".6"/>
+              <stop offset="100%" stop-color="#0cf" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle cx="50" cy="50" r="40" fill="url(#g)" opacity=".15" />
 
-    <div id="adminPanel" class="panel" style="display:none">
-      <div class="small">Acceso restringido. Contraseña (0666).</div><hr>
-      <h4 class="small" style="margin:.2em 0 .4em">Ubicación del artículo</h4>
-      <div class="grid-two">
-        <label>Pasillo <input id="fPasillo" type="number" min="0" step="1"></label>
-        <label>Lado <select id="fLado"><option>Izquierda</option><option>Derecha</option></select></label>
-        <label>Estante <input id="fEst" type="number" min="0" step="1"></label>
-        <label>Balda <input id="fBal" type="number" min="0" step="1"></label>
-        <label>X <input id="fX" type="number" min="0" max="1" step="0.01"></label>
-        <label>Y <input id="fY" type="number" min="0" max="1" step="0.01"></label>
-        <label>Stock <input id="fStock" type="number" min="0" step="1"></label>
-      </div>
-      <div class="row"><button id="saveLoc" class="btn-brand">💾 Guardar ubicación del artículo</button><button id="delLoc">🗑️ Quitar ubicación</button></div>
+          <!-- Ticks base -->
+          <g class="ticks">
+            <circle cx="50" cy="50" r="16" fill="none" stroke="#36f3ff" stroke-width="0.6" stroke-dasharray=".8 1.6"/>
+            <circle cx="50" cy="50" r="8" fill="#061116" stroke="#36f3ff" stroke-width="0.6"/>
+          </g>
 
-      <h4 class="small" style="margin:.8em 0 .4em">Posición del terminal</h4>
-      <div class="row"><button id="setRefMode">📍 Fijar referencia tocando el plano</button><button id="clearRef" class="ghost">Borrar referencia</button><div id="refInfo" class="small"></div></div>
-      <hr>
+          <!-- Anillo exterior fino -->
+          <g class="ring">
+            <circle class="pulse" id="ringOuter" cx="50" cy="50" r="33.5" fill="none" stroke="#36f3ff" stroke-width="0.8" />
+          </g>
 
-      <h4 class="small" style="margin:.8em 0 .4em">Gestión de EAN (buscar y asignar)</h4>
-      <div class="grid-two">
-        <label>EAN (lector o pegado) <input id="admEAN" type="text" placeholder="8426…"/></label>
-        <label>Nº artículo <input id="admNum" type="text" placeholder="9286"/></label>
-      </div>
-      <label>Descripción contiene <input id="admText" type="text" placeholder="manguito 32"/></label>
-      <div class="row">
-        <button id="admFind" class="btn-brand">🔎 Buscar artículo</button>
-        <button id="admAssign">🔗 Asignar este EAN al artículo</button>
-        <button id="admExport" title="Descargar Articulos.csv actualizado">⬇️ Exportar CSV</button>
-      </div>
-      <div id="admInfo" class="small"></div>
-
-      <hr>
-      <h4 class="small" style="margin:.8em 0 .4em">Foto del artículo</h4>
-      <div class="row">
-        <input id="photoFile" type="file" accept="image/*" capture="environment"/>
-        <button id="savePhoto" class="btn-brand">📸 Guardar foto (local)</button>
-        <button id="downloadPhoto">⬇️ Descargar fichero</button>
-        <span class="small" id="photoInfo"></span>
+          <!-- Equalizador circular -->
+          <g id="bars" stroke="#36f3ff" fill="#36f3ff"></g>
+        </svg>
+        <button class="mic-btn" id="micBtn" aria-label="Alternar micrófono"></button>
       </div>
     </div>
-  </section>
 
-  <footer>Voz gratis (Web Speech). © DURAN</footer>
-</div>
+    <!-- Saludo -->
+    <div class="greet" id="greet">Hola 👋<small>Pulsa en la esfera para hablar</small></div>
 
-<script>
-const APP_VERSION='v6.12-'+Date.now();
+    <!-- Almacenes -->
+    <div class="branches" aria-label="Selecciona un almacén">
+      <div class="branch"><div class="line"></div><button data-store="Coll">Coll</button></div>
+      <div class="branch"><div class="line"></div><button data-store="Calvià">Calvià</button></div>
+      <div class="branch"><div class="line"></div><button data-store="Alcudia">Alcudia</button></div>
+      <div class="branch"><div class="line"></div><button data-store="Santanyí">Santanyí</button></div>
+    </div>
 
-/* === Centros (usa ubicaciones en minúsculas) === */
-const CENTERS={
-  calvia:{id:'calvia',label:'Duran Calvià',a:'calvia/Articulos.csv',u:'calvia/ubicaciones.csv',map:'calvia/plano-calvia.jpg'},
-  coll:{id:'coll',label:'Duran Coll',a:'coll/Articulos.csv',u:'coll/ubicaciones.csv',map:'coll/plano-coll.jpg'},
-  alcudia:{id:'alcudia',label:'Duran Alcudia',a:'alcudia/Articulos.csv',u:'alcudia/ubicaciones.csv',map:'alcudia/plano-alcudia.jpg'},
-  santanyi:{id:'santanyi',label:'Duran Santanyí',a:'santanyi/Articulos.csv',u:'santanyi/ubicaciones.csv',map:'santanyi/plano-santanyi.jpg'}
-};
-let CENTER=CENTERS[localStorage.getItem('centerId')||'calvia'];
+    <!-- Idiomas -->
+    <div class="langs" aria-label="Selecciona idioma">
+      <p class="title">Idiomas</p>
+      <div class="branch"><button data-lang="es-ES">Español</button><div class="line"></div></div>
+      <div class="branch"><button data-lang="ca-ES">Català (Mallorquí)</button><div class="line"></div></div>
+      <div class="branch"><button data-lang="en-US">English</button><div class="line"></div></div>
+      <div class="branch"><button data-lang="de-DE">Deutsch</button><div class="line"></div></div>
+      <div class="branch"><button data-lang="pl-PL">Polski</button><div class="line"></div></div>
+      <div class="branch"><button data-lang="ru-RU">Русский</button><div class="line"></div></div>
+    </div>
 
-/* === Idiomas + voces === */
-const LANGS={
-  es:{name:"Español",tag:"es-ES",sphere:{idle:"Listo",listening:"Escuchando…",thinking:"Pensando…",speaking:"Hablando…"},
-      greet:(n)=>{const h=new Date().getHours(); const hola=(h>=19?"Buenas noches":h>=14?"Buenas tardes":"Buenos días"); return `${hola}${n?`, ${n}`:''}. ¿En qué puedo ayudarte?`},
-      side:s=> s==='I'?'Izquierda': s==='D'?'Derecha':(s||'—'),
-      guide:(p,l,e,b,dir)=>`Desde este terminal, ${dir}. Luego al pasillo ${p}, lado ${l}, estante ${e}, balda ${b}.`,
-      ask:"¿Quieres indicaciones para localizarlo?"},
-  ca:{name:"Mallorquí",tag:"ca-ES",sphere:{idle:"A punt",listening:"Escoltant…",thinking:"Pensant…",speaking:"Parlant…"},
-      greet:(n)=>{const h=new Date().getHours(); const hola=(h>=19?"Bona nit":h>=14?"Bona tarda":"Bon dia"); return `${hola}${n?`, ${n}`:''}. En què et puc ajudar?`},
-      side:s=> s==='I'?'Esquerra': s==='D'?'Dreta':(s||'—'),
-      guide:(p,l,e,b,dir)=>`Des d'aquest terminal, ${dir}. Després al passadís ${p}, costat ${l}, prestatge ${e}, balda ${b}.`,
-      ask:"Vols que t'indiqui com arribar?"},
-  en:{name:"English",tag:"en-GB",sphere:{idle:"Ready",listening:"Listening…",thinking:"Thinking…",speaking:"Speaking…"},
-      greet:(n)=>{const h=new Date().getHours(); const hello=(h>=19?"Good evening":h>=14?"Good afternoon":"Good morning"); return `${hello}${n?`, ${n}`:''}. How can I help you?`},
-      side:s=> s==='I'?'Left': s==='D'?'Right':(s||'—'),
-      guide:(p,l,e,b,dir)=>`From this terminal, ${dir}. Then go to aisle ${p}, ${l} side, shelf ${e}, tier ${b}.`,
-      ask:"Would you like directions to find it?"},
-  de:{name:"Deutsch",tag:"de-DE",sphere:{idle:"Bereit",listening:"Zuhören…",thinking:"Denken…",speaking:"Sprechen…"},
-      greet:(n)=>{const h=new Date().getHours(); const hallo=(h>=19?"Guten Abend":h>=14?"Guten Tag":"Guten Morgen"); return `${hallo}${n?`, ${n}`:''}. Wie kann ich helfen?`},
-      side:s=> s==='I'?'Links': s==='D'?'Rechts':(s||'—'),
-      guide:(p,l,e,b,dir)=>`Von diesem Terminal ${dir}. Dann zum Gang ${p}, ${l}e Seite, Regal ${e}, Ebene ${b}.`,
-      ask:"Möchten Sie eine Wegbeschreibung?"},
-  pl:{name:"Polski",tag:"pl-PL",sphere:{idle:"Gotowe",listening:"Słucham…",thinking:"Myślę…",speaking:"Mówię…"},
-      greet:(n)=>{const h=new Date().getHours(); const d=(h>=19?"Dobry wieczór":"Dzień dobry"); return `${d}${n?`, ${n}`:''}. W czym mogę pomóc?`},
-      side:s=> s==='I'?'Lewa': s==='D'?'Prawa':(s||'—'),
-      guide:(p,l,e,b,dir)=>`Z tego terminala ${dir}. Następnie alejka ${p}, strona ${l}, półka ${e}, poziom ${b}.`,
-      ask:"Chcesz wskazówek dojazdu?"},
-  ru:{name:"Русский",tag:"ru-RU",sphere:{idle:"Готово",listening:"Слушаю…",thinking:"Думаю…",speaking:"Говорю…"},
-      greet:(n)=>{const h=new Date().getHours(); const hi=(h>=19?"Добрый вечер":h>=14?"Добрый день":"Доброе утро"); return `${hi}${n?`, ${n}`:''}. Чем могу помочь?`},
-      side:s=> s==='I'?'Левая': s==='D'?'Правая':(s||'—'),
-      guide:(p,l,e,b,dir)=>`От этого терминала: ${dir}. Затем ряд ${p}, сторона ${l}, полка ${e}, уровень ${b}.`,
-      ask:"Показать маршрут?"}
-};
+    <!-- Panel transcripción -->
+    <div class="panel" aria-live="polite">
+      <h3>Transcripción</h3>
+      <div class="bubble" id="transcript">(esperando…)</div>
+    </div>
 
-/* Banderas base64 */
-function b64(svg){ return 'data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svg))) }
-const FLAGS={
-  es:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='48' fill='#aa151b'/><rect y='16' width='80' height='16' fill='#f1bf00'/></svg>`),
-  ca:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='48' fill='#f7d117'/><g fill='#d40000'><rect y='4' width='80' height='6'/><rect y='14' width='80' height='6'/><rect y='24' width='80' height='6'/><rect y='34' width='80' height='6'/></g><rect x='0' y='0' width='20' height='20' fill='#5a2ca0'/><rect x='4' y='4' width='12' height='8' fill='white'/></svg>`),
-  en:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='48' fill='#00247d'/><path d='M0,0 80,48 M80,0 0,48' stroke='#fff' stroke-width='10'/><path d='M0,0 80,48 M80,0 0,48' stroke='#cf142b' stroke-width='6'/><rect x='34' width='12' height='48' fill='#fff'/><rect y='18' width='80' height='12' fill='#fff'/><rect x='36' width='8' height='48' fill='#cf142b'/><rect y='20' width='80' height='8' fill='#cf142b'/></svg>`),
-  de:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='16' fill='#000'/><rect y='16' width='80' height='16' fill='#dd0000'/><rect y='32' width='80' height='16' fill='#ffce00'/></svg>`),
-  pl:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='24' fill='#fff'/><rect y='24' width='80' height='24' fill='#dc143c'/></svg>`),
-  ru:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='16' fill='#fff'/><rect y='16' width='80' height='16' fill='#0039a6'/><rect y='32' width='80' height='16' fill='#d52b1e'/></svg>`)
-};
+    <!-- Estado -->
+    <div class="status" id="status"><div class="led"></div><span>Micrófono inactivo</span></div>
 
-/* Estado/refs */
-let lang='es', admin=false, adminGranted=false;
-const statusEl=document.getElementById('status'); const centerBadge=document.getElementById('centerBadge'); const centerTabs=document.getElementById('centerTabs');
-const scrHome=document.getElementById('scrHome'); const scrResults=document.getElementById('scrResults'); const scrMap=document.getElementById('scrMap');
-const backHome=document.getElementById('backHome'); const backResults=document.getElementById('backResults'); const againBtn=document.getElementById('again');
-const adminToggle=document.getElementById('adminToggle'); const adminPanel=document.getElementById('adminPanel');
-const flags=document.getElementById('flags'); const nameInput=document.getElementById('name'); const startBtn=document.getElementById('start');
-const voiceBox=document.getElementById('voiceBox'); const sphere=document.getElementById('sphere'); const spLabel=document.getElementById('spLabel');
-const q=document.getElementById('q'); const goBtn=document.getElementById('go'); const micBtn=document.getElementById('mic'); const voiceWarn=document.getElementById('voiceWarn');
-const resultsEl=document.getElementById('results'); const resCount=document.getElementById('resCount');
-const mapImg=document.getElementById('mapImg'); const mapBox=document.getElementById('mapBox'); const mapNote=document.getElementById('mapNote');
-const pin=document.getElementById('pin'); const pinRef=document.getElementById('pinRef'); const routeEl=document.getElementById('route');
-const fPas=document.getElementById('fPasillo'); const fLado=document.getElementById('fLado'); const fEst=document.getElementById('fEst'); const fBal=document.getElementById('fBal'); const fX=document.getElementById('fX'); const fY=document.getElementById('fY'); const fStock=document.getElementById('fStock');
-const saveLocBtn=document.getElementById('saveLoc'); const delLocBtn=document.getElementById('delLoc'); const setRefModeBtn=document.getElementById('setRefMode'); const clearRefBtn=document.getElementById('clearRef'); const refInfo=document.getElementById('refInfo');
-const admEAN=document.getElementById('admEAN'); const admNum=document.getElementById('admNum'); const admText=document.getElementById('admText'); const admFind=document.getElementById('admFind'); const admAssign=document.getElementById('admAssign'); const admExport=document.getElementById('admExport'); const admInfo=document.getElementById('admInfo');
-const photoFile=document.getElementById('photoFile'); const savePhotoBtn=document.getElementById('savePhoto'); const downloadPhotoBtn=document.getElementById('downloadPhoto'); const photoInfo=document.getElementById('photoInfo');
-const fsBtn=document.getElementById('fs');
+    <!-- Reloj lateral -->
+    <div class="sideclock" aria-hidden="true">
+      <div class="time" id="sideTime">00:00</div>
+      <div class="bar" id="secBar"></div>
+      <div class="date" id="sideDate">--</div>
+    </div>
+  </div>
 
-/* Fullscreen */
-fsBtn.onclick=()=>{ const el=document.documentElement; if(!document.fullscreenElement){ el.requestFullscreen?.() } else { document.exitFullscreen?.() }};
-
-/* Banderas */
-function initFlags(){
-  flags.innerHTML='';
-  for(const code of Object.keys(LANGS)){
-    const b=document.createElement('button'); b.className='flag'; b.innerHTML=`<img alt='${code}' src='${FLAGS[code]}'/>`; b.title=LANGS[code].name;
-    b.onclick=()=>{ lang=code; setSphere('idle'); speak(LANGS[lang].greet(nameInput.value||'')); };
-    flags.appendChild(b);
+  <script>
+  // Fecha/Hora superior + lateral
+  const fmtTop = new Intl.DateTimeFormat('es-ES',{weekday:'short', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
+  const dtTop = document.getElementById('datetime');
+  const sideTime = document.getElementById('sideTime');
+  const sideDate = document.getElementById('sideDate');
+  const secBar = document.getElementById('secBar');
+  function clockTick(){
+    const now = new Date();
+    dtTop.textContent = fmtTop.format(now);
+    const hh = String(now.getHours()).padStart(2,'0');
+    const mm = String(now.getMinutes()).padStart(2,'0');
+    const ss = now.getSeconds();
+    sideTime.textContent = `${hh}:${mm}`;
+    sideDate.textContent = new Intl.DateTimeFormat('es-ES',{weekday:'long', day:'2-digit', month:'long'}).format(now);
+    const p = (ss/60); // 0..1
+    secBar.style.background = `linear-gradient(90deg, var(--accent) ${Math.round(p*100)}%, rgba(60,245,255,0.1) ${Math.round(p*100)}%)`;
   }
-}
+  setInterval(clockTick, 1000); clockTick();
 
-/* Voz: TTS + STT */
-let VOICES=[]; function refreshVoices(){ try{ VOICES=speechSynthesis.getVoices() }catch{} } refreshVoices(); speechSynthesis.onvoiceschanged=refreshVoices;
-function pickVoice(tag){ tag=tag.toLowerCase(); const pool=VOICES.filter(v=> (v.lang||'').toLowerCase().startsWith(tag.slice(0,2)) || (v.lang||'').toLowerCase()===tag ); const score=v=>{ let s=0; const n=(v.name||'').toLowerCase(); if((v.lang||'').toLowerCase().startsWith(tag)) s+=5; if(n.includes('google')||n.includes('microsoft')) s+=3; if(n.includes('natural')||n.includes('neural')) s+=2; return s }; return pool.sort((a,b)=>score(b)-score(a))[0]||pool[0]||null }
-function speak(text){
-  try{
-    const u=new SpeechSynthesisUtterance(text);
-    const v=pickVoice(LANGS[lang].tag)||pickVoice('es-ES'); if(v) u.voice=v;
-    u.lang=(v&&v.lang)||LANGS[lang].tag; u.rate=1; u.pitch=1; u.volume=1; speechSynthesis.cancel(); speechSynthesis.speak(u);
-    setSphere('speaking'); const ms=Math.min(9000, Math.max(1800, text.split(/\s+/).length*340)); setTimeout(()=>setSphere('idle'), ms);
-  }catch(e){console.warn(e)}
-}
-let rec=null, listening=false, recStart=0, lastTranscriptTs=0;
-function startListening(){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){ voiceWarn.style.display='block'; voiceWarn.textContent='Este navegador no soporta reconocimiento de voz.'; return }
-  if(!location.protocol.startsWith('https')){ voiceWarn.style.display='block'; voiceWarn.textContent='La voz requiere HTTPS.'; return }
-  rec=new SR(); rec.lang=LANGS[lang].tag; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
-  rec.onstart=()=>{ setSphere('listening'); voiceWarn.style.display='none'; lastTranscriptTs=Date.now(); voiceBox.style.display='grid' };
-  rec.onresult=(ev)=>{ let interim=''; let final=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ const r=ev.results[i]; if(r.isFinal) final += r[0].transcript + ' '; else interim += r[0].transcript; } const any=(final+interim).trim(); if(any){ lastTranscriptTs=Date.now(); q.value=(q.value? q.value+' ' : '') + any; } };
-  rec.onerror=(e)=>{ voiceWarn.style.display='block'; voiceWarn.textContent='Error de voz: '+e.error; stopListening(); };
-  rec.onend=()=>{ if(!listening){ setSphere('idle'); return } const elapsed=Date.now()-recStart; if(Date.now()-lastTranscriptTs>6000 && elapsed<15000){ rec.start(); } else { listening=false; setSphere('idle'); } };
-  listening=true; recStart=Date.now(); rec.start();
-}
-function stopListening(){ try{ listening=false; rec&&rec.stop() }catch{} }
-function setSphere(mode){ sphere.classList.remove('listening','speaking'); if(mode==='listening') sphere.classList.add('listening'); if(mode==='speaking') sphere.classList.add('speaking'); spLabel.textContent=LANGS[lang].sphere[mode]||'…'; statusEl.textContent=spLabel.textContent }
+  // Saludo por voz (opcional)
+  function speak(text, lang='es-ES'){ try{ const u = new SpeechSynthesisUtterance(text); u.lang=lang; speechSynthesis.cancel(); speechSynthesis.speak(u);}catch{} }
 
-/* Utilidades */
-function normalize(s){return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
-function parseNum(v){ if(v==null) return null; if(typeof v==='number') return v; const s=String(v).trim().replace(',','.'); const n=Number(s); return isFinite(n)? n : null }
-function formatEURraw(n){ const x=Number(n); if(!isFinite(x)) return ''; return x.toLocaleString('es-ES',{style:'currency',currency:'EUR'}) }
-const PRICE_KEYS=["1. Lista Precio de Ventas","Precio","PVP","PrecioConIva","PrecioSinIva"];
-function getPrice(a){
-  for(const k of PRICE_KEYS){ if(a[k]!=null && a[k]!==''){ return a[k] } }
-  return '';
-}
-function esSpeakPrice(n){
-  // convierte 25,45 -> "veinticinco con cuarenta y cinco"
-  const str=(String(n).replace('€','').trim()).replace(',', '.');
-  const val=Number(str); if(!isFinite(val)) return '';
-  const euros=Math.floor(val); const cents=Math.round((val - euros)*100);
-  const w=(m)=>{ // 0..9999 simple
-    const U=["cero","uno","dos","tres","cuatro","cinco","seis","siete","ocho","nueve"];
-    const D=["","diez","veinte","treinta","cuarenta","cincuenta","sesenta","setenta","ochenta","noventa"];
-    const TE=["diez","once","doce","trece","catorce","quince","dieciséis","diecisiete","dieciocho","diecinueve"];
-    const C=["","ciento","doscientos","trescientos","cuatrocientos","quinientos","seiscientos","setecientos","ochocientos","novecientos"];
-    if(m===0) return "cero";
-    let out=[];
-    const c=Math.floor(m/100); const r=m%100;
-    if(m===100){ out.push("cien") } else if(c>0){ out.push(C[c]) }
-    if(r>0){
-      if(r<10) out.push(U[r]);
-      else if(r<20) out.push(TE[r-10]);
-      else{
-        const d=Math.floor(r/10), u=r%10;
-        if(u===0) out.push(D[d]);
-        else if(d===2) out.push("veinti"+U[u]);
-        else out.push(D[d]+" y "+U[u]);
+  // UI refs
+  const micBtn = document.getElementById('micBtn');
+  const statusEl = document.getElementById('status');
+  const transcriptEl = document.getElementById('transcript');
+  const ringOuter = document.getElementById('ringOuter');
+  const greetEl = document.getElementById('greet');
+  const barsG = document.getElementById('bars');
+
+  // Idioma actual
+  let currentLang = 'es-ES';
+
+  // Almacenes
+  document.querySelectorAll('[data-store]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const store = btn.dataset.store;
+      greetEl.innerHTML = `Almacén seleccionado: <b>${store}</b><small>Di "buscar" para empezar o usa el micrófono.</small>`;
+      speak(`Has seleccionado ${store}`, currentLang);
+    })
+  })
+
+  // Idiomas
+  document.querySelectorAll('[data-lang]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      currentLang = btn.dataset.lang;
+      greetEl.innerHTML = `Idioma: <b>${btn.textContent}</b><small>La transcripción y la voz usarán este idioma.</small>`;
+      speak('Idioma actualizado', currentLang);
+      if(recognition){ recognition.lang = currentLang; }
+    })
+  })
+
+  // Reconocimiento de voz
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null; let isListening = false;
+
+  // Visualización con ecualizador circular
+  let audioCtx, analyser, freqArray, mediaStream, rafId;
+
+  // Crear barras en SVG
+  const BAR_COUNT = 48; const R_IN = 26; const R_OUT = 34;
+  for(let i=0;i<BAR_COUNT;i++){
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','bar');
+    const angle = (i/BAR_COUNT)*360;
+    g.setAttribute('transform', `translate(50,50) rotate(${angle})`);
+    const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x', -0.6);
+    rect.setAttribute('y', -R_OUT);
+    rect.setAttribute('width', 1.2);
+    rect.setAttribute('height', R_OUT-R_IN);
+    rect.setAttribute('rx', 0.8);
+    rect.setAttribute('fill', '#36f3ff');
+    rect.setAttribute('opacity', '0.55');
+    g.appendChild(rect);
+    barsG.appendChild(g);
+  }
+
+  const rects = Array.from(barsG.querySelectorAll('rect'));
+
+  function setMicActive(active){
+    isListening = active;
+    statusEl.classList.toggle('active', active);
+    statusEl.lastElementChild.textContent = active ? 'Micrófono activo' : 'Micrófono inactivo';
+  }
+
+  function startVis(stream){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 1024;
+    freqArray = new Uint8Array(analyser.frequencyBinCount);
+    const source = audioCtx.createMediaStreamSource(stream);
+    source.connect(analyser);
+
+    function loop(){
+      analyser.getByteFrequencyData(freqArray);
+      const group = Math.floor(freqArray.length / BAR_COUNT);
+      for(let i=0;i<BAR_COUNT;i++){
+        let sum=0; for(let j=0;j<group;j++){ sum += freqArray[i*group + j]; }
+        const v = sum/(group*255); // 0..1
+        const len = (R_OUT-R_IN)*(0.25 + v*0.9); // longitudes
+        const y = -R_OUT;
+        rects[i].setAttribute('y', y);
+        rects[i].setAttribute('height', Math.max(2, len));
+        rects[i].setAttribute('opacity', 0.35 + v*0.7);
       }
+      ringOuter.style.transform = `scale(${1 + Math.min(0.3, (freqArray[5]||0)/255 * 0.3)})`;
+      rafId = requestAnimationFrame(loop);
     }
-    return out.filter(Boolean).join(' ').replace(/\s+/g,' ').trim();
-  };
-  const eurosTxt=w(euros)+(euros===1?" euro":" euros");
-  const centsTxt=cents>0? " con "+w(cents)+(cents===1?" céntimo":" céntimos") : "";
-  return eurosTxt+centsTxt;
-}
-
-/* Semántica búsqueda */
-const MATERIALS={
-  pe:['pe','polietileno','polietil','hdpe','pe100','pe-100','pe 100','polietileno negro'],
-  pvc:['pvc','rigido','rígido','presion','presión','pvc-u','u-pvc'],
-  laton:['laton','latón','brass','cromado','laton cromado'],
-  multicapa:['multicapa','pex','alupex','pe-x','mlcp']
-};
-const FAMILY={manguito:['manguito','union','unión','acople','acoplamiento','enchufe','conector','racor']};
-const INCH_TO_MM={'1/2':15,'3/4':20,'1':25,'1 1/4':32,'1 1/2':40,'2':50};
-function extractDims(q){ const out=[]; const rxNum=/\b(\d{1,3})\s*mm\b/ig; let m; while((m=rxNum.exec(q))){ out.push(parseInt(m[1],10)) }
-  const rxBare=/\b(\d{1,3})\b/g; while((m=rxBare.exec(q))){ const n=parseInt(m[1],10); if(n>=10&&n<=400) out.push(n) }
-  const rxInch=/\b(1\/2|3\/4|1(?:\s*1\/4|\s*1\/2)?|2)\s*"?\b/g; while((m=rxInch.exec(q))){ const mm=INCH_TO_MM[m[1].replace(/\s+/g,' ')]; if(mm) out.push(mm) }
-  return Array.from(new Set(out)) }
-function detectMaterials(text){ const found=new Set(); const t=normalize(text); for(const [mat,keys] of Object.entries(MATERIALS)){ if(keys.some(k=> t.includes(normalize(k)))) found.add(mat) } return found }
-function detectFamily(text){ const f=new Set(); const t=normalize(text); for(const [fam,keys] of Object.entries(FAMILY)){ if(keys.some(k=> t.includes(normalize(k)))) f.add(fam) } return f }
-
-/* CSV */
-async function fetchText(url){
-  try{
-    const r=await fetch(url+`?v=${APP_VERSION}`,{cache:'no-store'});
-    if(!r.ok) return null;
-    return await r.text();
-  }catch(e){ return null }
-}
-function detectSep(line){ const sc=(line.match(/;/g)||[]).length; const cc=(line.match(/,/g)||[]).length; return sc>=cc?';':',' }
-function parseCSV(text){
-  const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim().length);
-  if(!lines.length) return [];
-  const sep=detectSep(lines[0]);
-  const rows=[]; for(const line of lines){ rows.push(parseCSVLine(line,sep)) }
-  const headers=rows.shift().map(h=>h.trim());
-  return rows.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').trim()); return o })
-}
-function parseCSVLine(line,sep){ const out=[]; let cur=''; let inQ=false;
-  for(let i=0;i<line.length;i++){ const ch=line[i];
-    if(ch=='"'){ if(inQ && line[i+1]=='"'){ cur+='"'; i++; } else { inQ=!inQ } }
-    else if(ch===sep && !inQ){ out.push(cur); cur='' }
-    else { cur+=ch }
+    loop();
   }
-  out.push(cur); return out
-}
 
-/* Datos */
-let ART=[], UBI=[], INDEX={}; let varSel=null; let capturingRef=false; let termRef=loadRef();
-function loadRef(){ try{ const x=parseFloat(localStorage.getItem('terminalRefX_'+CENTER.id)); const y=parseFloat(localStorage.getItem('terminalRefY_'+CENTER.id)); if(!isNaN(x)&&!isNaN(y)) return {x,y}; }catch{} return null }
-function saveRef(x,y){ try{ localStorage.setItem('terminalRefX_'+CENTER.id, x); localStorage.setItem('terminalRefY_'+CENTER.id, y); termRef={x,y}; renderRefPin(); }catch{} }
-function clearRef(){ try{ localStorage.removeItem('terminalRefX_'+CENTER.id); localStorage.removeItem('terminalRefY_'+CENTER.id); termRef=null; renderRefPin(); }catch{} }
-function renderRefPin(){ if(termRef){ const p=imgPointToPixels(termRef.x, termRef.y); pinRef.style.left=p.x+'px'; pinRef.style.top=p.y+'px'; pinRef.style.display='block'; refInfo.textContent=`Ref: X=${termRef.x.toFixed(2)} Y=${termRef.y.toFixed(2)}` } else { pinRef.style.display='none'; refInfo.textContent='Sin referencia' } }
+  async function startListening(){
+    if(!SR){ transcriptEl.textContent = 'Reconocimiento de voz no disponible en este navegador.'; return; }
 
-function saveUbiLocal(){ try{ localStorage.setItem('UBI@'+CENTER.id, JSON.stringify(UBI)) }catch(e){} }
-function mergeUbiWithLocal(){ try{ const raw=localStorage.getItem('UBI@'+CENTER.id); if(!raw) return; const loc=JSON.parse(raw); if(!Array.isArray(loc)) return; const byKey=r=>`${(r.NumeroArticulo||'').toString().trim()}|${CENTER.id}`; const map=new Map(loc.map(r=>[byKey(r),r])); for(const r of UBI){ map.set(byKey(r),r) } UBI=[...map.values()] }catch(e){} }
-function reindex(){ const only=UBI.filter(u=> (u.Centro===CENTER.label || u.Centro===CENTER.id)); const map=new Map(); for(const u of only){ const k=(u.NumeroArticulo||'').toString().trim(); if(!map.has(k)) map.set(k,[]); map.get(k).push(u) } INDEX=Object.fromEntries(map) }
-function pickLocation(num){ const list=INDEX[(num||'').toString().trim()]; if(!list||!list.length) return null; return list.slice().sort((a,b)=>Number(b.Stock||0)-Number(a.Stock||0))[0] }
+    // getUserMedia primero para la visual
+    try{
+      mediaStream = await navigator.mediaDevices.getUserMedia({audio:true});
+      startVis(mediaStream);
+    }catch(e){ transcriptEl.textContent = 'Permiso de micrófono denegado.'; return; }
 
-/* EAN preferente por centro (master local) */
-function getEANMap(){ try{ return JSON.parse(localStorage.getItem('EAN@'+CENTER.id)||'{}') }catch{ return {} } }
-function setEAN(num,ean){ const map=getEANMap(); map[String(num).trim()]=String(ean).trim(); localStorage.setItem('EAN@'+CENTER.id, JSON.stringify(map)) }
-function applyEANOverrides(a){ const map=getEANMap(); const k=(a.NumeroArticulo||'').toString().trim(); if(map[k]) a.CodigoEAN=map[k] }
+    recognition = new SR();
+    recognition.lang = currentLang;
+    recognition.interimResults = true;
+    recognition.continuous = true;
 
-/* Fotos IndexedDB (photos@center) */
-let idb=null;
-function idbOpen(){
-  return new Promise((res,rej)=>{
-    const r=indexedDB.open('photos@'+CENTER.id,1);
-    r.onupgradeneeded=()=>{ const db=r.result; if(!db.objectStoreNames.contains('imgs')) db.createObjectStore('imgs') };
-    r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
+    recognition.onresult = (ev)=>{
+      let final = ''; let interim = '';
+      for(let i=ev.resultIndex; i<ev.results.length; i++){
+        const res = ev.results[i];
+        if(res.isFinal) final += res[0].transcript + ' ';
+        else interim += res[0].transcript;
+      }
+      transcriptEl.textContent = (final + interim).trim();
+    }
+
+    recognition.onend = ()=>{ stopListening(); }
+    recognition.onerror = ()=>{ stopListening(); }
+
+    recognition.start();
+    setMicActive(true);
+    speak('Escuchando', currentLang);
+  }
+
+  function stopListening(){
+    try{ recognition && recognition.stop(); }catch{}
+    try{ if(rafId) cancelAnimationFrame(rafId); }catch{}
+    try{ mediaStream && mediaStream.getTracks().forEach(t=>t.stop()); }catch{}
+    try{ audioCtx && audioCtx.close(); }catch{}
+    setMicActive(false);
+    ringOuter.style.transform = 'scale(1)';
+  }
+
+  document.getElementById('micBtn').addEventListener('click', ()=>{
+    if(isListening) stopListening(); else startListening();
   });
-}
-async function putPhoto(key,blob){
-  if(!idb) idb=await idbOpen();
-  return new Promise((res,rej)=>{ const tx=idb.transaction('imgs','readwrite'); tx.objectStore('imgs').put(blob,key); tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error) })
-}
-async function getPhoto(key){
-  if(!idb) idb=await idbOpen();
-  return new Promise((res,rej)=>{ const tx=idb.transaction('imgs','readonly'); const req=tx.objectStore('imgs').get(key); req.onsuccess=()=>res(req.result||null); req.onerror=()=>rej(req.error) })
-}
 
-/* Carga datos */
-async function loadData(){
-  statusEl.textContent='Cargando datos…'; mapNote.style.display='none';
-  try{
-    const a=await fetchText(CENTER.a) || await fetchText('Articulos.csv'); ART=a? parseCSV(a) : [];
-    const u=await fetchText(CENTER.u) || await fetchText('ubicaciones.csv'); UBI=u? parseCSV(u) : [];
-    mergeUbiWithLocal(); reindex();
-    // Aplica EAN local preferente
-    ART.forEach(applyEANOverrides);
-
-    mapImg.src=(CENTER.map||'calvia/plano-calvia.jpg')+'?v='+APP_VERSION;
-    mapImg.onerror=()=>{ mapNote.style.display='block'; mapNote.textContent='No se ha encontrado el plano de este centro. Sube el archivo '+CENTER.map; };
-    centerBadge.textContent='Centro '+CENTER.label;
-    statusEl.textContent=`Artículos: ${ART.length} · Ubicaciones: ${UBI.length}`;
-    termRef=loadRef(); renderRefPin();
-  }catch(e){ statusEl.textContent='Error cargando datos'; }
-}
-
-/* Búsqueda mejorada + limpieza de input al Buscar */
-function search(qraw){
-  const raw=(qraw||'').trim(); const nq=normalize(raw);
-  const dims=extractDims(nq);
-  const qMats=detectMaterials(nq); const qFam=detectFamily(nq);
-  const tokens=nq.split(/\s+/).filter(Boolean);
-  const eanMatch=(raw.match(/\d{8,14}/)||[])[0]||null;
-  const exactEAN=eanMatch? ART.find(a=> (a.CodigoEAN||'').replace(/\D/g,'')===eanMatch) : null;
-  const exactNum=ART.find(a=> (a.NumeroArticulo||'').toString().trim()===raw);
-  const exactRef=ART.find(a=> (a.ReferenciaProveedor||'').toString().trim().toLowerCase()===raw.toLowerCase());
-
-  const scored=[];
-  for(const a of ART){
-    const text=normalize(`${a.Descripcion} ${a.ReferenciaProveedor} ${a.CodigoEAN}`);
-    let s=0;
-    for(const w of tokens){ if(!w) continue; if(text.includes(w)) s+=3; if(text.startsWith(w)) s+=1 }
-    const aFam=detectFamily(text); if(qFam.size){ for(const f of qFam){ if(aFam.has(f)) s+=15 } }
-    const aMats=detectMaterials(text);
-    if(qMats.size){ for(const m of qMats){ if(aMats.has(m)) s+=35 } }
-    if(qMats.has('pe') && aMats.has('pvc')) s-=40;
-    if(qMats.has('pvc') && (aMats.has('pe')||aMats.has('multicapa')||aMats.has('laton'))) s-=25;
-    if(qMats.has('laton') && !aMats.has('laton')) s-=20;
-    if(dims.length){ let hit=false; for(const mm of dims){ const rx=new RegExp(`(^|[^0-9])${mm}([^0-9]|$)`,'i'); if(rx.test(text) || text.includes(`${mm}mm`) || text.includes(`m-${mm}`) || text.includes(`m-${mm} `)){ s+=30; hit=true } } if(!hit) s-=15; }
-    if(eanMatch && (a.CodigoEAN||'').replace(/\D/g,'')===eanMatch) s+=200;
-    if(raw && (a.NumeroArticulo||'').toString().trim()===raw) s+=120;
-    if(raw && (a.ReferenciaProveedor||'').toString().toLowerCase()===raw.toLowerCase()) s+=90;
-    if(s>0) scored.push({a,score:s});
-  }
-  scored.sort((x,y)=>y.score-x.score);
-  const list=scored.map(x=>x.a);
-  if(exactEAN && !list.includes(exactEAN)) list.unshift(exactEAN);
-  if(exactNum && !list.includes(exactNum)) list.unshift(exactNum);
-  if(exactRef && !list.includes(exactRef)) list.unshift(exactRef);
-  return list.slice(0,100);
-}
-
-function priceForCard(a){
-  const raw=getPrice(a);
-  if(!raw) return '';
-  const eur=formatEURraw(raw);
-  return eur? (eur+' + IVA') : '';
-}
-
-async function thumbFor(a){
-  // 1) Foto local (IndexedDB)
-  const local=await getPhoto((a.NumeroArticulo||'').toString().trim());
-  if(local){ return URL.createObjectURL(local) }
-  // 2) CSV ImagenURL
-  if(a.ImagenURL && /^https?:\/\//i.test(a.ImagenURL)) return a.ImagenURL;
-  // 3) Repo por centro
-  const centerFirst=`${CENTER.id}/img/${(a.NumeroArticulo||'').toString().trim()}.webp`;
-  try{ const r=await fetch(centerFirst,{method:'HEAD'}); if(r.ok) return centerFirst }catch{}
-  // 4) Repo global ./img/NUM.webp
-  const global=`img/${(a.NumeroArticulo||'').toString().trim()}.webp`;
-  try{ const r=await fetch(global,{method:'HEAD'}); if(r.ok) return global }catch{}
-  return null;
-}
-
-function renderResults(list){
-  resultsEl.innerHTML=''; resCount.textContent=list.length? `${list.length} resultados` : '0 resultados';
-  if(!list.length){ const d=document.createElement('div'); d.className='item'; d.innerHTML='<div>No se han encontrado artículos. Por favor, solicite ayuda a un vendedor.</div>'; resultsEl.appendChild(d); return }
-  list.slice(0,50).forEach(async (a)=>{
-    const fabricante=a.NombreProveedor||'—';
-    const precio=priceForCard(a);
-    const stockTxt = (a.Stock && a.Stock!==''? ` · Stock: ${a.Stock}`:'');
-    const card=document.createElement('div'); card.className='item';
-    const imgUrl=await thumbFor(a);
-    card.innerHTML=`
-      <div class="row" style="align-items:flex-start">
-        ${imgUrl?`<img class="card-thumb" src="${imgUrl}" alt="foto">`:`<div class="card-thumb" style="width:72px;height:72px;border-radius:10px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:#789">—</div>`}
-        <div style="flex:1;min-width:200px">
-          <div><strong>${a.Descripcion||'Sin descripción'}</strong></div>
-          <div class='sub'>Ref: ${a.ReferenciaProveedor||'—'} · Nº: ${a.NumeroArticulo||'—'} · EAN: ${a.CodigoEAN||'—'} · Fabricante: ${fabricante} ${precio?(' · '+precio):''}${stockTxt}</div>
-          <div class='row' style="margin-top:6px"><button class='select btn-brand'>Seleccionar</button><button class='say'>Explicar</button></div>
-        </div>
-      </div>`;
-    card.querySelector('.select').onclick=()=> selectArticle(a);
-    card.querySelector('.say').onclick=()=> speak(cleanDescForSpeech(a.Descripcion||'', lang));
-    resultsEl.appendChild(card);
-  });
-}
-
-/* Limpieza de búsqueda al pulsar Buscar */
-function doSearch(){
-  stopListening(); setSphere('thinking');
-  const query=q.value||''; const list=search(query); renderResults(list); showScreen('results'); setSphere('idle');
-  q.value=''; // ✅ limpiar input tras buscar
-}
-
-/* Selección + locución natural (ES: números/unidades) */
-function cleanDescForSpeech(desc, lng){
-  let t=(desc||'').toString().trim();
-  // quitar códigos iniciales tipo "MDE01", "X-12/AB"
-  t=t.replace(/^[A-Z0-9][A-Z0-9\-\._\/]*\s+/,'');
-  // Expandir abreviaturas comunes (solo ES para locución natural)
-  if(lng==='es'){
-    t=t.replace(/\bRed\.?|Reduc\.?|Redu\.?|Reducc\.?\b/gi,'Reducción');
-    t=t.replace(/\bExc(\.|entrica)?\b/gi,'Excéntrica');
-    // Unidades orales
-    t=t.replace(/\b(\d+)\s*V\b/gi,(_,n)=>`${n} voltios`);
-    t=t.replace(/\b(\d+)\s*W\b/gi,(_,n)=>`${n} vatios`);
-    t=t.replace(/\b(\d+)\s*ml\b/gi,(_,n)=>`${n} metros lineales`);
-    t=t.replace(/\b(\d+)\s*mm\b/gi,(_,n)=>`${n} milímetros`);
-    t=t.replace(/\b(\d+)\s*cm\b/gi,(_,n)=>`${n} centímetros`);
-    t=t.replace(/\b(\d+)\s*m\b/gi,(_,n)=>`${n} metros`);
-    t=t.replace(/\b(\d+)\s*bar\b/gi,(_,n)=>`${n} bares`);
-  }
-  return t;
-}
-function selectionSpeech(a, stock){
-  const precioRaw=getPrice(a);
-  let precioTxt='';
-  if(lang==='es'){
-    const eur=formatEURraw(precioRaw);
-    precioTxt = eur? `${esSpeakPrice(eur)} más IVA` : '';
-  }else{
-    const eur=formatEURraw(precioRaw);
-    precioTxt = eur? `${eur} plus VAT` : '';
-  }
-  const name=cleanDescForSpeech(a.Descripcion||'', lang);
-  const have= (stock!=null && stock!=='' && isFinite(Number(stock))) ? Number(stock) : null;
-  const base= (lang==='es') ?
-    `Ha seleccionado ${name}.${precioTxt?` Su precio es ${precioTxt}.`:''} ${have!=null?`Actualmente disponemos de ${have} unidades en stock.`:'Sin datos de stock.'} ${LANGS[lang].ask}` :
-    (lang==='ca') ?
-    `Has seleccionat ${name}.${precioTxt?` El seu preu és ${precioTxt}.`:''} ${have!=null?`Actualment ${have} unitats en estoc.`:'Sense estoc registrat.'} ${LANGS[lang].ask}` :
-    `You selected ${name}.${precioTxt?` Price is ${precioTxt}.`:''} ${have!=null?`We currently have ${have} units in stock.`:'No stock recorded.'} ${LANGS[lang].ask}`;
-  return base;
-}
-function selectArticle(a){
-  varSel=a; const loc=pickLocation(a.NumeroArticulo);
-  const stock= (loc && (loc.Stock||loc.stock)) ?? a.Stock ?? '';
-  const txt=selectionSpeech(a, stock); speak(txt);
-  const ms=Math.min(9000, Math.max(1800, txt.split(/\s+/).length*340));
-  setTimeout(()=>{ if(confirm(LANGS[lang].ask)) goMap(a); }, ms);
-}
-
-/* Mapa */
-function getImageDrawMetrics(){ const rect=mapBox.getBoundingClientRect(); const cw=rect.width, ch=rect.height; const nw=mapImg.naturalWidth||cw, nh=mapImg.naturalHeight||ch; const scale=Math.min(cw/nw, ch/nh); const dw=nw*scale, dh=nh*scale; const leftOffset=(cw-dw)/2; const topOffset=(ch-dh)/2; return {rect,cw,ch,nw,nh,scale,dw,dh,leftOffset,topOffset} }
-function imgPointToPixels(x,y){ const m=getImageDrawMetrics(); return { x: m.leftOffset + x*m.dw, y: m.topOffset + y*m.dh } }
-function placePinFromXY(x,y){ const p=imgPointToPixels(x,y); pin.style.left=p.x+'px'; pin.style.top=p.y+'px'; pin.style.display='block' }
-function dirFromRef(x,y){
-  if(!termRef||x==null||y==null) return (lang==='es'?'sigue recto':lang==='ca'?'ves recte':'go straight');
-  const dx=x-termRef.x, dy=y-termRef.y;
-  const partX = Math.abs(dx)>0.05? (dx>0? (lang==='es'?'hacia la derecha':lang==='ca'?'cap a la dreta':'to the right') : (lang==='es'?'hacia la izquierda':lang==='ca'?'cap a l\'esquerra':'to the left')) : '';
-  const partY = Math.abs(dy)>0.05? (dy>0? (lang==='es'?'hacia el fondo':lang==='ca'?'cap al fons':'forward') : (lang==='es'?'hacia la entrada':lang==='ca'?'cap a l\'entrada':'back')) : '';
-  return [partX,partY].filter(Boolean).join(' y ') || (lang==='es'?'sigue recto':'go straight')
-}
-function goMap(a){
-  varSel=a; showScreen('map'); const loc=pickLocation(a.NumeroArticulo);
-  if(!loc){ speak('No tengo ubicación registrada. Puedes capturarla en modo administrador.'); routeEl.textContent=''; pin.style.display='none'; if(admin) adminPanel.style.display='block'; renderRefPin(); return }
-  const x=parseNum(loc.X), y=parseNum(loc.Y);
-  if(x==null||y==null){ pin.style.display='none' } else { placePinFromXY(x,y) }
-  const ladoRaw=(loc.Lado && (loc.Lado.Value||loc.Lado)) || loc.Lado || '—';
-  const lado=(ladoRaw||'').toString().toUpperCase().startsWith('D')? (lang==='ca'?'Dreta':'Derecha') : (lang==='ca'?'Esquerra':'Izquierda');
-  const dir=dirFromRef(x,y);
-  routeEl.textContent=LANGS[lang].guide(loc.Pasillo||'—', lado, loc.Estante||'—', loc.Balda||'—', dir); speak(routeEl.textContent);
-  if(admin){
-    fPas.value=loc.Pasillo||''; fLado.value=lado; fEst.value=loc.Estante||''; fBal.value=loc.Balda||''; fX.value=(x??''); fY.value=(y??''); fStock.value=(loc.Stock||'');
-    adminPanel.style.display='block'
-  }
-  renderRefPin();
-}
-mapBox.addEventListener('click',async ev=>{
-  const m=getImageDrawMetrics(); const cx=ev.clientX - m.rect.left; const cy=ev.clientY - m.rect.top;
-  const xNorm=(cx - m.leftOffset)/m.dw; const yNorm=(cy - m.topOffset)/m.dh;
-  if(xNorm<0||yNorm<0||xNorm>1||yNorm>1) return;
-  if(capturingRef){ saveRef(xNorm,yNorm); capturingRef=false; speak('Posición de referencia del terminal guardada'); return }
-  if(!admin||!varSel) return; fX.value=xNorm.toFixed(2); fY.value=yNorm.toFixed(2); placePinFromXY(xNorm,yNorm);
-});
-
-/* Guardar/eliminar ubicación */
-function saveUbi(rec){ const idx=UBI.findIndex(u=> (u.NumeroArticulo||'').toString().trim()===rec.NumeroArticulo && (u.Centro===CENTER.id||u.Centro===CENTER.label)); if(idx>=0) UBI[idx]=rec; else UBI.push(rec); reindex(); saveUbiLocal(); }
-saveLocBtn.onclick=()=>{ if(!varSel){ alert('Selecciona un artículo en resultados.'); return } const num=(varSel.NumeroArticulo||'').toString().trim(); const ladoLetter=(fLado.value||'').toString().toUpperCase().startsWith('D')? 'D':'I'; const rec={ NumeroArticulo:num, Centro:CENTER.id, Pasillo:fPas.value||'', Lado:ladoLetter, Estante:fEst.value||'', Balda:fBal.value||'', X:fX.value||'', Y:fY.value||'', Stock:fStock.value||'' }; saveUbi(rec); speak('Ubicación guardada.'); goMap(varSel) };
-delLocBtn.onclick=()=>{ if(!varSel) return; const num=(varSel.NumeroArticulo||'').toString().trim(); const before=UBI.length; UBI=UBI.filter(u=> (u.NumeroArticulo||'').toString().trim()!==num || !(u.Centro===CENTER.id||u.Centro===CENTER.label)); reindex(); saveUbiLocal(); if(UBI.length<before){ speak('Ubicación eliminada.'); routeEl.textContent=''; pin.style.display='none' } };
-
-/* Admin EAN */
-function findByAdmin(){
-  const e=admEAN.value.trim(); const n=admNum.value.trim(); const t=admText.value.trim().toLowerCase();
-  let list=[];
-  if(e){ list = ART.filter(a=> (a.CodigoEAN||'').replace(/\D/g,'')===e.replace(/\D/g,'')); }
-  if(!list.length && n){ list = ART.filter(a=> (a.NumeroArticulo||'').toString().trim()===n); }
-  if(!list.length && t){ const toks=t.split(/\s+/).filter(Boolean); list = ART.filter(a=> toks.every(w=> (a.Descripcion||'').toLowerCase().includes(w))); }
-  admInfo.innerHTML = list.length? `${list.length} resultado(s).` : 'Sin resultados.';
-  if(list.length){
-    const ul=document.createElement('ul'); ul.style.margin='6px 0'; ul.style.paddingLeft='18px';
-    list.slice(0,10).forEach(a=>{
-      const li=document.createElement('li'); li.textContent=`Nº ${a.NumeroArticulo} · Ref ${a.ReferenciaProveedor} · ${a.Descripcion}`; li.style.cursor='pointer';
-      li.onclick=()=>{ admNum.value=(a.NumeroArticulo||'').toString().trim(); if(!admEAN.value) admEAN.value=a.CodigoEAN||''; admInfo.innerHTML=`Seleccionado Nº ${admNum.value}.`; }; ul.appendChild(li)
-    });
-    admInfo.appendChild(ul);
-  }
-}
-admFind.onclick=findByAdmin;
-admAssign.onclick=()=>{ const num=admNum.value.trim(); const e=admEAN.value.trim(); if(!num||!e){ alert('Rellena Nº artículo y EAN'); return }
-  const a=ART.find(x=> (x.NumeroArticulo||'').toString().trim()===num); if(!a){ alert('No se encontró el artículo en Articulos.csv'); return }
-  a.CodigoEAN=e; setEAN(num, e); admInfo.innerHTML=`Asignado EAN ${e} al artículo Nº ${num}. (Preferente local por centro)`; };
-admExport.onclick=()=>{ if(!ART||!ART.length){ alert('No hay datos de artículos cargados'); return }
-  const headers=['NumeroArticulo','ReferenciaProveedor','Descripcion','CodigoEAN','NombreProveedor','ImagenURL','FichaTecnica','Manual','Precio','Stock'];
-  const rows=[headers.join(';')];
-  for(const a of ART){
-    const rowObj={...a}; applyEANOverrides(rowObj);
-    const line=headers.map(h=>{ const v=(rowObj[h]??'').toString(); return (v.includes(';')||v.includes('"'))? '"'+v.replace(/"/g,'""')+'"' : v }).join(';');
-    rows.push(line)
-  }
-  const blob=new Blob([rows.join('\n')],{type:'text/csv;charset=utf-8'}); const url=URL.createObjectURL(blob); const link=document.createElement('a'); link.href=url; link.download='Articulos.csv'; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
-};
-
-/* Fotos: comprimir y guardar en IndexedDB */
-async function compressToWebP(file, quality=.85, maxW=1280, maxH=1280){
-  const img=await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=URL.createObjectURL(file) });
-  const scale=Math.min(maxW/img.width, maxH/img.height, 1); const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
-  const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h; const ctx=canvas.getContext('2d'); ctx.drawImage(img,0,0,w,h);
-  const data=await new Promise(res=> canvas.toBlob(b=>res(b),'image/webp',quality) ); URL.revokeObjectURL(img.src); return data;
-}
-savePhotoBtn.onclick=async ()=>{
-  if(!varSel){ alert('Selecciona un artículo en resultados.'); return }
-  const f=photoFile.files && photoFile.files[0]; if(!f){ alert('Elige una foto.'); return }
-  photoInfo.textContent='Procesando foto…';
-  try{
-    const blob=await compressToWebP(f, .85, 1600, 1600);
-    await putPhoto((varSel.NumeroArticulo||'').toString().trim(), blob);
-    photoInfo.textContent='Foto guardada localmente (IndexedDB).';
-  }catch(e){ photoInfo.textContent='Error guardando foto.' }
-};
-downloadPhotoBtn.onclick=async ()=>{
-  if(!varSel){ alert('Selecciona un artículo en resultados.'); return }
-  const key=(varSel.NumeroArticulo||'').toString().trim(); const blob=await getPhoto(key);
-  if(!blob){ alert('No hay foto local guardada.'); return }
-  const a=document.createElement('a'); const url=URL.createObjectURL(blob); a.href=url; a.download=`${CENTER.id}_${key}.webp`; a.click(); URL.revokeObjectURL(url);
-};
-
-/* Navegación */
-function showScreen(which){
-  scrHome.classList.remove('active'); scrResults.classList.remove('active'); scrMap.classList.remove('active');
-  if(which==='home') scrHome.classList.add('active'); else if(which==='results') scrResults.classList.add('active'); else if(which==='map') scrMap.classList.add('active');
-  window.scrollTo({top:0,behavior:'smooth'})
-}
-startBtn.onclick=()=>{ voiceBox.style.display='grid'; speak(LANGS[lang].greet(nameInput.value||'')) };
-micBtn.onclick=()=> startListening();
-goBtn.onclick=()=> doSearch();
-q.onkeydown=(e)=>{ if(e.key==='Enter') doSearch() };
-backHome.onclick=()=> showScreen('home'); backResults.onclick=()=> showScreen('results');
-againBtn.onclick=()=>{ q.value=''; showScreen('home'); resultsEl.innerHTML=''; routeEl.textContent=''; pin.style.display='none' };
-adminToggle.onclick=()=>{ if(!adminGranted){ const p=prompt('Contraseña de administrador:'); if(p!=='0666'){ alert('Contraseña incorrecta'); return } adminGranted=true; } admin=!admin; adminToggle.classList.toggle('btn-brand', admin); adminPanel.style.display= admin? 'block':'none'; if(admin && varSel) goMap(varSel) };
-
-/* Centros tabs */
-function drawCenters(){
-  centerTabs.innerHTML='';
-  for(const key of Object.keys(CENTERS)){
-    const c=CENTERS[key];
-    const el=document.createElement('button'); el.className='tab'+(c.id===CENTER.id?' active':''); el.textContent=c.label;
-    el.onclick=()=>{ if(c.id===CENTER.id) return; CENTER=c; localStorage.setItem('centerId',c.id); centerBadge.textContent='Centro '+c.label; loadData(); };
-    centerTabs.appendChild(el)
-  }
-}
-
-/* Esfera reanimación en foco */
-window.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ setSphere('idle') } });
-
-/* Init */
-(function init(){
-  drawCenters(); initFlags(); loadData().then(()=>{ speak(LANGS[lang].greet(nameInput.value||'')); });
-  if('serviceWorker' in navigator){ navigator.serviceWorker.getRegistrations().then(rs=>{ rs.forEach(r=>r.unregister()) }); if(window.caches){ caches.keys().then(keys=> keys.forEach(k=>/^asistente-duran-/.test(k)&&caches.delete(k))) } }
-})();
-</script>
+  // Mensaje inicial
+  greetEl.firstChild && (greetEl.firstChild.textContent = 'Hola, bienvenido');
+  try{ if(location.protocol === 'http:' && location.hostname !== 'localhost'){ console.warn('Para el micrófono se requiere HTTPS. GitHub Pages funciona.'); }
+  }catch{}
+  </script>
 </body>
 </html>
