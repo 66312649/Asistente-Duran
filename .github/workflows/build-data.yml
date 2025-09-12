@@ -65,6 +65,21 @@ jobs:
             xxd -l 8 -p "$f" || true
             echo
           done
+          
+      - name: Meta de ficheros (tipo y tamaño)
+        run: |
+          for f in \
+            "imports/Base articulos precio.xlsx" \
+            "imports/Importacion Stock.xlsx" \
+            "imports/Lista proveedores_05092025.xlsx"
+          do
+            echo ">>> $f"
+            ls -lh "$f" || true
+            file -b "$f" || true
+            echo "Primeros 64 bytes:"
+            xxd -l 64 -p "$f" || true
+            echo
+          done
 
       - name: Inspección rápida de los Excel (detectar formato real)
         shell: bash
