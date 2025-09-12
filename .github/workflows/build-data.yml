@@ -3,7 +3,7 @@ name: Build data (Excel → CSV por centro)
 on:
   workflow_dispatch:
   schedule:
-    # 05:30 UTC ~ 07:30 España (CEST). Ajusta si lo prefieres.
+    # 05:30 UTC ~ 07:30 España (verano). Ajusta si lo necesitas.
     - cron: "30 5 * * *"
 
 jobs:
@@ -61,56 +61,64 @@ jobs:
             "imports/Importacion Stock.xlsx" \
             "imports/Lista proveedores_05092025.xlsx"
           do
-            echo ">>> $f"
-            xxd -l 4 -p "$f" || true
+            echo ">>> $f  (primeros 8 bytes)"
+            xxd -l 8 -p "$f" || true
             echo
           done
 
-      - name: Inspección rápida de los Excel (ver hojas y columnas)
+      - name: Inspección rápida de los Excel (detectar formato real)
         shell: bash
+        # ⚠️ No fallamos aquí: solo informamos para debugging
         run: |
-          set -e
           cat > /tmp/inspect_excel.py << 'PY'
-          import pandas as pd, os
+          import os, pandas as pd
 
-          files = [
+          FILES = [
               "imports/Base articulos precio.xlsx",
               "imports/Importacion Stock.xlsx",
               "imports/Lista proveedores_05092025.xlsx",
           ]
 
-          def pick_engine(path):
-              ext = os.path.splitext(path)[1].lower()
-              if ext in ('.xlsx', '.xlsm'):
-                  return 'openpyxl'
-              elif ext == '.xls':
-                  return 'xlrd'
-              else:
-                  return None
+          def sniff_format(path:str):
+              with open(path, 'rb') as f:
+                  sig = f.read(8)
+              if sig.startswith(b'PK\x03\x04'):   # XLSX
+                  return 'xlsx'
+              if sig.startswith(b'\xD0\xCF\x11\xE0'):  # XLS (OLE2)
+                  return 'xls'
+              return 'unknown'
 
-          for p in files:
-              print(f"\n>>> {p}")
-              eng = pick_engine(p)
+          def try_show(path):
+              kind = sniff_format(path)
+              print(f"\n>>> {path}  → detectado: {kind}")
               try:
-                  if eng:
-                      xl = pd.ExcelFile(p, engine=eng)
-                      print("   motor:", eng)
+                  if kind == 'xlsx':
+                      xl = pd.ExcelFile(path, engine='openpyxl')
+                      print("   motor: openpyxl")
+                      print("   hojas:", xl.sheet_names)
+                      df = xl.parse(xl.sheet_names[0], nrows=3)
+                      print("   columnas:", list(df.columns))
+                  elif kind == 'xls':
+                      xl = pd.ExcelFile(path, engine='xlrd')
+                      print("   motor: xlrd")
                       print("   hojas:", xl.sheet_names)
                       df = xl.parse(xl.sheet_names[0], nrows=3)
                       print("   columnas:", list(df.columns))
                   else:
-                      print("   (no extensión Excel, ¿CSV?) Probando lectura CSV...")
+                      # Intento como CSV (; y ,)
                       try:
-                          df = pd.read_csv(p, sep=';', nrows=3)
-                          print("   columnas CSV (;):", list(df.columns))
+                          df = pd.read_csv(path, sep=';', nrows=3, dtype=str)
+                          print("   CSV detectado (;) columnas:", list(df.columns))
                       except Exception:
-                          df = pd.read_csv(p, nrows=3)
-                          print("   columnas CSV (coma):", list(df.columns))
+                          df = pd.read_csv(path, nrows=3, dtype=str)
+                          print("   CSV detectado (,) columnas:", list(df.columns))
               except Exception as e:
-                  print("!!! ERROR leyendo", p, "->", e)
-                  raise
+                  print("   ⚠️ No se pudo leer (solo aviso):", e)
+
+          for p in FILES:
+              try_show(p)
           PY
-          python /tmp/inspect_excel.py
+          python /tmp/inspect_excel.py || true
 
       - name: Ejecutar ingesta (con logs verbosos)
         run: |
