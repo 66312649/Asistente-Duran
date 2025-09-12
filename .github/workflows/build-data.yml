@@ -1,42 +1,52 @@
 name: Build data (Excel → CSV por centro)
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
+  # Programa (UTC): todos los días a las 05:00 UTC = 06:00 España en invierno, 07:00 en verano
   schedule:
-    - cron: "30 6 * * *" # 06:30 UTC (07:30/08:30 España)
-
-permissions:
-  contents: write  # ← imprescindible para poder hacer push
+    - cron: "0 5 * * *"
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: true
 
       - name: Mostrar árbol de carpetas
         run: |
-          echo "=== ROOT ==="
-          ls -la
-          echo "=== data ==="
-          ls -la data || true
-          echo "=== data/incoming ==="
-          ls -la "data/incoming" || true
-          echo "=== scripts ==="
-          ls -la scripts || true
+          echo "PWD: $PWD"
+          ls -lah
+          echo "---"
+          find . -maxdepth 3 -type d -print
 
       - name: Comprobación de ficheros requeridos
+        id: check_files
+        shell: bash
         run: |
-          set -e
-          test -f "scripts/build_data.py" || { echo "::error::No existe scripts/build_data.py"; exit 1; }
-          test -f "data/incoming/Base articulos precio.xlsx" || { echo "::error::Falta data/incoming/Base articulos precio.xlsx"; exit 1; }
-          test -f "data/incoming/Importacion Stock.xlsx" || { echo "::error::Falta data/incoming/Importacion Stock.xlsx"; exit 1; }
-          test -f "data/incoming/Lista proveedores_05092025.xlsx" || { echo "::error::Falta data/incoming/Lista proveedores_05092025.xlsx"; exit 1; }
+          set -euo pipefail
+          miss=0
+          for f in \
+            "imports/Base articulos precio.xlsx" \
+            "imports/Importacion Stock.xlsx" \
+            "imports/Lista proveedores_05092025.xlsx"
+          do
+            if [[ -f "$f" ]]; then
+              echo "OK  $f"
+            else
+              echo "FALTA $f"
+              miss=1
+            fi
+          done
+          echo "missing=$miss" >> $GITHUB_OUTPUT
+
+      - name: Abortar si faltan Excel
+        if: steps.check_files.outputs.missing != '0'
+        run: |
+          echo "❌ Faltan uno o más Excel en /imports. Sube los tres y vuelve a lanzar el workflow."
+          exit 1
 
       - name: Configurar Python
         uses: actions/setup-python@v5
@@ -46,10 +56,10 @@ jobs:
       - name: Instalar dependencias
         run: |
           python -V
-          pip install -U pip
-          pip install pandas openpyxl numpy pyarrow
+          pip install --upgrade pip
+          pip install pandas openpyxl xlrd pyarrow
 
-           - name: Inspección rápida de los Excel
+      - name: Inspección rápida de los Excel (ver hojas y columnas)
         shell: bash
         run: |
           set -e
@@ -57,21 +67,48 @@ jobs:
           import pandas as pd
 
           files = [
-              "data/incoming/Base articulos precio.xlsx",
-              "data/incoming/Importacion Stock.xlsx",
-              "data/incoming/Lista proveedores_05092025.xlsx",
+              "imports/Base articulos precio.xlsx",
+              "imports/Importacion Stock.xlsx",
+              "imports/Lista proveedores_05092025.xlsx",
           ]
 
           for p in files:
-              print(f">>> {p}")
+              print(f"\n>>> {p}")
               try:
                   xl = pd.ExcelFile(p)
                   print("   hojas:", xl.sheet_names)
-                  df = xl.parse(xl.sheet_names[0], nrows=2)
+                  df = xl.parse(xl.sheet_names[0], nrows=3)
                   print("   columnas:", list(df.columns))
               except Exception as e:
                   print("!!! ERROR leyendo", p, "->", e)
                   raise
           PY
-
           python /tmp/inspect_excel.py
+
+      - name: Ejecutar ingesta (con logs verbosos)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Lanzando scripts/build_data.py ..."
+          python scripts/build_data.py --verbose
+
+      - name: Comprobar CSV generados
+        run: |
+          echo "CSV generados:"
+          find data -maxdepth 3 -type f -name "*.csv" -print -exec wc -l {} \;
+
+      - name: Commit & push datos (si hubo cambios)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Sin cambios que commitear."
+          else
+            git commit -m "build: actualizar CSV por centro"
+            git push
+          fi
