@@ -3,8 +3,7 @@ name: Build data (Excel → CSV por centro)
 on:
   workflow_dispatch:
   schedule:
-    # 05:30 UTC ~ 07:30 España (verano). Ajusta si lo necesitas.
-    - cron: "30 5 * * *"
+    - cron: "25 5 * * *"  # diario 07:25 CET aprox (GitHub corre en UTC)
 
 jobs:
   build:
@@ -13,36 +12,12 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Mostrar árbol (top)
         run: |
-          echo "::group::Árbol inicial"
           ls -la
           echo
-          echo "imports/"
           ls -la imports || true
-          echo "::endgroup::"
-
-      - name: Comprobación de ficheros requeridos
-        run: |
-          set -e
-          missing=0
-          for f in \
-            "imports/Base articulos precio.xlsx" \
-            "imports/Importacion Stock.xlsx" \
-            "imports/Lista proveedores_05092025.xlsx"
-          do
-            if [ ! -f "$f" ]; then
-              echo "❌ Falta $f"
-              missing=1
-            fi
-          done
-          if [ "$missing" != "0" ]; then
-            echo "Alguno de los Excel requeridos no existe. Sube los ficheros a imports/ y vuelve a lanzar."
-            exit 1
-          fi
 
       - name: Configurar Python
         uses: actions/setup-python@v5
@@ -52,20 +27,9 @@ jobs:
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
-          pip install pandas openpyxl xlrd python-dateutil
+          pip install pandas openpyxl xlrd pyxlsb chardet
 
-      - name: Verificar cabecera ZIP de .xlsx (firma PK)
-        run: |
-          for f in \
-            "imports/Base articulos precio.xlsx" \
-            "imports/Importacion Stock.xlsx" \
-            "imports/Lista proveedores_05092025.xlsx"
-          do
-            echo ">>> $f  (primeros 8 bytes)"
-            xxd -l 8 -p "$f" || true
-            echo
-          done
-          
+      # Diagnóstico útil: tipo, tamaño y cabecera binaria
       - name: Meta de ficheros (tipo y tamaño)
         run: |
           for f in \
@@ -76,86 +40,48 @@ jobs:
             echo ">>> $f"
             ls -lh "$f" || true
             file -b "$f" || true
-            echo "Primeros 64 bytes:"
+            echo "Primeros 64 bytes (hex):"
             xxd -l 64 -p "$f" || true
             echo
           done
 
+      # Inspección rápida: intenta detectar si son ZIP reales de XLSX
       - name: Inspección rápida de los Excel (detectar formato real)
-        shell: bash
-        # ⚠️ No fallamos aquí: solo informamos para debugging
         run: |
-          cat > /tmp/inspect_excel.py << 'PY'
-          import os, pandas as pd
-
-          FILES = [
-              "imports/Base articulos precio.xlsx",
-              "imports/Importacion Stock.xlsx",
-              "imports/Lista proveedores_05092025.xlsx",
+          python - << 'PY'
+          import zipfile, sys, os
+          paths = [
+            "imports/Base articulos precio.xlsx",
+            "imports/Importacion Stock.xlsx",
+            "imports/Lista proveedores_05092025.xlsx",
           ]
-
-          def sniff_format(path:str):
-              with open(path, 'rb') as f:
-                  sig = f.read(8)
-              if sig.startswith(b'PK\x03\x04'):   # XLSX
-                  return 'xlsx'
-              if sig.startswith(b'\xD0\xCF\x11\xE0'):  # XLS (OLE2)
-                  return 'xls'
-              return 'unknown'
-
-          def try_show(path):
-              kind = sniff_format(path)
-              print(f"\n>>> {path}  → detectado: {kind}")
-              try:
-                  if kind == 'xlsx':
-                      xl = pd.ExcelFile(path, engine='openpyxl')
-                      print("   motor: openpyxl")
-                      print("   hojas:", xl.sheet_names)
-                      df = xl.parse(xl.sheet_names[0], nrows=3)
-                      print("   columnas:", list(df.columns))
-                  elif kind == 'xls':
-                      xl = pd.ExcelFile(path, engine='xlrd')
-                      print("   motor: xlrd")
-                      print("   hojas:", xl.sheet_names)
-                      df = xl.parse(xl.sheet_names[0], nrows=3)
-                      print("   columnas:", list(df.columns))
-                  else:
-                      # Intento como CSV (; y ,)
-                      try:
-                          df = pd.read_csv(path, sep=';', nrows=3, dtype=str)
-                          print("   CSV detectado (;) columnas:", list(df.columns))
-                      except Exception:
-                          df = pd.read_csv(path, nrows=3, dtype=str)
-                          print("   CSV detectado (,) columnas:", list(df.columns))
-              except Exception as e:
-                  print("   ⚠️ No se pudo leer (solo aviso):", e)
-
-          for p in FILES:
-              try_show(p)
+          for p in paths:
+            print("==>", p)
+            if not os.path.exists(p):
+              print("  (no existe)")
+              continue
+            try:
+              with zipfile.ZipFile(p) as z:
+                print("  XLSX válido (ZIP). Miembros:", len(z.infolist()))
+            except Exception as e:
+              print("  No es XLSX ZIP:", e)
           PY
-          python /tmp/inspect_excel.py || true
 
       - name: Ejecutar ingesta (con logs verbosos)
         run: |
           python scripts/build_data.py --verbose
 
       - name: Comprobar cambios generados
+        id: git_status
         run: |
-          echo "::group::git status"
-          git status --porcelain=v1
-          echo "::endgroup::"
+          git status --porcelain
+          echo "changed=$(git status --porcelain | wc -l)" >> $GITHUB_OUTPUT
 
       - name: Commit & push datos (si hubo cambios)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: steps.git_status.outputs.changed != '0'
         run: |
-          set -e
-          if [ -n "$(git status --porcelain=v1)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add -A
-            git commit -m "build: actualizar datos de Articulos.csv por centro (CI)"
-            git push
-          else
-            echo "Sin cambios en datos, no hay commit."
-          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "build: actualizar CSV por centro (auto)"
+          git push
