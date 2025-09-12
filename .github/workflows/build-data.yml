@@ -1,9 +1,10 @@
-name: Build data (Excel → CSV por centro)
+name: Build data (CSV → por centro)
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "25 5 * * *"  # diario 07:25 CET aprox (GitHub corre en UTC)
+    # 05:30 UTC ≈ 07:30 España (ajústalo si quieres)
+    - cron: "30 5 * * *"
 
 jobs:
   build:
@@ -12,76 +13,52 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Mostrar árbol (top)
         run: |
           ls -la
-          echo
+          echo ""
+          echo "imports/"
           ls -la imports || true
+
+      - name: Comprobación de ficheros requeridos
+        run: |
+          set -e
+          test -f imports/base_articulos.csv || (echo "Falta imports/base_articulos.csv" && exit 1)
+          test -f imports/stock_por_almacen.csv || (echo "Falta imports/stock_por_almacen.csv" && exit 1)
+          # Los overrides son opcionales:
+          # overrides/ean/*.json  y overrides/images/*.json
 
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
-          pip install pandas openpyxl xlrd pyxlsb chardet
-
-      # Diagnóstico útil: tipo, tamaño y cabecera binaria
-      - name: Meta de ficheros (tipo y tamaño)
-        run: |
-          for f in \
-            "imports/Base articulos precio.xlsx" \
-            "imports/Importacion Stock.xlsx" \
-            "imports/Lista proveedores_05092025.xlsx"
-          do
-            echo ">>> $f"
-            ls -lh "$f" || true
-            file -b "$f" || true
-            echo "Primeros 64 bytes (hex):"
-            xxd -l 64 -p "$f" || true
-            echo
-          done
-
-      # Inspección rápida: intenta detectar si son ZIP reales de XLSX
-      - name: Inspección rápida de los Excel (detectar formato real)
-        run: |
-          python - << 'PY'
-          import zipfile, sys, os
-          paths = [
-            "imports/Base articulos precio.xlsx",
-            "imports/Importacion Stock.xlsx",
-            "imports/Lista proveedores_05092025.xlsx",
-          ]
-          for p in paths:
-            print("==>", p)
-            if not os.path.exists(p):
-              print("  (no existe)")
-              continue
-            try:
-              with zipfile.ZipFile(p) as z:
-                print("  XLSX válido (ZIP). Miembros:", len(z.infolist()))
-            except Exception as e:
-              print("  No es XLSX ZIP:", e)
-          PY
+          pip install pandas
 
       - name: Ejecutar ingesta (con logs verbosos)
         run: |
           python scripts/build_data.py --verbose
 
       - name: Comprobar cambios generados
-        id: git_status
+        id: diff
         run: |
+          set +e
           git status --porcelain
-          echo "changed=$(git status --porcelain | wc -l)" >> $GITHUB_OUTPUT
+          CHANGES=$(git status --porcelain | wc -l)
+          echo "changes=$CHANGES" >> $GITHUB_OUTPUT
+          set -e
 
       - name: Commit & push datos (si hubo cambios)
-        if: steps.git_status.outputs.changed != '0'
+        if: steps.diff.outputs.changes != '0'
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "build: actualizar CSV por centro (auto)"
+          git commit -m "build: regenerar Articulos.csv por centro (CSV imports)"
           git push
