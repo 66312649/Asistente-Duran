@@ -1,355 +1,306 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 """
-Convierte las exportaciones del ERP a CSV por centro para la web.
+Genera /<centro>/Articulos.csv a partir de:
+  - imports/base_articulos.csv
+  - imports/stock_por_almacen.csv
+y aplica overrides opcionales:
+  - overrides/ean/<centro>.json      (NumeroArticulo -> CodigoEAN)
+  - overrides/images/<centro>.json   (NumeroArticulo -> ImagenURL)
 
-Lee de:
-  imports/Base articulos precio.xlsx
-  imports/Importacion Stock.xlsx
-  imports/Lista proveedores_05092025.xlsx
-
-Soporta XLSX/XLS reales y CSV/TSV con codificaciones raras (utf-16, etc.)
-Solo almacenes 1,2,3,4. Mantiene overrides (EAN).
+Reglas importantes:
+- Solo almacenes {1: coll, 2: calvia, 3: alcudia, 4: santanyi}
+- Precio = columna "1. Lista Precio de Ventas" (mapeada abajo)
+- EAN/Foto/Ubicación desde tablet/móvil (overrides) SIEMPRE tienen prioridad.
+- Ubicaciones (/<centro>/ubicaciones.csv) NO se tocan aquí.
 """
 
-import os, sys, io, json, zipfile, re
+import argparse
+import json
+import os
+from pathlib import Path
+
 import pandas as pd
 
-try:
-    import chardet
-except Exception:
-    chardet = None
+# ----------- Config -----------
 
-VERBOSE = "--verbose" in sys.argv
+ROOT = Path(__file__).resolve().parents[1]
 
 IMPORTS = {
-    "base_precios": "imports/Base articulos precio.xlsx",
-    "stock":        "imports/Importacion Stock.xlsx",
-    "proveedores":  "imports/Lista proveedores_05092025.xlsx",
+    "base_precios": ROOT / "imports" / "base_articulos.csv",
+    "stock": ROOT / "imports" / "stock_por_almacen.csv",
+    # Proveedores opcional (no imprescindible)
+    "proveedores": ROOT / "imports" / "lista_proveedores.csv",
 }
 
-CENTROS = {
-    1: ("coll",     "Duran Coll"),
-    2: ("calvia",   "Duran Calvià"),
-    3: ("alcudia",  "Duran Alcudia"),
-    4: ("santanyi", "Duran Santanyí"),
-}
-VALID_ALMACENES = set(CENTROS.keys())
-
-ALIASES = {
-    "NumeroArticulo": [
-        "NumeroArticulo","Número Artículo","Nº artículo","Num Articulo","Núm. Artículo",
-        "Cod. Articulo","Código Artículo","Articulo","Artículo","Código","Codigo"
-    ],
-    "ReferenciaProveedor": [
-        "ReferenciaProveedor","Referencia Proveedor","Ref. Proveedor","Nº catálogo fabricante",
-        "Referencia","Referencia Fabricante","Ref Fabricante","Ref Proveedor"
-    ],
-    "Descripcion": [
-        "Descripcion","Descripción","Nombre artículo","Denominación","Articulo","Artículo"
-    ],
-    "Precio": [
-        "1. Lista Precio de Ventas","PVP","Precio","Precio Venta","Precio con IVA","Precio sin IVA","Tarifa"
-    ],
-    "CodigoAlmacen": [
-        "Codigo almacen","Código almacen","Codigo Almacen","Código Almacén","Almacen","Almacén"
-    ],
-    "Stock": [
-        "en stock","En stock","Stock","Existencias","Cantidad"
-    ],
-    "ProveedorNombre": [
-        "Nombre Proveedor","Proveedor","Nombre proveedor","Razon Social","Razón Social"
-    ],
-    "CodigoProveedor": [
-        "Codigo Proveedor","Código Proveedor","Cod Proveedor","Cod. Proveedor"
-    ],
+CENTERS = {
+    1: ("coll", "Coll"),
+    2: ("calvia", "Calvià"),
+    3: ("alcudia", "Alcudia"),
+    4: ("santanyi", "Santanyí"),
 }
 
-def log(msg: str):
-    if VERBOSE:
-        print(msg)
+# mapeos tolerantes de nombres de columnas
+MAP_BASE = {
+    "numero":  ["NumeroArticulo","Nº Articulo","NumArticulo","Articulo","CodigoArticulo","Cód. Articulo"],
+    "refprov": ["ReferenciaProveedor","Ref. Prov.","Referencia Prov","REF_PROV","Referencia"],
+    "descr":   ["Descripcion","Descripción","Desc","NombreArticulo","Nombre"],
+    "precio":  ["1. Lista Precio de Ventas","PrecioLista1","Precio Lista 1","PVP","Precio"],
+    "ean":     ["CodigoEAN","EAN","EAN13","Codigo EAN"],
+    "prov":    ["NombreProveedor","Proveedor","CodProveedor","ProveedorNombre"],
+}
 
-# ------------- sniffers y lectura robusta ----------------
+MAP_STOCK = {
+    "numero":  ["NumeroArticulo","Articulo","Nº Articulo","CodigoArticulo"],
+    "almacen": ["Codigo_almacen","Almacen","CodAlmacen","Almacén","IDAlmacen"],
+    "stock":   ["Stock","Existencias","Cantidad","Qty","Unidades"],
+}
 
-def sniff_format(path: str) -> str:
-    if not os.path.exists(path):
-        return "missing"
-    try:
-        with open(path, "rb") as f:
-            head = f.read(8)
-        if head.startswith(b"PK\x03\x04"):
-            return "xlsx"  # zip (xlsx)
-        if head.startswith(b"\xD0\xCF\x11\xE0"):
-            return "xls"   # OLE (xls)
-    except:
-        pass
-    return "unknown"
+EXPORT_COLUMNS = [
+    "NumeroArticulo",
+    "ReferenciaProveedor",
+    "Descripcion",
+    "CodigoEAN",
+    "NombreProveedor",
+    "ImagenURL",
+    "Precio",
+    "Stock",
+]
 
-def guess_encoding(b: bytes) -> str:
-    # preferimos chardet si está disponible
-    if chardet:
-        g = chardet.detect(b or b"")
-        enc = (g.get("encoding") or "").lower()
-        if enc:
-            return enc
-    # fallback común
-    return "utf-8"
+# ----------- Utils -----------
 
-def count_candidates(text_head: str, candidates=(';', '\t', ',', '|')) -> str:
-    counts = {sep: text_head.count(sep) for sep in candidates}
-    best = max(counts, key=counts.get)
-    return best
+def log(msg):
+    print(msg, flush=True)
 
-def read_text_with_best_sep(path: str, encodings, candidates=(';', '\t', ',', '|')) -> pd.DataFrame:
-    """
-    Lee un fichero de texto probando codificaciones y separadores.
-    Elige el separador que produzca más columnas (>1). Si todo falla,
-    hace un split manual por el más frecuente en cabecera.
-    """
-    with open(path, "rb") as fb:
-        raw = fb.read()
-
-    # detectamos encoding si no nos lo pasan
-    enc_guessed = guess_encoding(raw)
-    encodings = [enc_guessed] + [e for e in encodings if e != enc_guessed]
-
-    # Recortamos un poco de cabecera para estimar sep
-    head_text = ""
-    for enc in encodings:
-        try:
-            head_text = raw[:4096].decode(enc, errors="ignore")
-            break
-        except Exception:
-            continue
-    sep_hint = count_candidates(head_text)
-
-    # 1) Intento “normal” con pandas y varios sep/enc
-    for enc in encodings:
-        # probamos primero el sep “inteligente” y luego el resto
-        order = [sep_hint] + [s for s in candidates if s != sep_hint]
-        for sep in order:
-            try:
-                df = pd.read_csv(io.StringIO(raw.decode(enc, errors="ignore")),
-                                 sep=sep, engine="python", dtype=str)
-                if len(df.columns) > 1:
-                    log(f"   leído como texto (enc='{enc}', sep='{sep}') filas={len(df)} cols={list(df.columns)}")
-                    return df
-            except Exception:
-                pass
-
-    # 2) Si llegamos aquí, todo fue 1 columna o error: split manual
-    sep = sep_hint
-    lines = head_text.splitlines()
-    if not lines:
-        raise RuntimeError("Archivo de texto vacío o ilegible.")
-
-    # reconvierto todo a str con una codificación que no explote
-    text = raw.decode(encodings[0], errors="ignore")
-    rows = [ln.split(sep) for ln in text.splitlines() if ln.strip()]
-    width = max((len(r) for r in rows), default=0)
-    if width <= 1:
-        # último intento: prueba otro sep con mayor ocurrencia
-        for alt in (';', '\t', ',', '|'):
-            if alt == sep: 
-                continue
-            rows = [ln.split(alt) for ln in text.splitlines() if ln.strip()]
-            width = max((len(r) for r in rows), default=0)
-            if width > 1:
-                sep = alt
-                break
-    # construyo DataFrame manual
-    maxw = max((len(r) for r in rows), default=0)
-    norm = [r + ['']*(maxw-len(r)) for r in rows]
-    df = pd.DataFrame(norm)
-    # primera fila = cabecera
-    if len(df) == 0:
-        raise RuntimeError("No se pudo parsear el texto en filas/columnas.")
-    df.columns = [str(c).strip() for c in df.iloc[0].tolist()]
-    df = df.iloc[1:].reset_index(drop=True)
-    log(f"   split manual (sep='{sep}') filas={len(df)} cols={list(df.columns)}")
-    return df
-
-def read_table(path: str) -> pd.DataFrame:
-    kind = sniff_format(path)
-    log(f" -> {path} detectado: {kind}")
-    if kind == "xlsx":
-        try:
-            return pd.read_excel(path, sheet_name=0, engine="openpyxl", dtype=str)
-        except Exception as e:
-            log(f"   openpyxl falló: {e}; pruebo como texto…")
-    elif kind == "xls":
-        try:
-            return pd.read_excel(path, sheet_name=0, engine="xlrd", dtype=str)
-        except Exception as e:
-            log(f"   xlrd falló: {e}; pruebo como texto…")
-
-    # Texto: probamos codificaciones típicas
-    encs = ["utf-8-sig","utf-8","latin-1","utf-16","utf-16le","utf-16be"]
-    return read_text_with_best_sep(path, encs)
-
-def normalize_headers(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    df.columns = [str(c).strip() for c in df.columns]
-    return df
-
-def find_col(df: pd.DataFrame, key: str):
-    aliases = ALIASES.get(key, [])
-    cols = list(df.columns)
-    lower = {c.lower(): c for c in cols}
-    for a in aliases:
-        if a in cols:
-            return a
-        if a.lower() in lower:
-            return lower[a.lower()]
-    lk = key.lower()
-    for c in cols:
-        if lk in c.lower():
-            return c
+def find_first(df_cols, candidates):
+    """Devuelve el primer nombre de columna existente (case-insensitive)"""
+    cols_lower = {c.lower(): c for c in df_cols}
+    for name in candidates:
+        low = name.lower()
+        if low in cols_lower:
+            return cols_lower[low]
     return None
 
-def ensure_cols(df: pd.DataFrame, required: list, ctx: str):
-    missing = [r for r in required if find_col(df, r) is None]
-    if missing:
-        raise RuntimeError(f"En '{ctx}' faltan columnas clave: {missing}")
-    return True
-
-# ------------- Cargas específicas ----------------
-
-def load_base_precios(path):
-    df = read_table(path)
-    df = normalize_headers(df)
-    ensure_cols(df, ["NumeroArticulo","ReferenciaProveedor","Descripcion","Precio"], "Base articulos precio.xlsx")
-    c_num  = find_col(df, "NumeroArticulo")
-    c_ref  = find_col(df, "ReferenciaProveedor")
-    c_desc = find_col(df, "Descripcion")
-    c_prec = find_col(df, "Precio")
-    out = df[[c_num, c_ref, c_desc, c_prec]].rename(columns={
-        c_num:"NumeroArticulo", c_ref:"ReferenciaProveedor",
-        c_desc:"Descripcion",   c_prec:"Precio"
-    })
-    out = out.dropna(subset=["NumeroArticulo"]).copy()
-    out["NumeroArticulo"] = out["NumeroArticulo"].astype(str).str.strip()
-    # normaliza precio (coma → punto)
-    out["Precio"] = out["Precio"].astype(str).str.replace(",", ".", regex=False)
-    return out
-
-def load_stock(path):
-    df = read_table(path)
-    df = normalize_headers(df)
-    ensure_cols(df, ["NumeroArticulo","CodigoAlmacen","Stock"], "Importacion Stock.xlsx")
-    c_num   = find_col(df, "NumeroArticulo")
-    c_alm   = find_col(df, "CodigoAlmacen")
-    c_stock = find_col(df, "Stock")
-    s = df[[c_num, c_alm, c_stock]].rename(columns={
-        c_num:"NumeroArticulo", c_alm:"CodigoAlmacen", c_stock:"Stock"
-    }).dropna(subset=["NumeroArticulo","CodigoAlmacen"])
-    def to_int(x):
+def read_csv_smart(path: Path) -> pd.DataFrame:
+    """Lee CSV probando separadores y encodings más comunes."""
+    tries = [
+        {"sep": ";", "encoding": "utf-8-sig"},
+        {"sep": ",", "encoding": "utf-8-sig"},
+        {"sep": ";", "encoding": "latin1"},
+        {"sep": ",", "encoding": "latin1"},
+    ]
+    last_err = None
+    for t in tries:
         try:
-            return int(float(str(x).replace(",", ".")))
-        except:
-            return None
-    s["CodigoAlmacen"] = s["CodigoAlmacen"].map(to_int)
-    s = s[s["CodigoAlmacen"].isin(VALID_ALMACENES)].copy()
-    def to_int_nn(x):
+            df = pd.read_csv(path, sep=t["sep"], encoding=t["encoding"])
+            if df.empty or len(df.columns) == 1:
+                # puede ser separador incorrecto, seguimos probando
+                last_err = RuntimeError("posible separador incorrecto")
+                continue
+            return df
+        except Exception as e:
+            last_err = e
+    raise RuntimeError(f"No se pudo leer {path.name} como CSV: {last_err}")
+
+def to_numeric(val):
+    """Convierte precios/stock con comas/puntos a número."""
+    if pd.isna(val):
+        return None
+    s = str(val).strip()
+    if s == "":
+        return None
+    # eliminar separadores de miles y normalizar decimal
+    s = s.replace(".", "").replace(",", ".")
+    try:
+        return float(s)
+    except Exception:
+        return None
+
+def ensure_dir(p: Path):
+    p.mkdir(parents=True, exist_ok=True)
+
+def load_json_if_exists(path: Path):
+    if path.exists():
         try:
-            v = int(float(str(x).replace(",", ".")))
-            return max(v, 0)
-        except:
-            return 0
-    s["Stock"] = s["Stock"].map(to_int_nn)
-    s["NumeroArticulo"] = s["NumeroArticulo"].astype(str).str.strip()
-    piv = s.pivot_table(
-        index="NumeroArticulo", columns="CodigoAlmacen", values="Stock",
-        aggfunc="sum", fill_value=0
-    )
-    piv = piv.rename(columns={k: CENTROS[k][0] for k in piv.columns})
-    piv = piv.reset_index()
-    return piv
-
-def load_proveedores(path):
-    df = read_table(path)
-    df = normalize_headers(df)
-    c_name = find_col(df, "ProveedorNombre")
-    if c_name is None:
-        return pd.DataFrame(columns=["CodigoProveedor","NombreProveedor"])
-    c_code = find_col(df, "CodigoProveedor")
-    if c_code is None:
-        c_code = find_col(df, "ReferenciaProveedor")
-    if c_code is None:
-        out = df[[c_name]].rename(columns={c_name:"NombreProveedor"}).drop_duplicates()
-        return out
-    out = df[[c_code, c_name]].rename(columns={c_code:"CodigoProveedor", c_name:"NombreProveedor"}).drop_duplicates()
-    for c in ["CodigoProveedor","NombreProveedor"]:
-        out[c] = out[c].astype(str).str.strip()
-    return out
-
-# ------------- Overrides EAN ----------------
-
-def load_overrides_ean():
-    base = "overrides/ean"
-    if not os.path.isdir(base):
-        return {}
-    res = {}
-    for _, (slug, _) in CENTROS.items():
-        p = os.path.join(base, f"{slug}.json")
-        try:
-            if os.path.exists(p):
-                with open(p, "r", encoding="utf-8") as f:
-                    res[slug] = json.load(f)
-            else:
-                res[slug] = {}
+            return json.loads(path.read_text(encoding="utf-8"))
         except Exception:
-            res[slug] = {}
-    return res
+            log(f"⚠️  No se pudo leer JSON: {path}")
+    return {}
 
-# ------------- Build ----------------
+# ----------- Carga base y stock -----------
 
-def build():
-    base = load_base_precios(IMPORTS["base_precios"])
-    log(f"[base] filas: {len(base)} cols={list(base.columns)}")
+def load_base_precios(path: Path, verbose: bool) -> pd.DataFrame:
+    if verbose:
+        log(f"→ Leyendo base artículos: {path}")
+    df = read_csv_smart(path)
 
-    stocks = load_stock(IMPORTS["stock"])
-    log(f"[stock] filas: {len(stocks)} cols={list(stocks.columns)}")
+    # localizar columnas
+    col_num   = find_first(df.columns, MAP_BASE["numero"])
+    col_ref   = find_first(df.columns, MAP_BASE["refprov"])
+    col_desc  = find_first(df.columns, MAP_BASE["descr"])
+    col_prec  = find_first(df.columns, MAP_BASE["precio"])
+    col_ean   = find_first(df.columns, MAP_BASE["ean"]) or "CodigoEAN"
+    col_prov  = find_first(df.columns, MAP_BASE["prov"]) or "NombreProveedor"
 
-    provs = load_proveedores(IMPORTS["proveedores"])
-    log(f"[proveedores] filas: {len(provs)} cols={list(provs.columns)}")
+    missing = [("NumeroArticulo", col_num), ("ReferenciaProveedor", col_ref), ("Descripcion", col_desc), ("Precio", col_prec)]
+    missing_names = [exp for exp, real in missing if real is None]
+    if missing_names:
+        raise RuntimeError(f"En {path.name} faltan columnas clave: {missing_names}")
 
-    m = base.merge(stocks, on="NumeroArticulo", how="left")
-    for _, (slug, _) in CENTROS.items():
-        if slug not in m.columns:
-            m[slug] = 0
+    out = pd.DataFrame()
+    out["NumeroArticulo"] = df[col_num].astype(str).str.strip()
+    out["ReferenciaProveedor"] = df[col_ref].astype(str).str.strip()
+    out["Descripcion"] = df[col_desc].astype(str).str.strip()
 
-    if "CodigoProveedor" in base.columns and "CodigoProveedor" in provs.columns:
-        m = m.merge(provs, on="CodigoProveedor", how="left")
-    elif "NombreProveedor" in provs.columns and "NombreProveedor" not in m.columns:
-        pass
+    precios = df[col_prec].apply(to_numeric)
+    out["Precio"] = precios.fillna(0.0).round(2)
 
-    overrides = load_overrides_ean()
-    if "CodigoEAN" not in m.columns:
-        m["CodigoEAN"] = ""
-    for slug in overrides:
-        eandict = overrides[slug] or {}
-        if not eandict:
-            continue
-        mask = m["NumeroArticulo"].isin(eandict.keys())
-        m.loc[mask, "CodigoEAN"] = m.loc[mask, "NumeroArticulo"].map(eandict).fillna(m.loc[mask, "CodigoEAN"])
+    if col_ean in df.columns:
+        out["CodigoEAN"] = df[col_ean].astype(str).str.strip()
+    else:
+        out["CodigoEAN"] = ""
 
-    for alm, (slug, _label) in CENTROS.items():
-        out_cols = ["NumeroArticulo","ReferenciaProveedor","Descripcion","CodigoEAN","Precio","Stock"]
-        dfc = m.copy()
-        dfc["Stock"] = dfc[slug].fillna(0).astype(int)
-        dfc = dfc[out_cols]
-        dfc = dfc.sort_values(["Descripcion","NumeroArticulo"])
-        dest_dir = slug
-        os.makedirs(dest_dir, exist_ok=True)
-        dest = os.path.join(dest_dir, "Articulos.csv")
-        dfc.to_csv(dest, sep=";", index=False, encoding="utf-8")
-        log(f"[write] {dest}: {len(dfc)} filas")
+    if col_prov in df.columns:
+        out["NombreProveedor"] = df[col_prov].astype(str).str.strip()
+    else:
+        out["NombreProveedor"] = ""
+
+    out["ImagenURL"] = ""  # se podrá sobrescribir por override
+    if verbose:
+        log(f"   · Artículos base: {len(out):,}")
+    return out
+
+def load_stock(path: Path, verbose: bool) -> pd.DataFrame:
+    if verbose:
+        log(f"→ Leyendo stock por almacén: {path}")
+    df = read_csv_smart(path)
+
+    col_num   = find_first(df.columns, MAP_STOCK["numero"])
+    col_alm   = find_first(df.columns, MAP_STOCK["almacen"])
+    col_stock = find_first(df.columns, MAP_STOCK["stock"])
+
+    missing = [("NumeroArticulo", col_num), ("Codigo_almacen", col_alm), ("Stock", col_stock)]
+    missing_names = [exp for exp, real in missing if real is None]
+    if missing_names:
+        raise RuntimeError(f"En {path.name} faltan columnas: {missing_names}")
+
+    tmp = pd.DataFrame()
+    tmp["NumeroArticulo"] = df[col_num].astype(str).str.strip()
+    tmp["Codigo_almacen"] = pd.to_numeric(df[col_alm], errors="coerce").astype("Int64")
+    tmp["Stock"] = df[col_stock].apply(to_numeric).fillna(0)
+
+    # quedarnos solo con almacenes 1..4
+    tmp = tmp[tmp["Codigo_almacen"].isin(CENTERS.keys())].copy()
+
+    # agrupar por articulo y almacén
+    g = tmp.groupby(["NumeroArticulo", "Codigo_almacen"], as_index=False)["Stock"].sum()
+
+    # pivot a columnas por centro
+    pivot = g.pivot(index="NumeroArticulo", columns="Codigo_almacen", values="Stock").fillna(0.0)
+
+    # nombres finales de columnas
+    rename_cols = {}
+    for cod, (key, _) in CENTERS.items():
+        if cod in pivot.columns:
+            rename_cols[cod] = f"stock_{key}"
+    pivot = pivot.rename(columns=rename_cols)
+
+    # redondear y a int
+    for cod, (key, _) in CENTERS.items():
+        col = f"stock_{key}"
+        if col in pivot.columns:
+            pivot[col] = pivot[col].round().astype(int)
+
+    pivot = pivot.reset_index()
+    if verbose:
+        log(f"   · Registros de stock (tras pivot): {len(pivot):,}")
+    return pivot
+
+# ----------- Build -----------
+
+def apply_overrides_per_center(df_out: pd.DataFrame, center_key: str):
+    """Aplica overrides de EAN e imagen para un centro concreto."""
+    ean_path = ROOT / "overrides" / "ean" / f"{center_key}.json"
+    img_path = ROOT / "overrides" / "images" / f"{center_key}.json"
+
+    eans = load_json_if_exists(ean_path)     # {NumeroArticulo: EAN}
+    imgs = load_json_if_exists(img_path)     # {NumeroArticulo: URL}
+
+    if eans:
+        # Solo aplicar si hay valor (no sobreescribir con vacío)
+        df_out["CodigoEAN"] = df_out.apply(
+            lambda r: eans.get(str(r["NumeroArticulo"]), r["CodigoEAN"]) or r["CodigoEAN"], axis=1
+        )
+    if imgs:
+        df_out["ImagenURL"] = df_out.apply(
+            lambda r: imgs.get(str(r["NumeroArticulo"]), r["ImagenURL"]) or r["ImagenURL"], axis=1
+        )
+    return df_out
+
+def build(verbose: bool = False):
+    base = load_base_precios(IMPORTS["base_precios"], verbose=verbose)
+    stock = load_stock(IMPORTS["stock"], verbose=verbose)
+
+    # merge base + stock
+    master = base.merge(stock, on="NumeroArticulo", how="left")
+
+    # asegurar columnas de stock aun si no existen
+    for cod, (key, _) in CENTERS.items():
+        col = f"stock_{key}"
+        if col not in master.columns:
+            master[col] = 0
+
+    if verbose:
+        log(f"→ Master total artículos: {len(master):,}")
+
+    # export por centro
+    for cod, (key, label) in CENTERS.items():
+        out_dir = ROOT / key
+        ensure_dir(out_dir)
+        out_path = out_dir / "Articulos.csv"
+
+        dfc = master.copy()
+        dfc["Stock"] = dfc[f"stock_{key}"].fillna(0).astype(int)
+
+        # columnas finales
+        out = dfc.reindex(columns=[
+            "NumeroArticulo",
+            "ReferenciaProveedor",
+            "Descripcion",
+            "CodigoEAN",
+            "NombreProveedor",
+            "ImagenURL",
+            "Precio",
+            "Stock",
+        ])
+
+        # aplicar overrides (EAN/Imagen)
+        out = apply_overrides_per_center(out, key)
+
+        # guardar (; como separador)
+        out.to_csv(out_path, sep=";", index=False, encoding="utf-8")
+
+        if verbose:
+            log(f"   · [{key}] {len(out):,} artículos -> {out_path.relative_to(ROOT)}")
 
 def main():
-    if VERBOSE:
-        print("▶ Iniciando build_data.py")
-    build()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--verbose", action="store_true")
+    args = ap.parse_args()
+    if args.verbose:
+        log("▶ Iniciando build_data.py")
+
+    for k, v in IMPORTS.items():
+        if k in ("proveedores",) and not v.exists():
+            continue
+        if not v.exists():
+            raise SystemExit(f"ERROR: No existe {v}")
+
+    build(verbose=args.verbose)
+
+    if args.verbose:
+        log("✅ Finalizado")
 
 if __name__ == "__main__":
     main()
