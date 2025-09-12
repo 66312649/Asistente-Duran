@@ -288,4 +288,69 @@ def main():
         override = load_overrides_ean(center)
         existing_ean[center].update({k:str(v).strip() for k,v in override.items()})
 
-    # 6) E
+    # 6) Emitir Articulos.csv por centro
+    changed_any = False
+    for center, cfg in CENTERS.items():
+        alm_code = cfg["almacen"]
+        out_dir = cfg["out_dir"]
+        os.makedirs(out_dir, exist_ok=True)
+
+        # Stock para este almacén
+        st_c = st[st["CodigoAlmacen"] == alm_code][["NumeroArticulo", "EnStock"]]
+        st_c = st_c.rename(columns={"EnStock": "Stock"})
+
+        df_out = df_base.merge(st_c, on="NumeroArticulo", how="left")
+        df_out["Stock"] = df_out["Stock"].fillna(0).map(to_int)
+
+        # Respetar EAN maestro
+        keep = existing_ean.get(center, {})
+        if keep:
+            ean_new = []
+            for _, r in df_out.iterrows():
+                num = str(r["NumeroArticulo"])
+                e = str(r.get("CodigoEAN","")).strip()
+                if num in keep and keep[num]:
+                    e = keep[num]
+                ean_new.append(e)
+            df_out["CodigoEAN"] = ean_new
+
+        # Ordenar por NumeroArticulo si es numérico posible
+        try:
+            df_out["_sort"] = pd.to_numeric(df_out["NumeroArticulo"], errors="coerce")
+            df_out = df_out.sort_values(by=["_sort","NumeroArticulo"])
+            df_out.drop(columns=["_sort"], inplace=True)
+        except Exception:
+            df_out = df_out.sort_values(by=["NumeroArticulo"])
+
+        # Selección final y tipos
+        df_out = df_out[[
+            "NumeroArticulo", "ReferenciaProveedor", "Descripcion",
+            "CodigoEAN", "NombreProveedor", "Precio", "Stock"
+        ]].copy()
+
+        df_out["Stock"] = df_out["Stock"].map(int)
+
+        out_path = os.path.join(out_dir, "Articulos.csv")
+
+        # Escribir sólo si cambia (para evitar commits vacíos)
+        csv_new = df_out.to_csv(index=False, sep=";", encoding="utf-8")
+        csv_old = None
+        if os.path.isfile(out_path):
+            with open(out_path, "r", encoding="utf-8", errors="ignore") as fh:
+                csv_old = fh.read()
+        if csv_old != csv_new:
+            with open(out_path, "w", encoding="utf-8") as fh:
+                fh.write(csv_new)
+            changed_any = True
+
+        print(f"✔ {center}: filas={len(df_out)}  escrito={csv_old!=csv_new}")
+
+    if not changed_any:
+        print("Sin cambios en ningún centro.")
+    else:
+        print("Cambios generados en al menos un centro.")
+
+    print("✅ build_data.py finalizado.")
+
+if __name__ == "__main__":
+    main()
