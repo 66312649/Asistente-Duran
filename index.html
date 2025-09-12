@@ -3,93 +3,110 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Asistente Duran AI</title>
+<title>Asistente Duran</title>
 <link rel="icon" href="logo-duran.png"/>
+<meta name="theme-color" content="#5a73ff"/>
 <style>
+/* ======= Tema más claro & azul/morado ======= */
 :root{
-  --bg:#11152a; /* azul/morado más suave */
-  --bg2:#161b35;
-  --bg3:#0d1430;
-  --ink:#ffffff;
-  --mut:#a8b0c8;
-  --line:#2a3153;
-  --brand:#4aa3ff;
-  --ok:#22c55e;
-  --warn:#f59e0b;
-  --err:#ef4444;
-  --radius:14px;
-  --shadow:0 10px 25px rgba(0,0,0,.25);
+  --bg:#0d1330;
+  --bg2:#141b45;
+  --ink:#ebf2ff;
+  --mut:#b8c4ef;
+  --glass:rgba(255,255,255,.06);
+  --line:rgba(255,255,255,.14);
+  --brand:#5a73ff;        /* acento */
+  --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
 }
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box}
 html,body{height:100%}
-body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial;background:
-radial-gradient(1200px 700px at 50% -10%, #27407b 0%, #18224a 50%, #0f1530 100%);color:var(--ink)}
+body{
+  margin:0;
+  /* degradado más suave azul→morado */
+  background: radial-gradient(1200px 680px at 50% -10%, #6ea8ff 0%, #3d56b0 45%, #2a2a72 80%, #17153a 100%);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial;
+  color:var(--ink)
+}
 .app{min-height:100vh;display:grid;grid-template-rows:auto 1fr}
 @supports (height:100dvh){.app{min-height:100dvh}}
-header{position:sticky;top:0;z-index:20;background:linear-gradient(180deg, rgba(8,12,30,.85), rgba(8,12,30,.55));backdrop-filter:blur(10px);
-border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr minmax(280px,780px) 1fr;gap:12px;align-items:center;
-padding:clamp(10px,2vmin,16px)}
+
+header{
+  position:sticky;top:0;z-index:10;
+  background:linear-gradient(180deg, rgba(10,14,35,.9), rgba(10,14,35,.62));
+  backdrop-filter:blur(8px);
+  display:grid;grid-template-columns:1fr minmax(280px,740px) 1fr;
+  gap:12px;align-items:center;
+  padding:clamp(10px,2vmin,16px)
+}
 .header-left{display:flex;align-items:center;gap:10px}
-.header-left img{height:42px;filter:drop-shadow(0 4px 16px rgba(74,163,255,.45))}
+.header-left img{height:40px;filter:drop-shadow(0 2px 16px rgba(90,115,255,.35))}
+.badge{padding:.35em .7em;border-radius:999px;border:1px solid var(--line);background:var(--glass);color:var(--ink);font-weight:600;font-size:12px;white-space:nowrap}
 .centerTabs{grid-column:2/3;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-.tab{padding:.5em .8em;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.06);cursor:pointer;white-space:nowrap}
-.tab.active{background:rgba(74,163,255,.16);border-color:rgba(74,163,255,.55)}
-.rightBox{display:flex;gap:8px;justify-content:flex-end;align-items:center}
+.tab{padding:.45em .75em;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.06);cursor:pointer;white-space:nowrap}
+.tab.active{background:rgba(90,115,255,.18);border-color:rgba(90,115,255,.55)}
+.rightBox{display:flex;gap:10px;justify-content:flex-end;align-items:center}
 .small{font-size:12px;color:var(--mut)}
-.badge{padding:.35em .7em;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.06);font-weight:600;font-size:12px;white-space:nowrap}
-button{padding:.65em .9em;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--ink);cursor:pointer;font:inherit}
-button:hover{background:rgba(255,255,255,.12)}
-.btn-brand{border-color:rgba(74,163,255,.55);box-shadow:0 0 0 3px rgba(74,163,255,.15) inset}
+button{padding:.7em 1em;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--ink);cursor:pointer;font:inherit}
+button:hover{background:rgba(255,255,255,.12)} .btn-brand{border-color:rgba(90,115,255,.5);box-shadow:0 0 0 3px rgba(90,115,255,.12) inset}
 button.ghost{background:transparent;border-color:transparent;color:var(--mut)}
-.screen{display:none;min-height:calc(100svh - 80px);padding:clamp(12px,2vmin,18px)}
+.hide{display:none !important}
+.screen{display:none;min-height:calc(100svh - 70px);padding:clamp(12px,2vmin,18px)}
 .screen.active{display:grid;align-content:start;gap:clamp(12px,2vmin,18px)}
 .grid{display:grid;gap:clamp(10px,2vmin,16px)}
-.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-input[type="text"],input[type="number"],select,textarea{width:100%;padding:.85em 1em;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.25);color:var(--ink);outline:none;min-width:12ch;font:inherit}
-hr{border:0;border-top:1px solid var(--line)}
-.note{border:1px dashed var(--line);padding:10px;border-radius:10px;color:var(--mut)}
-/* FLAGS */
+.row{display:flex;gap:clamp(8px,1.6vmin,12px);align-items:center;flex-wrap:wrap}
 .flags{display:flex;gap:8px;flex-wrap:wrap}
-.flag{width:clamp(44px,6vmin,56px);height:clamp(32px,4.8vmin,44px);border-radius:10px;border:1px solid var(--line);overflow:hidden;display:inline-flex;align-items:center;justify-content:center;background:#222}
-.flag img{width:100%;height:100%;object-fit:cover}
-/* LIST + RESULTS */
-.list{display:grid;gap:10px;max-height:62svh;overflow:auto}
-.card{display:grid;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.05);padding:12px;border-radius:14px}
-/* MAP */
-.mapWrap{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;height:clamp(320px,70dvh,900px);display:block;background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02))}
-.mapWrap img{display:block;width:100%;height:100%;object-fit:contain;background:radial-gradient(600px 300px at 50% 0%, rgba(255,255,255,.05), transparent 60%)}
-.pin{position:absolute;width:16px;height:16px;background:#ef4444;border-radius:50%;box-shadow:0 0 0 6px rgba(239,68,68,.35);transform:translate(-50%,-50%);display:none}
-.pin.ref{background:#3b82f6;box-shadow:0 0 0 6px rgba(59,130,246,.35)}
-/* ADMIN PANEL */
+.flag{width:clamp(40px,6vmin,56px);height:clamp(28px,4.8vmin,44px);border-radius:10px;border:1px solid var(--line);overflow:hidden;display:inline-flex;align-items:center;justify-content:center;background:#222}
+.flag img{display:block;width:100%;height:100%;object-fit:cover}
+input[type="text"],input[type="number"],input[type="file"],select{
+  width:100%;padding:.8em 1em;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.2);color:var(--ink);outline:none;min-width:12ch;font:inherit
+}
+
+/* ======= Esfera voz: azul eléctrico ======= */
+.sphere{
+  width:clamp(120px,18vmin,200px);height:clamp(120px,18vmin,200px);
+  border-radius:50%;margin:auto;border:1px solid rgba(255,255,255,.30);
+  box-shadow:0 0 40px rgba(0,162,255,.40);position:relative;overflow:hidden
+}
+.sphere .g{
+  position:absolute;inset:0;
+  background:conic-gradient(from 0deg at 50% 50%, #00a2ff, #7cc8ff, #00a2ff);
+  filter:blur(10px);opacity:.95
+}
+.sphere.listening .g{animation:rot 6s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+.sphere .ring{position:absolute;left:50%;top:50%;width:60%;height:60%;transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(255,255,255,.6);opacity:.55}
+.sphere.listening .ring{animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{0%{transform:translate(-50%,-50%) scale(1);opacity:.7}50%{transform:translate(-50%,-50%) scale(1.45);opacity:.15}100%{transform:translate(-50%,-50%) scale(1);opacity:.7}}
+
+.list{display:grid;gap:10px;max-height:60svh;overflow:auto}
+.item{display:grid;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.05);padding:12px;border-radius:14px}
+.sub{color:var(--mut);font-size:12px}
+.mapWrap{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;height:clamp(320px,70dvh,900px);display:block}
+.mapWrap img{display:block;width:100%;height:100%;object-fit:contain;user-select:none;background:radial-gradient(600px 300px at 50% 0%, rgba(255,255,255,.03), transparent 60%)}
+.pin{position:absolute;width:clamp(12px,1.8vmin,16px);height:clamp(12px,1.8vmin,16px);background:#ef4444;border-radius:50%;box-shadow:0 0 0 5px rgba(239,68,68,.35);transform:translate(-50%, -50%);display:none}
+.pin.ref{background:#3b82f6; box-shadow:0 0 0 5px rgba(59,130,246,.35)}
 .panel{border:1px solid var(--line);background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04));backdrop-filter:blur(10px);border-radius:18px;padding:clamp(12px,2vmin,16px)}
 .grid-two{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 @media(max-width:640px){.grid-two{grid-template-columns:1fr}}
-/* ELECTRIC VOICE SPHERE */
-.sphere{width:clamp(130px,18vmin,220px);height:clamp(130px,18vmin,220px);border-radius:50%;margin:auto;border:1px solid rgba(80,180,255,.6);box-shadow:0 0 30px rgba(80,180,255,.45), inset 0 0 30px rgba(80,180,255,.22);position:relative;overflow:hidden}
-.sphere .core{position:absolute;inset:-20%;background:conic-gradient(from 0deg, #3db4ff, #6ecbff, #2b8cff, #3db4ff);filter:blur(18px);opacity:.95}
-.sphere.listening .core{animation:spin 4s linear infinite}
-.sphere.speaking .core{animation:spin 2s linear infinite reverse}
-.sphere .rings::before,.sphere .rings::after{content:"";position:absolute;left:50%;top:50%;width:70%;height:70%;transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(80,180,255,.55);box-shadow:0 0 20px rgba(80,180,255,.35)}
-.sphere.listening .rings::before{animation:pulse 2.2s ease-in-out infinite}
-.sphere.speaking .rings::after{animation:pulse 1.6s ease-in-out infinite reverse}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes pulse{0%{transform:translate(-50%,-50%) scale(1);opacity:.9}50%{transform:translate(-50%,-50%) scale(1.5);opacity:.25}100%{transform:translate(-50%,-50%) scale(1);opacity:.9}}
-/* IMAGE PREVIEW */
-.preview{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.preview img{width:120px;height:120px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
-/* FOOTER */
-footer{padding:8px 16px;color:var(--mut);font-size:12px;text-align:center;border-top:1px solid var(--line);background:rgba(0,0,0,.15)}
+.bad{color:#ffcd6b}
+footer{padding:8px 16px;color:var(--mut);font-size:12px}
+hr{border:0;border-top:1px solid var(--line)}
+.note{border:1px dashed var(--line);padding:10px;border-radius:10px;color:var(--mut)}
 </style>
 </head>
 <body>
 <div class="app">
+
   <header>
     <div class="header-left">
       <img src="logo-duran.png" alt="DURAN"/>
       <div class="badge small" id="centerBadge">Centro Duran Calvià</div>
     </div>
+
     <div class="centerTabs" id="centerTabs"></div>
+
     <div class="rightBox">
+      <button id="fsToggle" class="ghost" title="Pantalla completa">⤢</button>
       <span class="small" id="status">Listo</span>
       <button id="adminToggle" class="ghost" title="Admin">⚙️ Admin</button>
     </div>
@@ -106,22 +123,17 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px;text-align:center;border
       <button id="start" class="btn-brand">Empezar</button>
     </div>
 
-    <!-- Electric Voice Sphere -->
-    <div class="grid" id="voiceBox" style="display:grid; place-items:center">
-      <div class="sphere" id="sphere">
-        <div class="core"></div>
-        <div class="rings"></div>
-      </div>
+    <div class="grid" id="voiceBox" style="display:none">
+      <div class="sphere" id="sphere"><div class="g"></div><div class="ring"></div></div>
       <div id="spLabel" class="small">Listo</div>
     </div>
 
     <div class="row">
-      <input id="q" type="text" placeholder="Escribe o dicta: manguito 32 mm polietileno, scala2, 8426621550199, 9286"/>
+      <input id="q" type="text" placeholder="Escribe y pulsa Buscar (ej.: manguito 32 mm polietileno, scala2, 8426621550199, 9286)"/>
       <button id="mic" title="Hablar">🎙️</button>
       <button id="go" class="btn-brand">Buscar</button>
-      <button id="ask" class="ghost" title="Asesor (vía n8n/OpenAI)">💡 Asesor</button>
+      <button id="ask" class="ghost hide" title="Asesor especialista (próximamente)">💡 Asesor</button>
     </div>
-    <div class="small note" id="diagNote">Diagnóstico: <span id="diagMsg">—</span></div>
     <div class="small bad" id="voiceWarn" style="display:none"></div>
   </section>
 
@@ -146,12 +158,12 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px;text-align:center;border
       <div id="pin" class="pin"></div>
       <div id="pinRef" class="pin ref" style="display:none"></div>
     </div>
-    <div id="route" class="small" style="margin-top:6px"></div>
+    <div id="route" class="small"></div>
     <div class="panel note" id="mapNote" style="display:none"></div>
 
-    <!-- ADMIN -->
     <div id="adminPanel" class="panel" style="display:none">
       <div class="small">Acceso restringido. Contraseña (0666).</div><hr>
+
       <h4 class="small" style="margin:.2em 0 .4em">Ubicación del artículo</h4>
       <div class="grid-two">
         <label>Pasillo <input id="fPasillo" type="number" min="0" step="1"></label>
@@ -163,7 +175,7 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px;text-align:center;border
         <label>Stock <input id="fStock" type="number" min="0" step="1"></label>
       </div>
       <div class="row">
-        <button id="saveLoc" class="btn-brand">💾 Guardar ubicación (master)</button>
+        <button id="saveLoc" class="btn-brand">💾 Guardar ubicación del artículo</button>
         <button id="delLoc">🗑️ Quitar ubicación</button>
       </div>
 
@@ -175,7 +187,7 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px;text-align:center;border
       </div>
       <hr>
 
-      <h4 class="small" style="margin:.8em 0 .4em">Gestión de EAN (buscar y asignar)</h4>
+      <h4 class="small" style="margin:.8em 0 .4em">Gestión de EAN</h4>
       <div class="grid-two">
         <label>EAN (lector o pegado) <input id="admEAN" type="text" placeholder="8426…"/></label>
         <label>Nº artículo <input id="admNum" type="text" placeholder="9286"/></label>
@@ -183,20 +195,27 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px;text-align:center;border
       <label>Descripción contiene <input id="admText" type="text" placeholder="manguito 32"/></label>
       <div class="row">
         <button id="admFind" class="btn-brand">🔎 Buscar artículo</button>
-        <button id="admAssign">🔗 Asignar EAN (master)</button>
-        <button id="admExport" title="Descargar Articulos.csv actualizado">⬇️ Exportar CSV (fallback)</button>
+        <button id="admAssign">🔗 Asignar EAN</button>
+        <button id="admExport" title="Descargar Articulos.csv actualizado">⬇️ Exportar CSV</button>
       </div>
       <div id="admInfo" class="small"></div>
 
       <hr>
       <h4 class="small" style="margin:.8em 0 .4em">Foto del artículo</h4>
-      <div class="row">
-        <input id="photoFile" type="file" accept="image/*" capture="environment"/>
-        <button id="savePhoto" class="btn-brand">📸 Guardar foto (local/IDB)</button>
-        <button id="downloadPhoto">⬇️ Descargar</button>
-        <button id="syncPhoto">☁️ Subir al repo (auto)</button>
+      <div class="grid-two">
+        <label>Elegir foto (cámara o galería)
+          <input id="admPhoto" type="file" accept="image/*" capture="environment">
+        </label>
+        <div>
+          <button id="photoSave" class="btn-brand">📸 Guardar foto (local)</button>
+          <button id="photoDownload">💾 Descargar fichero</button>
+          <button id="photoDelete" class="ghost">🗑️ Borrar local</button>
+        </div>
       </div>
-      <div class="preview" id="photoPreview"></div>
+      <div class="row" id="photoRow" style="margin-top:6px">
+        <img id="photoPreview" alt="Vista previa" style="max-width:220px;border-radius:10px;border:1px solid var(--line);display:none">
+        <div class="small" id="photoInfo"></div>
+      </div>
     </div>
   </section>
 
@@ -204,325 +223,174 @@ footer{padding:8px 16px;color:var(--mut);font-size:12px;text-align:center;border
 </div>
 
 <script>
-/* ========== CONFIG ==========
-   CATALOG_API_URL: endpoint n8n que devuelve catálogo normalizado por centro:
-   GET /?center=calvia  -> {
-     center: "calvia",
-     updated: "2025-09-10T07:30:00Z",
-     items: [
-       { NumeroArticulo, ReferenciaProveedor, DescripcionES, DescripcionCA, DescripcionEN, DescripcionDE, DescripcionPL, DescripcionRU,
-         CodigoEAN, NombreProveedor, PrecioListaVentas, StockPorCentro:{calvia:12,coll:0,alcudia:7,santanyi:1}, ImagenURL }
-     ]
-   }
-   Debe filtrar ALMACENES 1,2,3,4 en su pipeline (o lo filtramos aquí si viene desglosado).
-   SYNC_API_URL: endpoint POST n8n para guardar cambios maestros (EAN, ubicaciones, foto) en el repo.
-*/
-const CATALOG_API_URL = ''; // ej: 'https://TU-N8N/catalog'
-const SYNC_API_URL    = ''; // ej: 'https://TU-N8N/sync'
-const API_TOKEN       = ''; // si tu n8n exige auth: 'Bearer xxxxx'
+/* ==========================
+   Núcleo (tu versión base, con mejoras puntuales)
+   ========================== */
+const APP_VERSION='v6.0-'+Date.now();
 
-const APP_VERSION='v6.2-'+Date.now();
-
-/* ========== CENTROS ========== */
+/* Centros */
 const CENTERS={
-  calvia:{id:'calvia', label:'Duran Calvià', a:'calvia/Articulos.csv', u:'calvia/ubicaciones.csv', map:'calvia/plano-calvia.jpg'},
-  coll:{id:'coll', label:'Duran Coll', a:'coll/Articulos.csv', u:'coll/ubicaciones.csv', map:'coll/plano-coll.jpg'},
-  alcudia:{id:'alcudia', label:'Duran Alcudia', a:'alcudia/Articulos.csv', u:'alcudia/ubicaciones.csv', map:'alcudia/plano-alcudia.jpg'},
-  santanyi:{id:'santanyi', label:'Duran Santanyí', a:'santanyi/Articulos.csv', u:'santanyi/ubicaciones.csv', map:'santanyi/plano-santanyi.jpg'}
+  calvia:{id:'calvia', label:'Duran Calvià', a:'calvia/Articulos.csv', u:'calvia/Ubicaciones.csv', map:'calvia/plano-calvia.jpg'},
+  coll:{id:'coll', label:'Duran Coll', a:'coll/Articulos.csv', u:'coll/Ubicaciones.csv', map:'coll/plano-coll.jpg'},
+  alcudia:{id:'alcudia', label:'Duran Alcudia', a:'alcudia/Articulos.csv', u:'alcudia/Ubicaciones.csv', map:'alcudia/plano-alcudia.jpg'},
+  santanyi:{id:'santanyi', label:'Duran Santanyí', a:'santanyi/Articulos.csv', u:'santanyi/Ubicaciones.csv', map:'santanyi/plano-santanyi.jpg'}
 };
 let CENTER=CENTERS[localStorage.getItem('centerId')||'calvia'];
 
-/* ========== IDIOMAS (ES, CA, EN, DE, PL, RU) ========== */
-const LANGS={
-  es:{name:'Español',tag:'es-ES', sphere:{idle:'Listo',listening:'Escuchando…',thinking:'Pensando…',speaking:'Hablando…'},
-      greet:(n)=>{const h=new Date().getHours(); const hola=(h>=19?'Buenas noches':h>=14?'Buenas tardes':'Buenos días'); return `${hola}${n?`, ${n}`:''}. ¿En qué puedo ayudarte?`}},
-  ca:{name:'Mallorquí',tag:'ca-ES', sphere:{idle:'A punt',listening:'Escoltant…',thinking:'Pensant…',speaking:'Parlant…'},
-      greet:(n)=>{const h=new Date().getHours(); const hola=(h>=19?'Bona nit':h>=14?'Bona tarda':'Bon dia'); return `${hola}${n?`, ${n}`:''}. En què et puc ajudar?`}},
-  en:{name:'English',tag:'en-GB', sphere:{idle:'Ready',listening:'Listening…',thinking:'Thinking…',speaking:'Speaking…'},
-      greet:(n)=>{const h=new Date().getHours(); const hello=(h>=19?'Good evening':h>=14?'Good afternoon':'Good morning'); return `${hello}${n?`, ${n}`:''}. How can I help you?`}},
-  de:{name:'Deutsch',tag:'de-DE', sphere:{idle:'Bereit',listening:'Zuhören…',thinking:'Denken…',speaking:'Sprechen…'},
-      greet:(n)=>{const h=new Date().getHours(); const hallo=(h>=19?'Guten Abend':h>=14?'Guten Tag':'Guten Morgen'); return `${hallo}${n?`, ${n}`:''}. Wie kann ich helfen?`}},
-  pl:{name:'Polski',tag:'pl-PL', sphere:{idle:'Gotowe',listening:'Słucham…',thinking:'Myślę…',speaking:'Mówię…'},
-      greet:(n)=>{const h=new Date().getHours(); const d=(h>=19?'Dobry wieczór':h>=14?'Dzień dobry':'Dzień dobry'); return `${d}${n?`, ${n}`:''}. W czym mogę pomóc?`}},
-  ru:{name:'Русский',tag:'ru-RU', sphere:{idle:'Готово',listening:'Слушаю…',thinking:'Думаю…',speaking:'Говорю…'},
-      greet:(n)=>{const h=new Date().getHours(); const hi=(h>=19?'Добрый вечер':h>=14?'Добрый день':'Доброе утро'); return `${hi}${n?`, ${n}`:''}. Чем могу помочь?`}}
-};
-let lang='es';
+/* Idiomas (resumido, igual que antes) */
+const LANGS={ es:{name:"Español",tag:"es-ES",sphere:{idle:"Listo",listening:"Escuchando…",thinking:"Pensando…",speaking:"Hablando…"},
+  greet:(n)=>{const h=new Date().getHours(); const hola=(h>=14?"Buenas tardes":"Buenos días"); return `${hola}${n?`, ${n}`:''}. ¿En qué puedo ayudarte?`},
+  side:s=> s==='I'?'Izquierda': s==='D'?'Derecha':(s||'—'),
+  guide:(p,l,e,b,dir)=>`Desde este terminal, ${dir}. Luego al pasillo ${p}, lado ${l}, estante ${e}, balda ${b}.`,
+  ask:"¿Quieres indicaciones para localizarlo?"} };
 
-/* ========== DOM REFS ========== */
-const statusEl=document.getElementById('status'); const centerBadge=document.getElementById('centerBadge'); const centerTabs=document.getElementById('centerTabs');
-const scrHome=document.getElementById('scrHome'); const scrResults=document.getElementById('scrResults'); const scrMap=document.getElementById('scrMap');
-const backHome=document.getElementById('backHome'); const backResults=document.getElementById('backResults'); const againBtn=document.getElementById('again');
-const adminToggle=document.getElementById('adminToggle'); const adminPanel=document.getElementById('adminPanel');
-const flags=document.getElementById('flags'); const nameInput=document.getElementById('name'); const startBtn=document.getElementById('start');
-const voiceBox=document.getElementById('voiceBox'); const sphere=document.getElementById('sphere'); const spLabel=document.getElementById('spLabel');
-const q=document.getElementById('q'); const goBtn=document.getElementById('go'); const micBtn=document.getElementById('mic'); const voiceWarn=document.getElementById('voiceWarn');
-const resultsEl=document.getElementById('results'); const resCount=document.getElementById('resCount');
-const mapImg=document.getElementById('mapImg'); const mapBox=document.getElementById('mapBox'); const mapNote=document.getElementById('mapNote');
-const pin=document.getElementById('pin'); const pinRef=document.getElementById('pinRef'); const routeEl=document.getElementById('route');
-const fPas=document.getElementById('fPasillo'); const fLado=document.getElementById('fLado'); const fEst=document.getElementById('fEst'); const fBal=document.getElementById('fBal'); const fX=document.getElementById('fX'); const fY=document.getElementById('fY'); const fStock=document.getElementById('fStock');
-const saveLocBtn=document.getElementById('saveLoc'); const delLocBtn=document.getElementById('delLoc'); const setRefModeBtn=document.getElementById('setRefMode'); const clearRefBtn=document.getElementById('clearRef'); const refInfo=document.getElementById('refInfo');
-const admEAN=document.getElementById('admEAN'); const admNum=document.getElementById('admNum'); const admText=document.getElementById('admText'); const admFind=document.getElementById('admFind'); const admAssign=document.getElementById('admAssign'); const admExport=document.getElementById('admExport'); const admInfo=document.getElementById('admInfo');
-const photoFile=document.getElementById('photoFile'); const savePhotoBtn=document.getElementById('savePhoto'); const downloadPhotoBtn=document.getElementById('downloadPhoto'); const syncPhotoBtn=document.getElementById('syncPhoto'); const photoPreview=document.getElementById('photoPreview');
-const diagMsg=document.getElementById('diagMsg');
+let lang='es', admin=false, adminGranted=false;
 
-/* ========== STATE ========== */
-let admin=false, adminGranted=false;
-let ART=[], UBI=[], INDEX={}; // artículos, ubicaciones, índice ubicaciones por Nº
-let TRAD_MAP=new Map();       // traducciones por Nº -> {es,ca,en,de,pl,ru}
-let varSel=null;              // artículo seleccionado
-let capturingRef=false;       // capturando referencia de terminal
-let termRef=loadRef();        // referencia terminal
-let isListening=false; let rec=null, recStart=0, lastTranscriptTs=0;
+/* DOM */
+const statusEl=document.getElementById('status'), centerBadge=document.getElementById('centerBadge'), centerTabs=document.getElementById('centerTabs');
+const fsToggle=document.getElementById('fsToggle');
+const scrHome=document.getElementById('scrHome'), scrResults=document.getElementById('scrResults'), scrMap=document.getElementById('scrMap');
+const backHome=document.getElementById('backHome'), backResults=document.getElementById('backResults'), againBtn=document.getElementById('again');
+const adminToggle=document.getElementById('adminToggle'), adminPanel=document.getElementById('adminPanel');
+const flags=document.getElementById('flags'), nameInput=document.getElementById('name'), startBtn=document.getElementById('start');
+const voiceBox=document.getElementById('voiceBox'), sphere=document.getElementById('sphere'), spLabel=document.getElementById('spLabel');
+const q=document.getElementById('q'), goBtn=document.getElementById('go'), micBtn=document.getElementById('mic'), voiceWarn=document.getElementById('voiceWarn');
+const resultsEl=document.getElementById('results'), resCount=document.getElementById('resCount');
+const mapImg=document.getElementById('mapImg'), mapBox=document.getElementById('mapBox'), mapNote=document.getElementById('mapNote');
+const pin=document.getElementById('pin'), pinRef=document.getElementById('pinRef'), routeEl=document.getElementById('route');
+const fPas=document.getElementById('fPasillo'), fLado=document.getElementById('fLado'), fEst=document.getElementById('fEst'), fBal=document.getElementById('fBal'), fX=document.getElementById('fX'), fY=document.getElementById('fY'), fStock=document.getElementById('fStock');
+const saveLocBtn=document.getElementById('saveLoc'), delLocBtn=document.getElementById('delLoc'), setRefModeBtn=document.getElementById('setRefMode'), clearRefBtn=document.getElementById('clearRef'), refInfo=document.getElementById('refInfo');
+const admEAN=document.getElementById('admEAN'), admNum=document.getElementById('admNum'), admText=document.getElementById('admText'), admFind=document.getElementById('admFind'), admAssign=document.getElementById('admAssign'), admExport=document.getElementById('admExport'), admInfo=document.getElementById('admInfo');
+/* Foto */
+const admPhoto=document.getElementById('admPhoto'), photoSave=document.getElementById('photoSave'), photoDelete=document.getElementById('photoDelete'), photoDownload=document.getElementById('photoDownload'), photoPreview=document.getElementById('photoPreview'), photoInfo=document.getElementById('photoInfo');
 
-/* ========== FLAGS BASE64 (6 idiomas) ========== */
+/* Banderas mínimas (ES) */
 function b64(svg){ return 'data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svg))) }
-const FLAGS={
-  es:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='48' fill='#aa151b'/><rect y='16' width='80' height='16' fill='#f1bf00'/></svg>`),
-  ca:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='48' fill='#f7d117'/><g fill='#d40000'><rect y='4' width='80' height='6'/><rect y='14' width='80' height='6'/><rect y='24' width='80' height='6'/><rect y='34' width='80' height='6'/></g></svg>`),
-  en:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='48' fill='#00247d'/><path d='M0,0 80,48 M80,0 0,48' stroke='#fff' stroke-width='10'/><path d='M0,0 80,48 M80,0 0,48' stroke='#cf142b' stroke-width='6'/><rect x='34' width='12' height='48' fill='#fff'/><rect y='18' width='80' height='12' fill='#fff'/><rect x='36' width='8' height='48' fill='#cf142b'/><rect y='20' width='80' height='8' fill='#cf142b'/></svg>`),
-  de:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='16' fill='#000'/><rect y='16' width='80' height='16' fill='#dd0000'/><rect y='32' width='80' height='16' fill='#ffce00'/></svg>`),
-  pl:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='24' fill='#fff'/><rect y='24' width='80' height='24' fill='#dc143c'/></svg>`),
-  ru:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='16' fill='#fff'/><rect y='16' width='80' height='16' fill='#0039a6'/><rect y='32' width='80' height='16' fill='#d52b1e'/></svg>`)
-};
-function initFlags(){
-  flags.innerHTML='';
-  for(const code of ['es','ca','en','de','pl','ru']){
-    const b=document.createElement('button');
-    b.className='flag'; b.innerHTML=`<img alt='${code}' src='${FLAGS[code]}'/>`; b.title=LANGS[code].name;
-    b.onclick=()=>{ lang=code; setSphere('idle'); speak(LANGS[lang].greet(nameInput.value||'')); };
-    flags.appendChild(b);
-  }
-}
+const FLAGS={ es:b64(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='48'><rect width='80' height='48' fill='#aa151b'/><rect y='16' width='80' height='16' fill='#f1bf00'/></svg>`) };
+function initFlags(){ flags.innerHTML=''; const b=document.createElement('button'); b.className='flag'; b.innerHTML=`<img alt='es' src='${FLAGS.es}'/>`; b.title='Español'; b.onclick=()=>{ lang='es'; setSphere('idle'); speak(LANGS[lang].greet(nameInput.value||'')); }; flags.appendChild(b); }
 
-/* ========== SPEECH OUT ==========
-   Esfera reacciona: idle/listening/speaking
-*/
+/* Voz */
 let VOICES=[]; function refreshVoices(){ try{ VOICES=speechSynthesis.getVoices() }catch{} } refreshVoices(); speechSynthesis.onvoiceschanged=refreshVoices;
-function pickVoice(tag){ tag=tag.toLowerCase(); const pool=VOICES.filter(v=> (v.lang||'').toLowerCase().startsWith(tag.slice(0,2)) || (v.lang||'').toLowerCase()===tag ); const score=v=>{ let s=0; const n=(v.name||'').toLowerCase(); if((v.lang||'').toLowerCase().startsWith(tag)) s+=5; if(n.includes('google')||n.includes('microsoft')) s+=3; if(n.includes('natural')||n.includes('neural')) s+=2; return s }; return pool.sort((a,b)=>score(b)-score(a))[0]||pool[0]||null }
-function speak(text){ try{ const u=new SpeechSynthesisUtterance(text); const v=pickVoice(LANGS[lang].tag)||pickVoice('es-ES'); if(v) u.voice=v; u.lang=(v&&v.lang)||LANGS[lang].tag; u.rate=1; u.pitch=1; u.volume=1; speechSynthesis.cancel(); speechSynthesis.speak(u); setSphere('speaking'); const ms=Math.min(9000, Math.max(1800, text.split(/\s+/).length*340)); setTimeout(()=>setSphere('idle'), ms);}catch(e){console.warn(e)} }
-
-/* ========== SPEECH IN ========== */
-function startListening(){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){ voiceWarn.style.display='block'; voiceWarn.textContent='Este navegador no soporta reconocimiento de voz.'; return }
-  if(!location.protocol.startsWith('https')){ voiceWarn.style.display='block'; voiceWarn.textContent='La voz requiere HTTPS.'; return }
-  rec=new SR(); rec.lang=LANGS[lang].tag; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
-  rec.onstart=()=>{ setSphere('listening'); voiceWarn.style.display='none'; lastTranscriptTs=Date.now() };
-  rec.onresult=(ev)=>{ let interim=''; let final=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ const r=ev.results[i]; if(r.isFinal) final += r[0].transcript + ' '; else interim += r[0].transcript; } const any=(final+interim).trim(); if(any){ lastTranscriptTs=Date.now(); q.value=(q.value? q.value+' ' : '') + any; } };
-  rec.onerror=(e)=>{ voiceWarn.style.display='block'; voiceWarn.textContent='Error de voz: '+e.error; stopListening(); };
-  rec.onend=()=>{ isListening=false; setSphere('idle'); };
-  isListening=true; rec.start();
-}
-function stopListening(){ try{ isListening=false; rec&&rec.stop() }catch{} }
+function pickVoice(tag){ tag=tag.toLowerCase(); const pool=VOICES.filter(v=> (v.lang||'').toLowerCase().startsWith('es')); const score=v=>{ let s=0; const n=(v.name||'').toLowerCase(); if((v.lang||'').toLowerCase().startsWith(tag)) s+=5; if(n.includes('google')||n.includes('microsoft')) s+=3; if(n.includes('natural')||n.includes('neural')) s+=2; return s }; return pool.sort((a,b)=>score(b)-score(a))[0]||pool[0]||null }
+function speak(text){ try{ const u=new SpeechSynthesisUtterance(text); const v=pickVoice(LANGS[lang].tag)||pickVoice('es-ES'); if(v) u.voice=v; u.lang=(v&&v.lang)||'es-ES'; u.rate=1; u.pitch=1; u.volume=1; speechSynthesis.cancel(); speechSynthesis.speak(u); setSphere('speaking'); const ms=Math.min(9000, Math.max(1800, text.split(/\s+/).length*330)); setTimeout(()=>setSphere('idle'), ms);}catch(e){console.warn(e)} }
+let rec=null, listening=false, recStart=0, lastTranscriptTs=0;
+function startListening(){ const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR){ voiceWarn.style.display='block'; voiceWarn.textContent='Este navegador no soporta reconocimiento de voz.'; return } if(!location.protocol.startsWith('https')){ voiceWarn.style.display='block'; voiceWarn.textContent='La voz requiere HTTPS.'; return } rec=new SR(); rec.lang='es-ES'; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1; rec.onstart=()=>{ setSphere('listening'); voiceWarn.style.display='none'; lastTranscriptTs=Date.now(); voiceBox.style.display='grid' }; rec.onresult=(ev)=>{ let interim=''; let final=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ const r=ev.results[i]; if(r.isFinal) final += r[0].transcript + ' '; else interim += r[0].transcript; } const any=(final+interim).trim(); if(any){ lastTranscriptTs=Date.now(); q.value=(q.value? q.value+' ' : '') + any; } }; rec.onerror=(e)=>{ voiceWarn.style.display='block'; voiceWarn.textContent='Error de voz: '+e.error; stopListening(); }; rec.onend=()=>{ if(!listening){ setSphere('idle'); return } const elapsed=Date.now()-recStart; if(Date.now()-lastTranscriptTs>6000 && elapsed<15000){ rec.start(); } else { listening=false; setSphere('idle'); } }; listening=true; recStart=Date.now(); rec.start(); }
+function stopListening(){ try{ listening=false; rec&&rec.stop() }catch{} }
 function setSphere(mode){ sphere.classList.remove('listening','speaking'); if(mode==='listening') sphere.classList.add('listening'); if(mode==='speaking') sphere.classList.add('speaking'); spLabel.textContent=LANGS[lang].sphere[mode]||'…'; statusEl.textContent=spLabel.textContent }
 
-/* ========== UTILS ========== */
+/* Datos */
+let ART=[], UBI=[], INDEX={}; let varSel=null; let capturingRef=false; let termRef=loadRef();
 function normalize(s){return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
 function parseNum(v){ if(v==null) return null; if(typeof v==='number') return v; const s=String(v).trim().replace(',','.'); const n=Number(s); return isFinite(n)? n : null }
-function €(n){ const x=Number(n); if(!isFinite(x)) return ''; return x.toLocaleString('es-ES',{style:'currency',currency:'EUR'})+' + IVA' }
+function formatEUR(n){ const x=Number(n); if(!isFinite(x)) return ''; return x.toLocaleString('es-ES',{style:'currency',currency:'EUR'})+ ' + IVA' }
 
-/* ========== PERSISTENCIA MASTER (local) ========== */
-function keyEAN(){ return 'EAN@'+CENTER.id }
-function keyUBI(){ return 'UBI@'+CENTER.id }
-function keyPhoto(){ return 'PHOTO@'+CENTER.id } // IDB store name
-function saveLocalEAN(map){ localStorage.setItem(keyEAN(), JSON.stringify(map)) }
-function loadLocalEAN(){ try{ return JSON.parse(localStorage.getItem(keyEAN())||'{}') }catch(e){ return {} } }
-function saveLocalUBI(list){ localStorage.setItem(keyUBI(), JSON.stringify(list)) }
-function loadLocalUBI(){ try{ return JSON.parse(localStorage.getItem(keyUBI())||'[]') }catch(e){ return [] } }
+/* === EAN persistentes (como ubicaciones) — NUEVO === */
+let EAN_OVERRIDES={}; // { NumeroArticulo: CodigoEAN }
+function loadEANOverrides(){ try{ const raw=localStorage.getItem('EAN@'+CENTER.id); EAN_OVERRIDES = raw? JSON.parse(raw) : {}; }catch{ EAN_OVERRIDES={} } }
+function saveEANOverrides(){ try{ localStorage.setItem('EAN@'+CENTER.id, JSON.stringify(EAN_OVERRIDES)); }catch{} }
+function applyEANOverrides(){ for(const a of ART){ const num=(a.NumeroArticulo||'').toString().trim(); if(EAN_OVERRIDES[num]) a.CodigoEAN = EAN_OVERRIDES[num]; } }
 
-/* ========== REFERENCIA TERMINAL ========== */
-function loadRef(){ try{ const x=parseFloat(localStorage.getItem('terminalRefX_'+(CENTER?.id||'calvia'))); const y=parseFloat(localStorage.getItem('terminalRefY_'+(CENTER?.id||'calvia'))); if(!isNaN(x)&&!isNaN(y)) return {x,y}; }catch{} return null }
+/* === Ubicaciones como antes === */
+function loadRef(){ try{ const x=parseFloat(localStorage.getItem('terminalRefX_'+CENTER.id)); const y=parseFloat(localStorage.getItem('terminalRefY_'+CENTER.id)); if(!isNaN(x)&&!isNaN(y)) return {x,y}; }catch{} return null }
 function saveRef(x,y){ try{ localStorage.setItem('terminalRefX_'+CENTER.id, x); localStorage.setItem('terminalRefY_'+CENTER.id, y); termRef={x,y}; renderRefPin(); }catch{} }
 function clearRef(){ try{ localStorage.removeItem('terminalRefX_'+CENTER.id); localStorage.removeItem('terminalRefY_'+CENTER.id); termRef=null; renderRefPin(); }catch{} }
 function renderRefPin(){ if(termRef){ const p=imgPointToPixels(termRef.x, termRef.y); pinRef.style.left=p.x+'px'; pinRef.style.top=p.y+'px'; pinRef.style.display='block'; refInfo.textContent=`Ref: X=${termRef.x.toFixed(2)} Y=${termRef.y.toFixed(2)}` } else { pinRef.style.display='none'; refInfo.textContent='Sin referencia' } }
 
-/* ========== CARGA DATOS (API n8n -> fallback CSV) ========== */
-let EAN_PREF=loadLocalEAN(); // { NumeroArticulo: EAN }
+/* CSV */
 async function fetchText(url){ try{ const r=await fetch(url+`?v=${APP_VERSION}`,{cache:'no-store'}); if(!r.ok) return null; return await r.text() }catch(e){ return null } }
-function detectSep(headerLine){ const sc=(headerLine.match(/;/g)||[]).length; const cc=(headerLine.match(/,/g)||[]).length; return sc>=cc?';':',' }
-function parseCSV(text){
-  if(!text) return [];
-  const clean=text.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-  const lines=clean.split('\n').filter(l=>l.trim().length);
-  if(!lines.length) return [];
-  const sep=detectSep(lines[0]);
-  const rows=[]; for(const line of lines){ rows.push(parseCSVLine(line,sep)) }
-  const headers=rows.shift().map(h=>h.trim());
-  return rows.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').toString().trim()); return o })
-}
+function parseCSV(text){ const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim().length); const sep=(lines[0].match(/;/g)||[]).length>(lines[0].match(/,/g)||[]).length?';':','; const rows=[]; for(const line of lines){ rows.push(parseCSVLine(line,sep)) } const headers=rows.shift().map(h=>h.trim()); return rows.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').trim()); return o }) }
 function parseCSVLine(line,sep){ const out=[]; let cur=''; let inQ=false; for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch=='"'){ if(inQ && line[i+1]=='"'){ cur+='"'; i++; } else { inQ=!inQ } } else if(ch===sep && !inQ){ out.push(cur); cur='' } else { cur+=ch } } out.push(cur); return out }
 
+/* Carga */
 async function loadData(){
-  statusEl.textContent='Cargando datos…'; diagMsg.textContent='…';
-  ART=[]; UBI=[]; TRAD_MAP.clear();
-  // 1) API n8n (preferente)
-  if(CATALOG_API_URL){
-    try{
-      const url = `${CATALOG_API_URL}?center=${encodeURIComponent(CENTER.id)}&v=${APP_VERSION}`;
-      const r = await fetch(url,{headers: API_TOKEN?{'Authorization':API_TOKEN}:{}} );
-      if(r.ok){
-        const data=await r.json();
-        if(Array.isArray(data.items)){
-          ART=data.items.map(x=>({
-            NumeroArticulo: x.NumeroArticulo||'',
-            ReferenciaProveedor: x.ReferenciaProveedor||'',
-            Descripcion: x.DescripcionES||x.Descripcion||'',
-            DescripcionES: x.DescripcionES||'',
-            DescripcionCA: x.DescripcionCA||'',
-            DescripcionEN: x.DescripcionEN||'',
-            DescripcionDE: x.DescripcionDE||'',
-            DescripcionPL: x.DescripcionPL||'',
-            DescripcionRU: x.DescripcionRU||'',
-            CodigoEAN: x.CodigoEAN||'',
-            NombreProveedor: x.NombreProveedor||'',
-            Precio: x.PrecioListaVentas ?? x.Precio ?? '',
-            StockPorCentro: x.StockPorCentro||{},
-            ImagenURL: x.ImagenURL||''
-          }));
-          // Rellenar TRAD_MAP
-          for(const a of ART){
-            TRAD_MAP.set((a.NumeroArticulo||'').toString().trim(), {
-              es:a.DescripcionES||a.Descripcion||'',
-              ca:a.DescripcionCA||'',
-              en:a.DescripcionEN||'',
-              de:a.DescripcionDE||'',
-              pl:a.DescripcionPL||'',
-              ru:a.DescripcionRU||''
-            });
-          }
-          diagMsg.textContent=`API OK · ${CENTER.id} · items: ${ART.length}`;
-        } else {
-          diagMsg.textContent=`API sin items · fallback CSV`;
-        }
-      } else {
-        diagMsg.textContent=`API ${r.status} · fallback CSV`;
-      }
-    }catch(e){
-      diagMsg.textContent=`API error · fallback CSV`;
-    }
-  }
-  // 2) Fallback CSV en repo
-  if(!ART.length){
-    const a=await fetchText(CENTER.a) || await fetchText('Articulos.csv'); ART=a? parseCSV(a) : [];
-    const u=await fetchText(CENTER.u) || await fetchText('ubicaciones.csv'); UBI=u? parseCSV(u) : [];
-    diagMsg.textContent=`CSV · ${CENTER.id} · Art: ${ART.length} · Ubi: ${UBI.length}`;
-  }
-  // 3) Mezclar ubicaciones repo + locales (master local prevalece)
-  mergeUbiWithLocal();
-  reindex();
-  // 4) Aplicar EAN preferentes locales
-  for(const a of ART){ const num=(a.NumeroArticulo||'').toString().trim(); if(EAN_PREF[num]) a.CodigoEAN=EAN_PREF[num] }
-  // 5) Mapa
-  mapImg.src=(CENTER.map||'calvia/plano-calvia.jpg')+'?v='+APP_VERSION;
-  mapImg.onerror=()=>{ mapNote.style.display='block'; mapNote.textContent='No se ha encontrado el plano de este centro. Sube el archivo '+CENTER.map; };
-  centerBadge.textContent='Centro '+CENTER.label;
-  statusEl.textContent=`Artículos: ${ART.length} · Ubicaciones: ${UBI.length}`;
-  termRef=loadRef(); renderRefPin();
-}
-
-/* ========== UBI INDICE ========== */
-function mergeUbiWithLocal(){
+  statusEl.textContent='Cargando datos…'; mapNote.style.display='none';
+  loadEANOverrides();   // NUEVO
   try{
-    const loc=loadLocalUBI(); if(!Array.isArray(loc)) return;
-    const byKey=r=>`${(r.NumeroArticulo||'').toString().trim()}|${CENTER.id}`;
-    const map=new Map(loc.map(r=>[byKey(r),r]));
-    for(const r of (UBI||[])){ if((r.Centro===CENTER.id||r.Centro===CENTER.label)) map.set(byKey(r),r) }
-    UBI=[...map.values()];
-  }catch(e){}
+    const a=await fetchText(CENTER.a) || await fetchText('Articulos.csv'); ART=a? parseCSV(a) : [];
+    applyEANOverrides(); // NUEVO: aplica EAN persistentes
+    const u=await fetchText(CENTER.u) || await fetchText('Ubicaciones.csv'); UBI=u? parseCSV(u) : [];
+    mergeUbiWithLocal(); reindex();
+    mapImg.src=(CENTER.map||'calvia/plano-calvia.jpg')+'?v='+APP_VERSION;
+    mapImg.onerror=()=>{ mapNote.style.display='block'; mapNote.textContent='No se ha encontrado el plano de este centro. Sube el archivo '+CENTER.map; };
+    centerBadge.textContent='Centro '+CENTER.label;
+    statusEl.textContent=`Artículos: ${ART.length} · Ubicaciones: ${UBI.length}`;
+    termRef=loadRef(); renderRefPin();
+  }catch(e){ statusEl.textContent='Error cargando datos' }
 }
-function reindex(){
-  const only=(UBI||[]).filter(u=> (u.Centro===CENTER.label || u.Centro===CENTER.id));
-  const map=new Map();
-  for(const u of only){ const k=(u.NumeroArticulo||'').toString().trim(); if(!map.has(k)) map.set(k,[]); map.get(k).push(u) }
-  INDEX=Object.fromEntries(map)
-}
-function pickLocation(num){
-  const list=INDEX[(num||'').toString().trim()];
-  if(!list||!list.length) return null;
-  return list.slice().sort((a,b)=>Number(b.Stock||0)-Number(a.Stock||0))[0]
-}
+function saveUbiLocal(){ try{ localStorage.setItem('UBI@'+CENTER.id, JSON.stringify(UBI)) }catch(e){} }
+function mergeUbiWithLocal(){ try{ const raw=localStorage.getItem('UBI@'+CENTER.id); if(!raw) return; const loc=JSON.parse(raw); if(!Array.isArray(loc)) return; const byKey=r=>`${(r.NumeroArticulo||'').toString().trim()}|${CENTER.id}`; const map=new Map(loc.map(r=>[byKey(r),r])); for(const r of UBI){ map.set(byKey(r),r) } UBI=[...map.values()] }catch(e){} }
+function reindex(){ const only=UBI.filter(u=> (u.Centro===CENTER.label || u.Centro===CENTER.id)); const map=new Map(); for(const u of only){ const k=(u.NumeroArticulo||'').toString().trim(); if(!map.has(k)) map.set(k,[]); map.get(k).push(u) } INDEX=Object.fromEntries(map) }
+function pickLocation(num){ const list=INDEX[(num||'').toString().trim()]; if(!list||!list.length) return null; return list.slice().sort((a,b)=>Number(b.Stock||0)-Number(a.Stock||0))[0] }
 
-/* ========== BÚSQUEDA SIMPLE (fallback local) ========== */
-function searchLocal(qraw){
-  const raw=(qraw||'').trim(); const nq=normalize(raw);
+/* Búsqueda priorizada (versión compacta) */
+function search(qraw){
+  const raw=(qraw||'').trim(), nq=normalize(raw);
   const tokens=nq.split(/\s+/).filter(Boolean);
-  const ean=(raw.match(/\d{8,14}/)||[])[0]||null;
+  const eanMatch=(raw.match(/\d{8,14}/)||[])[0]||null;
+  const exactEAN=eanMatch? ART.find(a=> (a.CodigoEAN||'').replace(/\D/g,'')===eanMatch) : null;
+  const exactNum=ART.find(a=> (a.NumeroArticulo||'').toString().trim()===raw);
+  const exactRef=ART.find(a=> (a.ReferenciaProveedor||'').toString().trim().toLowerCase()===raw.toLowerCase());
+
   const scored=[];
   for(const a of ART){
-    const text=normalize(`${a.Descripcion||a.DescripcionES||''} ${a.ReferenciaProveedor||''} ${a.CodigoEAN||''} ${a.NumeroArticulo||''}`);
+    const text=normalize(`${a.Descripcion} ${a.ReferenciaProveedor} ${a.CodigoEAN}`);
     let s=0;
-    for(const w of tokens){ if(text.includes(w)) s+=3; if(text.startsWith(w)) s+=1 }
-    if(ean && (a.CodigoEAN||'').replace(/\D/g,'')===ean) s+=200;
+    for(const w of tokens){ if(!w) continue; if(text.includes(w)) s+=3; if(text.startsWith(w)) s+=1 }
+    if(eanMatch && (a.CodigoEAN||'').replace(/\D/g,'')===eanMatch) s+=200;
     if(raw && (a.NumeroArticulo||'').toString().trim()===raw) s+=120;
     if(raw && (a.ReferenciaProveedor||'').toString().toLowerCase()===raw.toLowerCase()) s+=90;
     if(s>0) scored.push({a,score:s});
   }
   scored.sort((x,y)=>y.score-x.score);
-  return scored.map(x=>x.a).slice(0,100);
-}
-
-/* ========== RENDER RESULTADOS ========== */
-function trDesc(a){
-  const num=(a.NumeroArticulo||'').toString().trim();
-  const t=TRAD_MAP.get(num)||{};
-  return t[lang] || a[`Descripcion${lang.toUpperCase()}`] || a.Descripcion || a.DescripcionES || '';
+  const list=scored.map(x=>x.a);
+  if(exactEAN && !list.includes(exactEAN)) list.unshift(exactEAN);
+  if(exactNum && !list.includes(exactNum)) list.unshift(exactNum);
+  if(exactRef && !list.includes(exactRef)) list.unshift(exactRef);
+  return list.slice(0,100);
 }
 function renderResults(list){
   resultsEl.innerHTML=''; resCount.textContent=list.length? `${list.length} resultados` : '0 resultados';
-  if(!list.length){ const d=document.createElement('div'); d.className='card'; d.innerHTML='<div>No se han encontrado artículos. Pide ayuda a un vendedor.</div>'; resultsEl.appendChild(d); return }
+  if(!list.length){ const d=document.createElement('div'); d.className='item'; d.innerHTML='<div>No se han encontrado artículos. Por favor, solicite ayuda a un vendedor.</div>'; resultsEl.appendChild(d); return }
   for(const a of list){
     const fabricante=a.NombreProveedor||'—';
-    const precio=€(a.Precio);
-    const stockCenter=(a.StockPorCentro && a.StockPorCentro[CENTER.id]!=null)? a.StockPorCentro[CENTER.id] : (a.Stock||'');
-    const imgURL = a.ImagenURL || (CENTER.id+'/'+(a.NumeroArticulo||'')+'.webp'); // patrón alternativo
-    const card=document.createElement('div');
-    card.className='card';
-    card.innerHTML=`
-      <div><strong>${trDesc(a)||'Sin descripción'}</strong></div>
-      <div class='small'>Ref: ${a.ReferenciaProveedor||'—'} · Nº: ${a.NumeroArticulo||'—'} · EAN: ${(a.CodigoEAN||'').toString()||'—'} · Proveedor: ${fabricante} · ${precio||''}${(stockCenter!==''? ' · Stock: '+stockCenter:'')}</div>
-      <div class='row'>
-        <button class='select btn-brand'>Seleccionar</button>
-        <button class='showimg'>🖼️ Imagen</button>
-        <button class='say'>🔈 Explicar</button>
-      </div>`;
+    const precio=formatEUR(a.Precio||a.PVP||a.PrecioConIva||a.PrecioSinIva||'');
+    const stockTxt=(a.Stock&&a.Stock!==''?` · Stock: ${a.Stock}`:'');
+    const card=document.createElement('div'); card.className='item';
+    card.innerHTML=`<div><strong>${a.Descripcion||'Sin descripción'}</strong></div>
+    <div class='sub'>Ref: ${a.ReferenciaProveedor||'—'} · Nº: ${a.NumeroArticulo||'—'} · EAN: ${a.CodigoEAN||'—'} · Fabricante: ${fabricante} · ${precio||''}${stockTxt}</div>
+    <div class='row'><button class='select btn-brand'>Seleccionar</button><button class='say'>Explicar</button></div>`;
     card.querySelector('.select').onclick=()=> selectArticle(a);
-    card.querySelector('.say').onclick=()=> speak((trDesc(a)||'').toString());
-    card.querySelector('.showimg').onclick=()=> showImage(a, imgURL);
+    card.querySelector('.say').onclick=()=> speak((a.Descripcion||'').toString());
     resultsEl.appendChild(card);
   }
 }
 
-/* ========== SELECCIÓN + MAPA ========== */
+/* Selección y mapa */
 function selectionSpeech(a, stock){
-  const precio=€(a.Precio); const name=trDesc(a)||'este artículo';
+  const precio=formatEUR(a.Precio||a.PVP||a.PrecioConIva||a.PrecioSinIva||'');
+  const name=a.Descripcion||'este artículo';
   const have = (stock!=null && stock!=='' && isFinite(Number(stock))) ? Number(stock) : null;
-  switch(lang){
-    case 'ca': return `Has seleccionat ${name}. El seu preu és ${precio}. ${have!=null?`Actualment disposem de ${have} unitats en estoc.`:'No tenc estoc registrat per aquest producte.'} Vols que t\'indiqui com arribar?`;
-    case 'en': return `You selected ${name}. Price is ${precio}. ${have!=null?`We currently have ${have} units in stock.`:'We have no stock recorded for this item.'} Would you like directions to find it?`;
-    case 'de': return `Sie haben ${name} gewählt. Preis ist ${precio}. ${have!=null?`Aktuell haben wir ${have} Stück auf Lager.`:'Kein Lagerbestand erfasst.'} Möchten Sie eine Wegbeschreibung?`;
-    case 'pl': return `Wybrano ${name}. Cena to ${precio}. ${have!=null?`Aktualnie mamy ${have} sztuk na stanie.`:'Brak zarejestrowanego stanu.'} Chcesz wskazówek jak tam dojść?`;
-    case 'ru': return `Вы выбрали ${name}. Цена ${precio}. ${have!=null?`Сейчас в наличии ${have} шт.`:'Нет данных о наличии.'} Показать маршрут?`;
-    default: return `Ha seleccionado ${name}. Su precio es ${precio}. ${have!=null?`Actualmente disponemos de ${have} unidades en stock.`:'Actualmente no tengo stock registrado para este artículo.'} ¿Quieres indicaciones para localizarlo?`;
-  }
+  return `Ha seleccionado ${name}. Su precio es ${precio}. ${have!=null?`Actualmente disponemos de ${have} unidades en stock.`:'Actualmente no tengo stock registrado para este producto.'} ${LANGS[lang].ask}`;
 }
 function selectArticle(a){
   varSel=a;
   const loc=pickLocation(a.NumeroArticulo);
-  const stock= (a.StockPorCentro && a.StockPorCentro[CENTER.id]!=null)? a.StockPorCentro[CENTER.id] : ((loc && (loc.Stock||loc.stock)) ?? a.Stock ?? '');
-  const txt=selectionSpeech(a, stock); speak(txt);
-  const ms=Math.min(9000, Math.max(1800, txt.split(/\s+/).length*340));
-  setTimeout(()=>{ if(confirm(lang==='ca'?'Vols que t\'indiqui com arribar?': lang==='en'?'Would you like directions?':'¿Quieres que te indique cómo llegar?')) goMap(a); }, ms);
+  const stock=(loc && (loc.Stock||loc.stock)) ?? a.Stock ?? '';
+  const txt=selectionSpeech(a, stock);
+  speak(txt);
+  const ms=Math.min(9000, Math.max(1800, txt.split(/\s+/).length*330));
+  setTimeout(()=>{ if(confirm(LANGS[lang].ask)) goMap(a); }, ms);
 }
+
 function getImageDrawMetrics(){ const rect=mapBox.getBoundingClientRect(); const cw=rect.width, ch=rect.height; const nw=mapImg.naturalWidth||cw, nh=mapImg.naturalHeight||ch; const scale=Math.min(cw/nw, ch/nh); const dw=nw*scale, dh=nh*scale; const leftOffset=(cw-dw)/2; const topOffset=(ch-dh)/2; return {rect,cw,ch,nw,nh,scale,dw,dh,leftOffset,topOffset} }
 function imgPointToPixels(x,y){ const m=getImageDrawMetrics(); return { x: m.leftOffset + x*m.dw, y: m.topOffset + y*m.dh } }
 function placePinFromXY(x,y){ const p=imgPointToPixels(x,y); pin.style.left=p.x+'px'; pin.style.top=p.y+'px'; pin.style.display='block' }
 function dirFromRef(x,y){
-  if(!termRef||x==null||y==null) return (lang==='ca'?'segueix recte':lang==='en'?'go straight':'sigue recto');
+  if(!termRef||x==null||y==null) return 'sigue recto';
   const dx=x-termRef.x, dy=y-termRef.y;
-  const partX = Math.abs(dx)>0.05? (dx>0? (lang==='es'?'hacia la derecha':lang==='ca'?'cap a la dreta':'to the right') : (lang==='es'?'hacia la izquierda':lang==='ca'?'cap a l\'esquerra':'to the left')) : '';
-  const partY = Math.abs(dy)>0.05? (dy>0? (lang==='es'?'hacia el fondo':lang==='ca'?'cap al fons':'forward') : (lang==='es'?'hacia la entrada':lang==='ca'?'cap a l\'entrada':'back')) : '';
-  return [partX,partY].filter(Boolean).join(' y ') || (lang==='es'?'sigue recto':lang==='ca'?'segueix recte':'go straight')
+  const partX = Math.abs(dx)>0.05? (dx>0? 'hacia la derecha' : 'hacia la izquierda') : '';
+  const partY = Math.abs(dy)>0.05? (dy>0? 'hacia el fondo' : 'hacia la entrada') : '';
+  return [partX,partY].filter(Boolean).join(' y ') || 'sigue recto';
 }
 function goMap(a){
   varSel=a; showScreen('map');
@@ -531,17 +399,15 @@ function goMap(a){
   const x=parseNum(loc.X), y=parseNum(loc.Y);
   if(x==null||y==null){ pin.style.display='none' } else { placePinFromXY(x,y) }
   const ladoRaw=(loc.Lado && (loc.Lado.Value||loc.Lado)) || loc.Lado || '—';
-  const lado=(ladoRaw||'').toString().toUpperCase().startsWith('D')? (lang==='ca'?'Dreta':'Derecha') : (lang==='ca'?'Esquerra':'Izquierda');
+  const lado=(ladoRaw||'').toString().toUpperCase().startsWith('D')? 'Derecha' : 'Izquierda';
   const dir=dirFromRef(x,y);
-  routeEl.textContent = (lang==='en')
-    ? `From this terminal, ${dir}. Then go to aisle ${loc.Pasillo||'—'}, ${lado.toLowerCase()} side, shelf ${loc.Estante||'—'}, tier ${loc.Balda||'—'}.`
-    : (lang==='ca'
-      ? `Des d'aquest terminal, ${dir}. Després al passadís ${loc.Pasillo||'—'}, costat ${lado}, prestatge ${loc.Estante||'—'}, balda ${loc.Balda||'—'}.`
-      : `Desde este terminal, ${dir}. Luego al pasillo ${loc.Pasillo||'—'}, lado ${lado}, estante ${loc.Estante||'—'}, balda ${loc.Balda||'—'}.`);
+  routeEl.textContent=LANGS[lang].guide(loc.Pasillo||'—', lado, loc.Estante||'—', loc.Balda||'—', dir);
   speak(routeEl.textContent);
   if(admin){
     fPas.value=loc.Pasillo||''; fLado.value=lado; fEst.value=loc.Estante||''; fBal.value=loc.Balda||''; fX.value=(x??''); fY.value=(y??''); fStock.value=(loc.Stock||'');
     adminPanel.style.display='block';
+    // cargar foto si existe local
+    loadPhotoPreview();
   }
   renderRefPin();
 }
@@ -550,174 +416,119 @@ mapBox.addEventListener('click',ev=>{
   const xNorm=(cx - m.leftOffset)/m.dw; const yNorm=(cy - m.topOffset)/m.dh;
   if(xNorm<0||yNorm<0||xNorm>1||yNorm>1) return;
   if(capturingRef){ saveRef(xNorm,yNorm); capturingRef=false; speak('Posición de referencia del terminal guardada'); return }
-  if(!admin||!varSel) return;
-  fX.value=xNorm.toFixed(2); fY.value=yNorm.toFixed(2); placePinFromXY(xNorm,yNorm);
+  if(!admin||!varSel) return; fX.value=xNorm.toFixed(2); fY.value=yNorm.toFixed(2); placePinFromXY(xNorm,yNorm);
 });
 
-/* ========== ADMIN (EAN/UBI/FOTO) ========== */
-function saveUbi(rec){
-  const idx=UBI.findIndex(u=> (u.NumeroArticulo||'').toString().trim()===rec.NumeroArticulo && (u.Centro===CENTER.id||u.Centro===CENTER.label));
-  if(idx>=0) UBI[idx]=rec; else UBI.push(rec);
-  reindex(); saveLocalUBI(UBI);
-}
-saveLocBtn.onclick=async()=>{
-  if(!varSel){ alert('Selecciona un artículo en resultados.'); return }
-  const num=(varSel.NumeroArticulo||'').toString().trim();
-  const ladoLetter=(fLado.value||'').toString().toUpperCase().startsWith('D')? 'D':'I';
-  const rec={ NumeroArticulo:num, Centro:CENTER.id, Pasillo:fPas.value||'', Lado:ladoLetter, Estante:fEst.value||'', Balda:fBal.value||'', X:fX.value||'', Y:fY.value||'', Stock:fStock.value||'' };
-  saveUbi(rec); speak('Ubicación guardada como master.');
-  // Sync opcional a repo
-  if(SYNC_API_URL){
-    try{
-      await fetch(SYNC_API_URL,{method:'POST',headers:{'Content-Type':'application/json',...(API_TOKEN?{'Authorization':API_TOKEN}:{})},body:JSON.stringify({type:'ubicacion', center:CENTER.id, data:rec})});
-    }catch(e){}
-  }
-  goMap(varSel)
-};
-delLocBtn.onclick=()=>{ if(!varSel) return; const num=(varSel.NumeroArticulo||'').toString().trim();
-  const before=UBI.length; UBI=UBI.filter(u=> (u.NumeroArticulo||'').toString().trim()!==num || !(u.Centro===CENTER.id||u.Centro===CENTER.label));
-  reindex(); saveLocalUBI(UBI); if(UBI.length<before){ speak('Ubicación eliminada.'); routeEl.textContent=''; pin.style.display='none' }
-};
-function findByAdmin(){
-  const e=admEAN.value.trim(); const n=admNum.value.trim(); const t=admText.value.trim().toLowerCase();
-  let list=[];
-  if(e){ list = ART.filter(a=> (a.CodigoEAN||'').replace(/\D/g,'')===e.replace(/\D/g,'')); }
+/* Guardar/eliminar ubicación */
+function saveUbi(rec){ const idx=UBI.findIndex(u=> (u.NumeroArticulo||'').toString().trim()===rec.NumeroArticulo && (u.Centro===CENTER.id||u.Centro===CENTER.label)); if(idx>=0) UBI[idx]=rec; else UBI.push(rec); reindex(); saveUbiLocal(); }
+saveLocBtn.onclick=()=>{ if(!varSel){ alert('Selecciona un artículo en resultados.'); return } const num=(varSel.NumeroArticulo||'').toString().trim(); const ladoLetter=(fLado.value||'').toString().toUpperCase().startsWith('D')? 'D':'I'; const rec={ NumeroArticulo:num, Centro:CENTER.id, Pasillo:fPas.value||'', Lado:ladoLetter, Estante:fEst.value||'', Balda:fBal.value||'', X:fX.value||'', Y:fY.value||'', Stock:fStock.value||'' }; saveUbi(rec); speak('Ubicación guardada.'); goMap(varSel) };
+delLocBtn.onclick=()=>{ if(!varSel) return; const num=(varSel.NumeroArticulo||'').toString().trim(); const before=UBI.length; UBI=UBI.filter(u=> (u.NumeroArticulo||'').toString().trim()!==num || !(u.Centro===CENTER.id||u.Centro===CENTER.label)); reindex(); saveUbiLocal(); if(UBI.length<before){ speak('Ubicación eliminada.'); routeEl.textContent=''; pin.style.display='none' } };
+
+/* Admin EAN */
+function findByAdmin(){ const e=admEAN.value.trim(); const n=admNum.value.trim(); const t=admText.value.trim().toLowerCase(); let list=[]; if(e){ list = ART.filter(a=> (a.CodigoEAN||'').replace(/\D/g,'')===e.replace(/\D/g,'')); }
   if(!list.length && n){ list = ART.filter(a=> (a.NumeroArticulo||'').toString().trim()===n); }
-  if(!list.length && t){ const toks=t.split(/\s+/).filter(Boolean); list = ART.filter(a=> toks.every(w=> ((a.Descripcion||a.DescripcionES||'').toLowerCase()).includes(w))); }
+  if(!list.length && t){ const toks=t.split(/\s+/).filter(Boolean); list = ART.filter(a=> toks.every(w=> (a.Descripcion||'').toLowerCase().includes(w))); }
   admInfo.innerHTML = list.length? `${list.length} resultado(s).` : 'Sin resultados.';
-  if(list.length){
-    const ul=document.createElement('ul'); ul.style.margin='6px 0'; ul.style.paddingLeft='18px';
-    list.slice(0,10).forEach(a=>{ const li=document.createElement('li'); li.textContent=`Nº ${a.NumeroArticulo} · Ref ${a.ReferenciaProveedor} · ${trDesc(a)||a.Descripcion||''}`;
-      li.style.cursor='pointer'; li.onclick=()=>{ admNum.value=(a.NumeroArticulo||'').toString().trim(); if(!admEAN.value) admEAN.value=a.CodigoEAN||''; admInfo.innerHTML=`Seleccionado Nº ${admNum.value}.`; };
-      ul.appendChild(li) });
-    admInfo.appendChild(ul);
-  }
+  if(list.length){ const ul=document.createElement('ul'); ul.style.margin='6px 0'; ul.style.paddingLeft='18px'; list.slice(0,10).forEach(a=>{ const li=document.createElement('li'); li.textContent=`Nº ${a.NumeroArticulo} · Ref ${a.ReferenciaProveedor} · ${a.Descripcion}`; li.style.cursor='pointer'; li.onclick=()=>{ admNum.value=(a.NumeroArticulo||'').toString().trim(); if(!admEAN.value) admEAN.value=a.CodigoEAN||''; admInfo.innerHTML=`Seleccionado Nº ${admNum.value}.`; }; ul.appendChild(li) }); admInfo.appendChild(ul); }
 }
 admFind.onclick=findByAdmin;
-admAssign.onclick=async()=>{
+admAssign.onclick=()=>{
   const num=admNum.value.trim(); const e=admEAN.value.trim();
   if(!num||!e){ alert('Rellena Nº artículo y EAN'); return }
-  EAN_PREF=loadLocalEAN(); EAN_PREF[num]=e; saveLocalEAN(EAN_PREF);
-  const a=ART.find(x=> (x.NumeroArticulo||'').toString().trim()===num); if(a) a.CodigoEAN=e;
-  admInfo.innerHTML=`Asignado EAN ${e} al artículo Nº ${num} (master).`;
-  // Sync opcional a repo
-  if(SYNC_API_URL){
-    try{
-      await fetch(SYNC_API_URL,{method:'POST',headers:{'Content-Type':'application/json',...(API_TOKEN?{'Authorization':API_TOKEN}:{})},body:JSON.stringify({type:'ean', center:CENTER.id, data:{NumeroArticulo:num, CodigoEAN:e}})});
-    }catch(err){}
-  }
+  const a=ART.find(x=> (x.NumeroArticulo||'').toString().trim()===num);
+  if(!a){ alert('No se encontró el artículo en Articulos.csv'); return }
+  a.CodigoEAN=e;
+  EAN_OVERRIDES[num]=e; saveEANOverrides(); // NUEVO: persistente como ubicaciones
+  admInfo.innerHTML=`Asignado EAN ${e} al artículo Nº ${num}. Queda guardado localmente y saldrá en la Exportación.`;
 };
-admExport.onclick=()=>{ if(!ART||!ART.length){ alert('No hay datos de artículos cargados'); return }
-  const headers=['NumeroArticulo','ReferenciaProveedor','Descripcion','CodigoEAN','NombreProveedor','Precio'];
+admExport.onclick=()=>{
+  if(!ART||!ART.length){ alert('No hay datos de artículos cargados'); return }
+  // aplica overrides antes de exportar
+  applyEANOverrides();
+  const headers=['NumeroArticulo','ReferenciaProveedor','Descripcion','CodigoEAN','NombreProveedor','ImagenURL','FichaTecnica','Manual','Precio','Stock'];
   const rows=[headers.join(';')];
   for(const a of ART){
-    const line=headers.map(h=> ((a[h]??'').toString().includes(';')|| (a[h]??'').toString().includes('"'))? '"'+(a[h]??'').toString().replace(/"/g,'""')+'"' : (a[h]??'') ).join(';');
-    rows.push(line);
+    const val=h=>((a[h]??'').toString());
+    const esc=s => (s.includes(';')||s.includes('"'))?'"'+s.replace(/"/g,'""')+'"':s;
+    rows.push(headers.map(h=>esc(val(h))).join(';'));
   }
   const blob=new Blob([rows.join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob); const link=document.createElement('a'); link.href=url; link.download='Articulos.csv'; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a'); link.href=url; link.download='Articulos.csv'; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
 };
 
-/* ========== FOTOS (IndexedDB para evitar “no hay memoria”) ========== */
-let db=null;
-function openDB(){
-  return new Promise((resolve,reject)=>{
-    const req=indexedDB.open('DURAN_PHOTOS',1);
-    req.onupgradeneeded=()=>{ const d=req.result; if(!d.objectStoreNames.contains(keyPhoto())) d.createObjectStore(keyPhoto()); };
-    req.onsuccess=()=>{ db=req.result; resolve(db) };
-    req.onerror=()=>reject(req.error);
-  });
-}
-async function idbSet(key, blob){
-  if(!db) await openDB();
-  return new Promise((resolve,reject)=>{
-    const tx=db.transaction(keyPhoto(),'readwrite'); const store=tx.objectStore(keyPhoto());
-    const r=store.put(blob, key); r.onsuccess=()=>resolve(true); r.onerror=()=>reject(r.error);
-  });
-}
-async function idbGet(key){
-  if(!db) await openDB();
-  return new Promise((resolve,reject)=>{
-    const tx=db.transaction(keyPhoto(),'readonly'); const store=tx.objectStore(keyPhoto());
-    const r=store.get(key); r.onsuccess=()=>resolve(r.result||null); r.onerror=()=>reject(r.error);
-  });
-}
-function blobToDataURL(blob){ return new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.readAsDataURL(blob); }) }
-async function fileToWebP(file, maxW=1200, quality=0.8){
-  const img=await new Promise((res,rej)=>{ const url=URL.createObjectURL(file); const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=url; });
-  const scale=Math.min(1, maxW/img.width); const w=Math.round(img.width*scale); const h=Math.round(img.height*scale);
-  const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const ctx=cv.getContext('2d'); ctx.drawImage(img,0,0,w,h);
-  return await new Promise(r=> cv.toBlob(b=>r(b),'image/webp',quality) );
-}
-function showImage(a, fallbackURL){
-  const num=(a.NumeroArticulo||'').toString().trim(); photoPreview.innerHTML='';
-  // 1) Try IDB local
-  idbGet(num).then(async(blob)=>{
-    if(blob){ const src=await blobToDataURL(blob); const im=document.createElement('img'); im.src=src; photoPreview.appendChild(im); speak('Mostrando foto local.'); return; }
-    // 2) Try ImagenURL o fallbackURL
-    const im=document.createElement('img'); im.src=a.ImagenURL||fallbackURL; im.onload=()=>{ photoPreview.appendChild(im); }; im.onerror=()=>{ alert('No hay foto disponible'); };
-  });
-}
-savePhotoBtn.onclick=async()=>{
-  if(!varSel){ alert('Selecciona un artículo primero'); return }
-  const file=photoFile.files?.[0]; if(!file){ alert('Elige una foto o usa la cámara'); return }
-  const webp=await fileToWebP(file, 1600, .82);
-  await idbSet((varSel.NumeroArticulo||'').toString().trim(), webp);
-  const src=await blobToDataURL(webp); photoPreview.innerHTML=''; const im=document.createElement('img'); im.src=src; photoPreview.appendChild(im);
-  speak('Foto guardada localmente sin agotar memoria.');
-};
-downloadPhotoBtn.onclick=async()=>{
-  if(!varSel){ alert('Selecciona un artículo'); return }
-  const num=(varSel.NumeroArticulo||'').toString().trim(); const blob=await idbGet(num);
-  if(!blob){ alert('No hay foto local'); return }
-  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`${CENTER.id}_${num}.webp`; a.click(); URL.revokeObjectURL(url);
-};
-syncPhotoBtn.onclick=async()=>{
-  if(!varSel){ alert('Selecciona un artículo'); return }
-  if(!SYNC_API_URL){ alert('Configura SYNC_API_URL para subir al repo automáticamente'); return }
-  const num=(varSel.NumeroArticulo||'').toString().trim(); const blob=await idbGet(num);
-  if(!blob){ alert('No hay foto local'); return }
-  const buf=await blob.arrayBuffer(); const b64=btoa(String.fromCharCode(...new Uint8Array(buf)));
-  try{
-    await fetch(SYNC_API_URL,{method:'POST',headers:{'Content-Type':'application/json',...(API_TOKEN?{'Authorization':API_TOKEN}:{})},
-      body:JSON.stringify({type:'photo', center:CENTER.id, data:{ NumeroArticulo:num, base64:`data:image/webp;base64,${b64}` }})});
-    alert('Foto enviada al repositorio');
-  }catch(e){ alert('Error enviando la foto'); }
-};
-
-/* ========== NAVEGACIÓN ========== */
-function showScreen(which){ scrHome.classList.remove('active'); scrResults.classList.remove('active'); scrMap.classList.remove('active');
-  if(which==='home') scrHome.classList.add('active'); else if(which==='results') scrResults.classList.add('active'); else if(which==='map') scrMap.classList.add('active');
-  window.scrollTo({top:0,behavior:'smooth'}) }
-startBtn.onclick=()=>{ speak(LANGS[lang].greet(nameInput.value||'')) };
-micBtn.onclick=()=> { isListening? stopListening() : startListening(); };
-goBtn.onclick=()=> { doSearch(); q.value=''; }; // limpia input tras buscar
-q.onkeydown=(e)=>{ if(e.key==='Enter'){ doSearch(); q.value=''; } };
-backHome.onclick=()=> showScreen('home');
-backResults.onclick=()=> showScreen('results');
+/* Navegación */
+function showScreen(which){ scrHome.classList.remove('active'); scrResults.classList.remove('active'); scrMap.classList.remove('active'); if(which==='home') scrHome.classList.add('active'); else if(which==='results') scrResults.classList.add('active'); else if(which==='map') scrMap.classList.add('active'); window.scrollTo({top:0,behavior:'smooth'}) }
+startBtn.onclick=()=>{ voiceBox.style.display='grid'; speak(LANGS[lang].greet(nameInput.value||'')) };
+micBtn.onclick=()=> startListening();
+goBtn.onclick=()=> doSearch();
+q.onkeydown=(e)=>{ if(e.key==='Enter') doSearch() };
+backHome.onclick=()=> showScreen('home'); backResults.onclick=()=> showScreen('results');
 againBtn.onclick=()=>{ q.value=''; showScreen('home'); resultsEl.innerHTML=''; routeEl.textContent=''; pin.style.display='none' };
-adminToggle.onclick=()=>{ if(!adminGranted){ const p=prompt('Contraseña de administrador:'); if(p!=='0666'){ alert('Contraseña incorrecta'); return } adminGranted=true; } admin=!admin; adminToggle.classList.toggle('btn-brand', admin); adminPanel.style.display= admin? 'block':'none'; if(admin && varSel) goMap(varSel) };
-setRefModeBtn.onclick=()=>{ capturingRef=true; speak('Toca el plano para fijar referencia del terminal') };
-clearRefBtn.onclick=()=>{ clearRef() };
-
-/* ========== CENTROS UI ========== */
+adminToggle.onclick=()=>{ if(!adminGranted){ const p=prompt('Contraseña de administrador:'); if(p!=='0666'){ alert('Contraseña incorrecta'); return } adminGranted=true; } admin=!admin; adminToggle.classList.toggle('btn-brand', admin); adminPanel.style.display= admin? 'block':'none'; if(admin && varSel) { goMap(varSel); } };
+function doSearch(){ stopListening(); setSphere('thinking'); const list=search(q.value||''); renderResults(list); showScreen('results'); setSphere('idle'); }
 function drawCenters(){ centerTabs.innerHTML=''; for(const key of Object.keys(CENTERS)){ const c=CENTERS[key]; const el=document.createElement('button'); el.className='tab'+(c.id===CENTER.id?' active':''); el.textContent=c.label; el.onclick=()=>{ if(c.id===CENTER.id) return; CENTER=c; localStorage.setItem('centerId',c.id); centerBadge.textContent='Centro '+c.label; loadData(); }; centerTabs.appendChild(el) } }
 
-/* ========== SEARCH FLOW ========== */
-function doSearch(){
-  stopListening(); setSphere('thinking');
-  // Modo router/IA externo: si tienes n8n/OpenAI conectado por el botón “Asesor”.
-  // Aquí hacemos fallback local para que SIEMPRE haya resultados.
-  const list=searchLocal(q.value||'');
-  renderResults(list);
-  showScreen('results');
-  setSphere('idle');
+/* ===== Pantalla completa / kiosco — NUEVO ===== */
+fsToggle.onclick=async ()=>{
+  try{
+    if(!document.fullscreenElement){ await document.documentElement.requestFullscreen(); fsToggle.textContent='⤡'; }
+    else { await document.exitFullscreen(); fsToggle.textContent='⤢'; }
+  }catch(e){ alert('Pulsa F11 para modo pantalla completa.'); }
+};
+
+/* ===== IndexedDB para fotos — NUEVO ===== */
+const IDB_NAME='duran-photos-v1', IDB_STORE='photos';
+function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open(IDB_NAME,1); r.onupgradeneeded=()=> r.result.createObjectStore(IDB_STORE,{keyPath:'id'}); r.onerror=()=>rej(r.error); r.onsuccess=()=>res(r.result); }); }
+async function idbPut(rec){ const db=await openDB(); await new Promise((res,rej)=>{ const tx=db.transaction(IDB_STORE,'readwrite'); tx.objectStore(IDB_STORE).put(rec); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); }
+async function idbGet(id){ const db=await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(IDB_STORE,'readonly'); const rq=tx.objectStore(IDB_STORE).get(id); rq.onsuccess=()=>res(rq.result||null); rq.onerror=()=>rej(rq.error); }); }
+async function idbDel(id){ const db=await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(IDB_STORE,'readwrite'); tx.objectStore(IDB_STORE).delete(id); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); }
+function currentPhotoId(){ if(!varSel) return null; return `${CENTER.id}|${(varSel.NumeroArticulo||'').toString().trim()}`; }
+function setPhotoPreview(blob){
+  if(!blob){ photoPreview.style.display='none'; photoPreview.src=''; photoInfo.textContent=''; return; }
+  const url=URL.createObjectURL(blob); photoPreview.src=url; photoPreview.style.display='block';
+  const kb=(blob.size/1024).toFixed(0); photoInfo.textContent=`Imagen local · ${kb} KB`;
 }
+async function loadPhotoPreview(){
+  const id=currentPhotoId(); if(!id) return setPhotoPreview(null);
+  const r=await idbGet(id); if(r && r.blob){ setPhotoPreview(r.blob); } else setPhotoPreview(null);
+}
+async function compressToWebP(file, max=1400){
+  const bmp=await createImageBitmap(file);
+  const w=bmp.width, h=bmp.height;
+  const scale=Math.min(1, max/Math.max(w,h));
+  const cw=Math.round(w*scale), ch=Math.round(h*scale);
+  const cv=document.createElement('canvas'); cv.width=cw; cv.height=ch;
+  const ctx=cv.getContext('2d'); ctx.drawImage(bmp,0,0,cw,ch);
+  const blob=await new Promise(res=> cv.toBlob(res,'image/webp',0.85));
+  return blob;
+}
+photoSave.onclick=async ()=>{
+  if(!varSel){ alert('Selecciona un artículo primero'); return }
+  if(!admPhoto.files.length){ alert('Elige una foto'); return }
+  const file=admPhoto.files[0];
+  const blob=await compressToWebP(file, 1400); // compacto → evita “no hay memoria”
+  await idbPut({ id: currentPhotoId(), center:CENTER.id, num:(varSel.NumeroArticulo||'').toString().trim(), blob });
+  setPhotoPreview(blob);
+  alert('Foto guardada en este dispositivo. Usa “Descargar fichero” para subirla al repo.');
+};
+photoDelete.onclick=async ()=>{
+  const id=currentPhotoId(); if(!id) return;
+  await idbDel(id); setPhotoPreview(null); alert('Foto local borrada.');
+};
+photoDownload.onclick=async ()=>{
+  const id=currentPhotoId(); if(!id){ alert('Selecciona un artículo'); return }
+  const r=await idbGet(id); if(!r||!r.blob){ alert('No hay foto local guardada'); return }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(r.blob);
+  a.download=`${CENTER.id}_${(varSel.NumeroArticulo||'').toString().trim()}.webp`;
+  document.body.appendChild(a); a.click(); a.remove();
+};
 
-/* ========== INIT ========== */
-(function init(){ drawCenters(); initFlags(); loadData().then(()=>{ speak(LANGS[lang].greet(nameInput.value||'')); }); })();
+/* Init */
+function init(){ drawCenters(); initFlags(); loadData().then(()=>{ speak(LANGS[lang].greet(nameInput.value||'')); }); }
+init();
 
-/* ========== SW CLEANUP (evitar cachés viejos) ========== */
+/* Limpieza SW caché (por si acaso) */
 if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(rs=>{ rs.forEach(r=>r.unregister()) });
   if(window.caches){ caches.keys().then(keys=> keys.forEach(k=>/^asistente-duran-/.test(k)&&caches.delete(k))) }
