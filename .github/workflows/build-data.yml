@@ -1,70 +1,77 @@
 name: Build data (Excel → CSV por centro)
 
 on:
-  workflow_dispatch: {}
-  # Programa (UTC): todos los días a las 05:00 UTC = 06:00 España en invierno, 07:00 en verano
+  workflow_dispatch:
   schedule:
-    - cron: "0 5 * * *"
+    # 05:30 UTC ~ 07:30 España (CEST). Ajusta si lo prefieres.
+    - cron: "30 5 * * *"
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Mostrar árbol de carpetas
+      - name: Mostrar árbol (top)
         run: |
-          echo "PWD: $PWD"
-          ls -lah
-          echo "---"
-          find . -maxdepth 3 -type d -print
+          echo "::group::Árbol inicial"
+          ls -la
+          echo
+          echo "imports/"
+          ls -la imports || true
+          echo "::endgroup::"
 
       - name: Comprobación de ficheros requeridos
-        id: check_files
-        shell: bash
         run: |
-          set -euo pipefail
-          miss=0
+          set -e
+          missing=0
           for f in \
             "imports/Base articulos precio.xlsx" \
             "imports/Importacion Stock.xlsx" \
             "imports/Lista proveedores_05092025.xlsx"
           do
-            if [[ -f "$f" ]]; then
-              echo "OK  $f"
-            else
-              echo "FALTA $f"
-              miss=1
+            if [ ! -f "$f" ]; then
+              echo "❌ Falta $f"
+              missing=1
             fi
           done
-          echo "missing=$miss" >> $GITHUB_OUTPUT
-
-      - name: Abortar si faltan Excel
-        if: steps.check_files.outputs.missing != '0'
-        run: |
-          echo "❌ Faltan uno o más Excel en /imports. Sube los tres y vuelve a lanzar el workflow."
-          exit 1
+          if [ "$missing" != "0" ]; then
+            echo "Alguno de los Excel requeridos no existe. Sube los ficheros a imports/ y vuelve a lanzar."
+            exit 1
+          fi
 
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Instalar dependencias
         run: |
-          python -V
-          pip install --upgrade pip
-          pip install pandas openpyxl xlrd pyarrow
+          python -m pip install --upgrade pip
+          pip install pandas openpyxl xlrd python-dateutil
+
+      - name: Verificar cabecera ZIP de .xlsx (firma PK)
+        run: |
+          for f in \
+            "imports/Base articulos precio.xlsx" \
+            "imports/Importacion Stock.xlsx" \
+            "imports/Lista proveedores_05092025.xlsx"
+          do
+            echo ">>> $f"
+            xxd -l 4 -p "$f" || true
+            echo
+          done
 
       - name: Inspección rápida de los Excel (ver hojas y columnas)
         shell: bash
         run: |
           set -e
           cat > /tmp/inspect_excel.py << 'PY'
-          import pandas as pd
+          import pandas as pd, os
 
           files = [
               "imports/Base articulos precio.xlsx",
@@ -72,13 +79,33 @@ jobs:
               "imports/Lista proveedores_05092025.xlsx",
           ]
 
+          def pick_engine(path):
+              ext = os.path.splitext(path)[1].lower()
+              if ext in ('.xlsx', '.xlsm'):
+                  return 'openpyxl'
+              elif ext == '.xls':
+                  return 'xlrd'
+              else:
+                  return None
+
           for p in files:
               print(f"\n>>> {p}")
+              eng = pick_engine(p)
               try:
-                  xl = pd.ExcelFile(p)
-                  print("   hojas:", xl.sheet_names)
-                  df = xl.parse(xl.sheet_names[0], nrows=3)
-                  print("   columnas:", list(df.columns))
+                  if eng:
+                      xl = pd.ExcelFile(p, engine=eng)
+                      print("   motor:", eng)
+                      print("   hojas:", xl.sheet_names)
+                      df = xl.parse(xl.sheet_names[0], nrows=3)
+                      print("   columnas:", list(df.columns))
+                  else:
+                      print("   (no extensión Excel, ¿CSV?) Probando lectura CSV...")
+                      try:
+                          df = pd.read_csv(p, sep=';', nrows=3)
+                          print("   columnas CSV (;):", list(df.columns))
+                      except Exception:
+                          df = pd.read_csv(p, nrows=3)
+                          print("   columnas CSV (coma):", list(df.columns))
               except Exception as e:
                   print("!!! ERROR leyendo", p, "->", e)
                   raise
@@ -86,29 +113,26 @@ jobs:
           python /tmp/inspect_excel.py
 
       - name: Ejecutar ingesta (con logs verbosos)
-        shell: bash
         run: |
-          set -euo pipefail
-          echo "Lanzando scripts/build_data.py ..."
           python scripts/build_data.py --verbose
 
-      - name: Comprobar CSV generados
+      - name: Comprobar cambios generados
         run: |
-          echo "CSV generados:"
-          find data -maxdepth 3 -type f -name "*.csv" -print -exec wc -l {} \;
+          echo "::group::git status"
+          git status --porcelain=v1
+          echo "::endgroup::"
 
       - name: Commit & push datos (si hubo cambios)
-        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "Sin cambios que commitear."
-          else
-            git commit -m "build: actualizar CSV por centro"
+          if [ -n "$(git status --porcelain=v1)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "build: actualizar datos de Articulos.csv por centro (CI)"
             git push
+          else
+            echo "Sin cambios en datos, no hay commit."
           fi
