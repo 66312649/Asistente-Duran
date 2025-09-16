@@ -510,7 +510,7 @@
       }
       function normKey(s){
         return (s||'').toString().toLowerCase()
-          .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+          .normalize('NFD').replace(/[̀-ͯ]/g,'')
           .replace(/[^a-z0-9]+/g,' ').trim();
       }
       function pickCol(cols, hints){
@@ -592,18 +592,29 @@
           var ok = (Number(it.stock)||0) > 0;
           var badge = ok ? '<span class="stock ok">'+txt.stock+': '+it.stock+'</span>' : '<span class="stock zero">'+txt.stock+': 0</span>';
           var alt = it._altStock ? '<div class="meta" style="margin-top:6px"><em>'+ txt.alt(CODE_TO_CENTER[it._altStock.center], it._altStock.qty) +'</em></div>' : '';
-          return '<article class="card" role="button" tabindex="0" data-id="'+it.numero_articulo+'">\n'
-            + '  <h3>'+ it.descripcion_final +'</h3>\n'
-            + '  <div class="meta">\n'
-            + '    <span><strong>'+ txt.prov +':</strong> '+ (it.ref_proveedor==null?'-':it.ref_proveedor) +'</span>\n'
-            + '    <span><strong>'+ txt.mfg +':</strong> '+ (it.fabricante||'-') +'</span>\n'
-            + '  </div>\n'
-            + '  <div class="price-stock">\n'
-            + '    <div class="price">'+ (it.precio_eur||'-') +'</div>\n'
-            + '    '+ badge +'\n'
-            + '  </div>\n'
+          return '<article class="card" role="button" tabindex="0" data-id="'+it.numero_articulo+'">
+'
+            + '  <h3>'+ it.descripcion_final +'</h3>
+'
+            + '  <div class="meta">
+'
+            + '    <span><strong>'+ txt.prov +':</strong> '+ (it.ref_proveedor==null?'-':it.ref_proveedor) +'</span>
+'
+            + '    <span><strong>'+ txt.mfg +':</strong> '+ (it.fabricante||'-') +'</span>
+'
+            + '  </div>
+'
+            + '  <div class="price-stock">
+'
+            + '    <div class="price">'+ (it.precio_eur||'-') +'</div>
+'
+            + '    '+ badge +'
+'
+            + '  </div>
+'
             + alt +\
-            '\n</article>';
+            '
+</article>';
         }).join('');
         resultsEl.setAttribute('aria-hidden','false');
       }
@@ -657,6 +668,56 @@
 
       // Exponer para probar manualmente
       window.__searchRepo = performSearch;
+    })();
+  </script>
+  
+  <!-- === ADITIVO: botón Buscar + robustez para abrir resultados === -->
+  <style id="search-btn-style">
+    .search.has-button{ grid-template-columns: 1fr auto auto; }
+    .btn-search{ display:inline-grid; place-items:center; border:0; border-radius:999px; width:44px; height:44px; background:radial-gradient(120% 120% at 50% -10%, var(--electric-2), var(--electric)); color:#00121e; font-weight:900; cursor:pointer; box-shadow:0 8px 28px rgba(0,182,255,.55) }
+    .btn-search:active{ transform:scale(.98) }
+  </style>
+  <script>
+    (function(){
+      // 1) AÑADIR BOTÓN BUSCAR SIN TOCAR EL HTML EXISTENTE
+      var searchBox = document.querySelector('.search');
+      var input = searchBox ? searchBox.querySelector('input') : null;
+      if(searchBox && !document.getElementById('searchBtn')){
+        var btn = document.createElement('button');
+        btn.id = 'searchBtn'; btn.type = 'button'; btn.className = 'btn-search'; btn.textContent = '🔎';
+        btn.setAttribute('aria-label', (window.currentLang==='en-US'?'Search':window.currentLang==='de-DE'?'Suchen':'Buscar'));
+        searchBox.appendChild(btn);
+        searchBox.classList.add('has-button');
+        btn.addEventListener('click', function(){ if(window.__searchRepo){ window.__searchRepo((input && input.value||'').trim()); } else { openOverlayBootstrap('Inicializando…'); } });
+      }
+
+      // 2) GARANTIZAR QUE EL OVERLAY DE RESULTADOS EXISTE (por si una iteración anterior lo perdió)
+      function ensureResultsUI(){
+        if(document.getElementById('results')) return true;
+        // Estilos mínimos si faltan
+        if(!document.getElementById('results-style')){
+          var st = document.createElement('style'); st.id='results-style';
+          st.textContent = '.results-overlay{position:fixed;inset:0;display:none;z-index:50;background:linear-gradient(180deg,rgba(6,12,26,.88),rgba(6,12,26,.92));backdrop-filter:blur(6px)}.results-overlay[aria-hidden="false"]{display:grid;grid-template-rows:auto 1fr}.results-header{display:grid;grid-template-columns:1fr minmax(360px,920px) 1fr;align-items:center;padding:16px 20px}.results-header .centered{grid-column:2;display:grid;gap:10px;justify-items:center;text-align:center}.results-title{font-size:20px;font-weight:800;letter-spacing:.06em;color:var(--electric-2);text-transform:uppercase}.results-sub{font-size:14px;color:#b8c9da}.results-actions{grid-column:3;justify-self:end;display:flex;gap:10px}.results-body{padding:8px 24px 24px;display:grid;grid-template-columns:minmax(0,1fr)}.results-grid{margin:0 auto;width:min(92vw,1100px);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.card{background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;grid-template-rows:auto auto 1fr auto;gap:8px;box-shadow:0 10px 30px rgba(0,0,0,.35)}.card h3{margin:0;font-size:16px;color:#eaf4ff}.meta{font-size:12px;color:#9fb4c8;display:flex;gap:12px;flex-wrap:wrap}.price-stock{display:flex;justify-content:space-between;align-items:center;margin-top:6px}.price{font-weight:800;font-size:18px;color:var(--ink)}.stock{font-weight:800;font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid var(--line)}.stock.ok{background:rgba(34,211,238,.12);border-color:rgba(34,211,238,.35);color:#c8f6ff}.stock.zero{background:rgba(255,143,107,.12);border-color:rgba(255,143,107,.35);color:#ffd8cb}.back-btn{border:2px solid var(--electric);color:var(--electric);background:transparent;border-radius:12px;padding:8px 12px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25),0 0 8px rgba(0,182,255,.3) inset}';
+          document.head.appendChild(st);
+        }
+        var section = document.createElement('section'); section.className='results-overlay'; section.id='results'; section.setAttribute('aria-hidden','true');
+        section.innerHTML = '<div class="results-header"><div></div><div class="centered"><div class="results-title" id="resultsTitle">Resultados</div><div class="results-sub" id="resultsSub"></div></div><div class="results-actions"><button class="back-btn" id="backBtn">← Volver</button></div></div><div class="results-body"><div class="results-grid" id="resultsGrid"></div></div>';
+        document.body.appendChild(section);
+        var back = document.getElementById('backBtn'); back && back.addEventListener('click', function(){ section.setAttribute('aria-hidden','true'); });
+        return true;
+      }
+
+      function openOverlayBootstrap(msg){ ensureResultsUI(); var r=document.getElementById('results'); var s=document.getElementById('resultsSub'); var t=document.getElementById('resultsTitle'); if(t) t.textContent='Resultados'; if(s) s.textContent=msg||''; if(r) r.setAttribute('aria-hidden','false'); }
+
+      // 3) ACTIVAR ENTER EN EL INPUT (si el motor está cargado, busca; si no, muestra overlay con aviso)
+      if(input){
+        input.addEventListener('keydown', function(e){
+          if(e.key==='Enter'){
+            if(window.__searchRepo){ window.__searchRepo((input && input.value||'').trim()); }
+            else { openOverlayBootstrap('Inicializando…'); }
+          }
+        });
+      }
     })();
   </script>
 </body>
