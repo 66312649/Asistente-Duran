@@ -450,5 +450,214 @@
       window.__showResultsDemo = function(q){ var list = searchItems(q||''); render(list, q||''); };
     })();
   </script>
+  
+  <!-- === Añadido: librería para leer Excel en el navegador (no modifica nada existente) === -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- === Añadido: Carga dinámica desde GitHub + motor de búsqueda (ADITIVO) === -->
+  <script>
+    (function(){
+      const REPO_BASE = 'https://raw.githubusercontent.com/66312649/Asistente-Duran/main/imports/';
+      const PRICE_FILE = 'Lista%20de%20art%C3%ADculos.xlsx';
+      const STOCK_FILE = function(n){ return 'Stock_Almacen_'+n+'_20250915.xlsx'; };
+
+      const CENTER_CODE = { 'Palma':1, 'Calvià':2, 'Alcúdia':3, 'Santanyí':4, 'Santa Maria':7 };
+      const CODE_TO_CENTER = (function(){ const m={}; for(const k in CENTER_CODE){ m[CENTER_CODE[k]] = k; } return m; })();
+
+      const resultsEl = document.getElementById('results');
+      const gridEl = document.getElementById('resultsGrid');
+      const titleEl = document.getElementById('resultsTitle');
+      const subEl = document.getElementById('resultsSub');
+      const backBtn = document.getElementById('backBtn');
+      const searchInput = document.querySelector('.search input');
+
+      // Exponer/lang actual (sin tocar script previo)
+      window.currentLang = window.currentLang || 'es-ES';
+      document.querySelectorAll('.lang-chip').forEach(function(ch){
+        ch.addEventListener('click', function(){ window.currentLang = ch.dataset.lang || 'es-ES'; });
+      });
+
+      function t(){
+        var L = window.currentLang || 'es-ES';
+        var TB = {
+          'es-ES': { results:'Resultados', of:'coincidencias', back:'← Volver', price:'Precio', stock:'Stock', prov:'Ref. proveedor', mfg:'Fabricante',
+                     alt:function(n,qty){ return 'Actualmente no disponemos de stock en este centro, pero en el centro de '+n+' disponemos de '+qty+' unidades. Por favor, hable con el mostrador para tramitar el suministro.'; } },
+          'en-US': { results:'Results', of:'matches', back:'← Back', price:'Price', stock:'Stock', prov:'Supplier ref.', mfg:'Manufacturer',
+                     alt:function(n,qty){ return 'We currently have no stock at this store, but '+qty+' units are available at the '+n+' branch. Please speak to the counter to arrange supply.'; } },
+          'de-DE': { results:'Ergebnisse', of:'Treffer', back:'← Zurück', price:'Preis', stock:'Bestand', prov:'Lieferantenref.', mfg:'Hersteller',
+                     alt:function(n,qty){ return 'Derzeit kein Bestand in diesem Standort, aber '+qty+' Stück sind im Standort '+n+' verfügbar. Bitte wenden Sie sich an den Schalter für die Bestellung.'; } }
+        };
+        return TB[L] || TB['es-ES'];
+      }
+
+      // ==== Helpers ====
+      function getCurrentCenterName(){
+        var el = document.querySelector('.center-chip[aria-pressed="true"]');
+        return el ? (el.dataset.center || el.textContent.trim()) : 'Calvià';
+      }
+      function getCurrentCenterCode(){ return CENTER_CODE[getCurrentCenterName()] || 2; }
+
+      async function fetchWorkbook(file){
+        var url = REPO_BASE + file;
+        var res = await fetch(url);
+        if(!res.ok) throw new Error('Fetch error '+res.status+': '+url);
+        var ab = await res.arrayBuffer();
+        return XLSX.read(ab, {type:'array'});
+      }
+      function toJSON(wb, prefer){
+        var name = (prefer && wb.Sheets[prefer]) ? prefer : wb.SheetNames[0];
+        return XLSX.utils.sheet_to_json(wb.Sheets[name], {defval:null});
+      }
+      function normKey(s){
+        return (s||'').toString().toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+          .replace(/[^a-z0-9]+/g,' ').trim();
+      }
+      function pickCol(cols, hints){
+        var i, c, ncols = cols.map(function(cn){ return {raw:cn, n:normKey(cn)}; });
+        for(i=0;i<ncols.length;i++){ c=ncols[i]; if(hints.every(function(h){return c.n.indexOf(h)>=0;})) return c.raw; }
+        for(i=0;i<ncols.length;i++){ c=ncols[i]; if(hints.some(function(h){return c.n.indexOf(h)>=0;})) return c.raw; }
+        return null;
+      }
+
+      // ==== Caches ====
+      var cache = { prices:null, stock:{} };
+
+      async function loadPrices(){
+        if(cache.prices) return cache.prices;
+        var wb = await fetchWorkbook(PRICE_FILE);
+        var rows = toJSON(wb, 'Hoja1');
+        var cols = rows.length? Object.keys(rows[0]) : [];
+        var cNum = pickCol(cols, ['numero','articulo']);
+        var cDesc = pickCol(cols, ['descripcion','articulo']);
+        var cFab = pickCol(cols, ['fabricante']);
+        var cPrice = pickCol(cols, ['1','lista','precio','venta']);
+        var map = new Map();
+        rows.forEach(function(r){
+          var id = r[cNum]; if(id==null) return;
+          var key = String(id).trim();
+          map.set(key, { numero_articulo:key, descripcion:r[cDesc]||null, fabricante:r[cFab]||null, precio_venta:r[cPrice]||null });
+        });
+        cache.prices = map; return map;
+      }
+
+      async function loadStock(centerCode){
+        if(cache.stock[centerCode]) return cache.stock[centerCode];
+        var wb = await fetchWorkbook(STOCK_FILE(centerCode));
+        var sheetName = wb.SheetNames.find(function(n){return /ALM/i.test(n);}) || wb.SheetNames[0];
+        var rows = toJSON(wb, sheetName);
+        var cols = rows.length? Object.keys(rows[0]) : [];
+        var cNum = pickCol(cols, ['numero','articulo']);
+        var cRef = pickCol(cols, ['referencia','proveedor']);
+        var cDesc = pickCol(cols, ['descripcion']);
+        var cFab = pickCol(cols, ['fabricante']);
+        var cStock = pickCol(cols, ['stock']);
+        var list = [];
+        rows.forEach(function(r){
+          var id = r[cNum]; if(id==null) return;
+          list.push({ numero_articulo:String(id).trim(), ref_proveedor:r[cRef]||null, descripcion:r[cDesc]||null, fabricante:r[cFab]||null, stock:Number(r[cStock]||0) });
+        });
+        cache.stock[centerCode] = list; return list;
+      }
+
+      function formatEUR(val){
+        if(val==null || val==='') return '-';
+        var n = (typeof val==='number')? val : parseFloat(String(val).split('.').join('').replace(',','.'));
+        if(!isFinite(n)) return '-';
+        return n.toLocaleString(window.currentLang||'es-ES', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+      }
+
+      function mergeItem(s, p){
+        return { numero_articulo:s.numero_articulo, ref_proveedor:s.ref_proveedor,
+                 descripcion_final:(p && p.descripcion) || s.descripcion || '-', fabricante:(p && p.fabricante) || s.fabricante || '-',
+                 stock:s.stock||0, precio_eur: formatEUR(p && p.precio_venta) };
+      }
+
+      function score(q, it){
+        var t = (q||'').toLowerCase(); if(!t) return 0;
+        var toks = t.trim().split(' ').filter(Boolean);
+        var d = (it.descripcion_final||'').toLowerCase();
+        var r = (it.ref_proveedor||'').toLowerCase();
+        var n = (it.numero_articulo||'').toString().toLowerCase();
+        var s=0; toks.forEach(function(tok){ if(d.indexOf(tok)>=0) s+=3; if(r.indexOf(tok)>=0) s+=2; if(n.indexOf(tok)>=0) s+=1.5; });
+        return s;
+      }
+
+      function render(items, q){
+        var txt = t();
+        titleEl.textContent = txt.results;
+        subEl.textContent = items.length + ' ' + txt.of + ' · Centro: ' + getCurrentCenterName() + ' · “' + q + '”';
+        backBtn.textContent = txt.back;
+        gridEl.innerHTML = items.map(function(it){
+          var ok = (Number(it.stock)||0) > 0;
+          var badge = ok ? '<span class="stock ok">'+txt.stock+': '+it.stock+'</span>' : '<span class="stock zero">'+txt.stock+': 0</span>';
+          var alt = it._altStock ? '<div class="meta" style="margin-top:6px"><em>'+ txt.alt(CODE_TO_CENTER[it._altStock.center], it._altStock.qty) +'</em></div>' : '';
+          return '<article class="card" role="button" tabindex="0" data-id="'+it.numero_articulo+'">\n'
+            + '  <h3>'+ it.descripcion_final +'</h3>\n'
+            + '  <div class="meta">\n'
+            + '    <span><strong>'+ txt.prov +':</strong> '+ (it.ref_proveedor==null?'-':it.ref_proveedor) +'</span>\n'
+            + '    <span><strong>'+ txt.mfg +':</strong> '+ (it.fabricante||'-') +'</span>\n'
+            + '  </div>\n'
+            + '  <div class="price-stock">\n'
+            + '    <div class="price">'+ (it.precio_eur||'-') +'</div>\n'
+            + '    '+ badge +'\n'
+            + '  </div>\n'
+            + alt +\
+            '\n</article>';
+        }).join('');
+        resultsEl.setAttribute('aria-hidden','false');
+      }
+
+      async function findAltStock(numArt, excludeCenter){
+        var centers = [1,2,3,4,7].filter(function(c){ return c!==excludeCenter; });
+        var best = null;
+        for(var i=0;i<centers.length;i++){
+          var c = centers[i];
+          var list = await loadStock(c);
+          var hit = list.find(function(x){ return x.numero_articulo===numArt && Number(x.stock)>0; });
+          if(hit){ best = {center:c, qty:Number(hit.stock)}; break; }
+        }
+        return best; // or null
+      }
+
+      async function performSearch(q){
+        try{
+          var center = getCurrentCenterCode();
+          titleEl.textContent = t().results;
+          subEl.textContent = 'Buscando…';
+          resultsEl.setAttribute('aria-hidden','false');
+
+          var prices = await loadPrices();
+          var stock = await loadStock(center);
+          var merged = stock.map(function(s){ return mergeItem(s, prices.get(s.numero_articulo)); });
+          merged.forEach(function(m){ m.__score = score(q, m); });
+          merged.sort(function(a,b){ return b.__score - a.__score; });
+          var top = merged.filter(function(x){ return x.__score>0; }).slice(0,6);
+          if(top.length===0) top = merged.slice(0,6); // fallback
+
+          for(var i=0;i<top.length;i++){
+            var it = top[i];
+            if(Number(it.stock)<=0){ it._altStock = await findAltStock(it.numero_articulo, center); }
+          }
+          render(top, q);
+        }catch(err){
+          console.error(err);
+          subEl.textContent = 'Error cargando datos';
+        }
+      }
+
+      // Activar búsqueda al pulsar Enter (se añadirá a lo existente)
+      if(searchInput){
+        searchInput.addEventListener('keydown', function(e){
+          if(e.key==='Enter'){
+            performSearch(searchInput.value.trim());
+          }
+        });
+      }
+
+      // Exponer para probar manualmente
+      window.__searchRepo = performSearch;
+    })();
+  </script>
 </body>
 </html>
