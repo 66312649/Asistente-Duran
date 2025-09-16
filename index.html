@@ -1,257 +1,299 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>DURAN · HUD Home</title>
-<link rel="icon" href="logo-duran.png"/>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hub Duran – Maqueta 1:1 + Flujo Centros / Admin</title>
+<!-- Librerías para integración real (se cargan cuando se usan) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-:root{
-  --bg:#0b0f22; --bg2:#101738;
-  --ink:#eaf2ff; --mut:#a9b7e6;
-  --line:rgba(255,255,255,.15); --glass:rgba(255,255,255,.06);
-  --brand:#57a3ff; --cyan:#6ee6ff; --vio:#9aa2ff;
-}
-*{box-sizing:border-box} html,body{height:100%}
-body{
-  margin:0;color:var(--ink);
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial;
-  background:
-    radial-gradient(1200px 800px at 50% -10%, #2847b7 0%, #1a2d6b 45%, #101738 70%, #0b0f22 100%),
-    linear-gradient(180deg,#0b0f22,#101738);
-}
-/* --- Layout principal --- */
-.app{min-height:100vh;display:grid;grid-template-rows:auto 1fr auto}
-.header{position:relative;padding:12px 16px}
-.grid{
-  display:grid;gap:18px;padding:12px 16px 24px;
-  grid-template-columns:minmax(220px,24vw) 1fr minmax(220px,24vw);
-  grid-template-rows:auto 1fr auto; align-items:center;
-}
-@media (max-width:900px){
-  .grid{grid-template-columns:1fr;grid-template-rows:auto auto auto auto;gap:16px}
-  .left,.right,.bottom{justify-self:stretch}
-}
-/* --- Reloj grande --- */
-.clock{position:absolute;left:16px;top:8px;text-shadow:0 0 18px rgba(110,230,255,.35)}
-.hhmm{font-weight:800;letter-spacing:.04em;opacity:.92;
-  font-size:clamp(28px,7.2vmin,82px);line-height:1}
-.dmy{font-size:12px;color:var(--mut);margin-top:2px}
-/* --- Botón Admin (diminuto) --- */
-.adminDot{
-  position:absolute;right:14px;top:12px;width:18px;height:18px;border-radius:50%;
-  border:1px solid rgba(110,230,255,.5);background:rgba(255,255,255,.08);box-shadow:0 0 12px rgba(110,230,255,.25);
-  display:grid;place-items:center;font-size:11px;color:var(--ink);cursor:pointer
-}
-.adminPanel{position:fixed;right:10px;top:34px;display:none;z-index:40;
-  border:1px solid var(--line);background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04));
-  backdrop-filter:blur(10px);border-radius:12px;padding:10px;font-size:12px;color:var(--mut)}
-/* --- Rótulo central --- */
-.titleWrap{grid-column:1/-1;display:grid;justify-items:center}
-.title{
-  padding:.45em 1.1em;border-radius:10px;border:1px solid var(--line);background:var(--glass);
-  position:relative;text-transform:uppercase;font-weight:700;letter-spacing:.06em;font-size:14px
-}
-.title::before,.title::after{
-  content:"";position:absolute;left:-26px;right:-26px;height:1px;top:0;
-  background:linear-gradient(90deg,transparent, rgba(110,230,255,.7), rgba(154,162,255,.7), rgba(110,230,255,.7), transparent);
-  box-shadow:0 0 18px rgba(110,230,255,.25), inset 0 0 18px rgba(110,230,255,.25)
-}
-.title::after{top:auto;bottom:0}
-/* --- Listas tipo “cartucho” con esquinas bisel --- */
-.stack{display:grid;gap:12px}
-.card{
-  padding:.9em 1.1em;border:1px solid rgba(110,230,255,.35);border-radius:12px;
-  background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-  position:relative;cursor:pointer;user-select:none
-}
-.card::after{ /* bisel derecho */
-  content:"";position:absolute;right:-1px;top:10px;width:22px;height:calc(100% - 20px);border-right:1px solid rgba(110,230,255,.45);
-  border-top:1px solid rgba(110,230,255,.35);border-bottom:1px solid rgba(110,230,255,.35);border-radius:10px;opacity:.7}
-.card:hover{box-shadow:0 0 20px rgba(110,230,255,.16) inset}
-.tag{font-weight:700;letter-spacing:.02em}
-/* --- Centro HUD (esfera + logo) --- */
-.center{display:grid;justify-items:center;align-items:center;position:relative}
-.sphere{
-  width:clamp(220px,34vmin,420px);height:clamp(220px,34vmin,420px);border-radius:50%;
-  border:1px solid rgba(120,180,255,.55);
-  box-shadow:0 0 26px rgba(80,180,255,.45), inset 0 0 36px rgba(80,180,255,.28);
-  position:relative;overflow:hidden;background:radial-gradient(200px 100px at 50% 22%, rgba(120,180,255,.35), transparent 60%)
-}
-.sphere .g{position:absolute;inset:-26%;background:conic-gradient(from 0deg at 50% 50%, #4ea3ff, #7cc5ff, #a78bfa, #5ab3ff, #4ea3ff);filter:blur(18px);opacity:.95;animation:rot 8s linear infinite}
-.sphere .ring{position:absolute;left:50%;top:50%;width:70%;height:70%;transform:translate(-50%,-50%);border-radius:50%;
-  border:1px solid rgba(120,180,255,.75);box-shadow:0 0 18px rgba(120,180,255,.45) inset;animation:pulse 2.1s ease-in-out infinite}
-@keyframes rot{to{transform:rotate(360deg)}} @keyframes pulse{0%{transform:translate(-50%,-50%) scale(.96);opacity:.9}50%{transform:translate(-50%,-50%) scale(1.08);opacity:.5}100%{transform:translate(-50%,-50%) scale(.96);opacity:.9}}
-/* Logo DURAN como trazo azul dentro del núcleo */
-.logoCore{
-  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  width:48%;height:48%;background:var(--brand);
-  -webkit-mask:url("logo-duran.png") center/contain no-repeat;
-          mask:url("logo-duran.png") center/contain no-repeat;
-  filter:drop-shadow(0 0 16px rgba(87,163,255,.55)) drop-shadow(0 0 28px rgba(110,230,255,.25))
-}
-/* Transcripción centrada (no pisa la esfera) */
-.transc{margin-top:10px;color:var(--mut);font-size:14px;text-align:center;max-width:min(680px,90vw)}
-/* --- Línea de cables (SVG encima) --- */
-#wire{position:absolute;inset:0;pointer-events:none}
-/* --- Categorías abajo --- */
-.bottom{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-@media (max-width:900px){.bottom{grid-template-columns:repeat(2,1fr)}}
-.cat{padding:1em 1.1em;text-align:center}
-footer{padding:10px 14px;color:var(--mut);font-size:12px;border-top:1px solid var(--line)}
-/* --- FAB pantalla completa --- */
-.fab{position:fixed;left:12px;bottom:12px;width:28px;height:28px;border-radius:999px;border:1px solid rgba(110,230,255,.45);background:rgba(255,255,255,.06);box-shadow:0 0 14px rgba(110,230,255,.18);color:var(--ink);display:grid;place-items:center;font-size:14px}
+  :root{
+    --bg:#0B0F1A; --c:#1E90FF; --t:#EAF6FF; --muted:#9db6cc;
+    --chipH:72px; --chipW:300px; --gap:32px;
+  }
+  *{box-sizing:border-box} html,body{height:100%;margin:0;background:var(--bg);color:var(--t);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+  button{cursor:pointer}
+  .frame{position:fixed;inset:0;display:grid;place-items:center}
+  .canvas{width:min(100vw,133.33vh);aspect-ratio:16/10;position:relative;overflow:hidden}
+
+  /* CABECERA */
+  .clock{position:absolute;left:30px;top:24px;font:900 90px ui-monospace,Menlo,Consolas,monospace;color:var(--c)}
+  .date{position:absolute;left:30px;top:105px;color:var(--muted);font-weight:800;letter-spacing:.25em}
+  .title{position:absolute;left:50%;top:32px;transform:translateX(-50%);font-weight:800;letter-spacing:.1em}
+  .search{position:absolute;left:50%;top:76px;transform:translateX(-50%);width:420px;height:38px;border:2px solid var(--c);border-radius:8px;background:rgba(255,255,255,.06)}
+
+  /* Orb centrado */
+  .ring{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:48%;aspect-ratio:1;border:2px solid var(--c);border-radius:50%;z-index:0}
+  .ring::after{content:"";position:absolute;inset:16%;border:2px dashed var(--c);border-radius:50%}
+  .orb{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:17%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 30% 30%, var(--c), #001018 70%);display:grid;place-items:center;box-shadow:0 0 20px rgba(30,144,255,.45);z-index:1}
+  .orb img{width:76%;height:auto;display:block;filter:drop-shadow(0 0 4px rgba(0,0,0,.5))}
+  .orb.listening{animation:pulse 1.2s ease-in-out infinite}
+  .orb::after{content:"";position:absolute;inset:-6%;border:2px solid var(--c);border-radius:50%;opacity:0}
+  .orb.listening::after{animation:wave 1.6s infinite}
+  @keyframes pulse{0%{transform:translate(-50%,-50%) scale(1)}70%{transform:translate(-50%,-50%) scale(0.97)}100%{transform:translate(-50%,-50%) scale(1)}}
+  @keyframes wave{0%{transform:scale(1);opacity:.45}100%{transform:scale(1.35);opacity:0}}
+
+  /* Cajas biseladas */
+  .chip{position:relative;min-width:var(--chipW);height:var(--chipH);display:grid;place-items:center;color:var(--c);font-weight:800;border:2px solid var(--c);background:rgba(0,0,0,.22);clip-path:polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px))}
+  .chip.right{clip-path:polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px)}
+
+  /* Columnas: nunca se solapan */
+  .left-col,.right-col{position:absolute;top:52%;transform:translateY(-50%);display:flex;flex-direction:column;gap:var(--gap);z-index:2}
+  .left-col{left:40px}
+  .right-col{right:40px}
+
+  /* Fila inferior: sin solapes */
+  .bottom-row{position:absolute;left:50%;bottom:40px;transform:translateX(-50%);display:flex;gap:40px;z-index:2;flex-wrap:nowrap}
+
+  .chip:hover{filter:brightness(1.14)}
+  .admin-toggle{position:absolute;right:18px;top:18px;color:var(--muted);font-size:12px}
+
+  .view{display:none}
+  .view.active{display:block}
+
+  /* Vista Centro (tablet) */
+  .center-wrap{position:absolute;inset:0;padding:16px}
+  .center-header{display:flex;align-items:center;gap:12px}
+  .back{border:1px solid var(--c);background:transparent;color:var(--c);padding:6px 10px;border-radius:6px}
+  .center-grid{display:grid;grid-template-columns:1.4fr 1.8fr;grid-template-rows:auto 1fr;gap:16px;margin-top:10px;height:calc(100% - 70px)}
+  #map{height:100%;border:2px solid var(--c);border-radius:10px}
+  .planobox{border:2px solid var(--c);border-radius:10px;padding:8px;display:grid;place-items:center}
+  .pane{border:2px solid var(--c);border-radius:10px;overflow:auto}
+  .pane h3{margin:6px 10px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{border-bottom:1px solid rgba(255,255,255,.08);padding:6px 8px;text-align:left}
+  .tools{display:flex;gap:8px;flex-wrap:wrap;margin:8px}
+  input[type=file]{border:1px dashed var(--c);padding:6px;border-radius:6px;background:rgba(255,255,255,.04);color:var(--t)}
+  .pill{border:1px solid var(--c);color:var(--c);background:transparent;padding:6px 10px;border-radius:999px;font-weight:700}
+
+  /* Vista Admin (iPhone XR) */
+  .admin-wrap{position:absolute;inset:0;padding:12px;display:grid;grid-template-rows:auto 1fr auto;gap:10px}
+  .admin-wrap h2{margin:0}
+  .field{display:flex;flex-direction:column;gap:4px;margin:10px 0}
+  .field input, .field select{padding:10px;border:1px solid var(--c);border-radius:8px;background:rgba(255,255,255,.06);color:var(--t)}
+  .save{background:var(--c);color:#021523;border:0;padding:10px 14px;border-radius:10px;font-weight:900}
+
+  @media (max-width: 500px){ .canvas{width:100vw;aspect-ratio:auto} }
 </style>
 </head>
 <body>
-<div class="app">
-  <div class="header">
-    <div class="clock"><div class="hhmm" id="hhmm">00:00</div><div class="dmy" id="dmy">—</div></div>
-    <button class="adminDot" id="admBtn" title="Modo admin">⚙</button>
-    <div class="adminPanel" id="admPanel">Modo administrador (demo). Contraseña: <b>0666</b></div>
-  </div>
+<div class="frame">
+  <div class="canvas">
+    <!-- ====== VIEW: HOME (tabla A6) ====== -->
+    <section id="view-home" class="view active">
+      <div class="admin-toggle">Modo Admin</div>
+      <div class="clock" id="clock">16:00</div>
+      <div class="date" id="date">VIERNES 04 DE SEPTIEMBRE</div>
+      <div class="title">¿EN QUÉ PUEDO AYUDARLE?</div>
+      <div class="search" title="Búsqueda manual"></div>
+      <div class="ring" aria-hidden="true"></div>
+      <div class="orb" role="button" title="Micrófono"><img src="sandbox:/mnt/data/logo-GD.png" alt="GD"></div>
 
-  <main class="grid" id="stage">
-    <div class="titleWrap"><div class="title">¿En qué puedo ayudarle?</div></div>
-
-    <!-- Idiomas -->
-    <aside class="left stack" id="langs">
-      <div class="card" data-lang="es"><span class="tag">ESPAÑOL</span></div>
-      <div class="card" data-lang="en"><span class="tag">INGLÉS</span></div>
-      <div class="card" data-lang="de"><span class="tag">ALEMÁN</span></div>
-    </aside>
-
-    <!-- HUD central -->
-    <section class="center" id="hub">
-      <svg id="wire"></svg>
-      <div class="sphere" id="sphere"><div class="g"></div><div class="ring"></div><div class="logoCore" title="DURAN"></div></div>
-      <div class="transc" id="transc">Listo</div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button id="mic" title="Hablar" class="card" style="padding:.5em .8em">🎙️ Hablar</button>
-        <button id="mute" class="card" style="padding:.5em .8em">⏹️ Parar</button>
+      <!-- columnas -->
+      <div class="left-col">
+        <div class="chip">ESPAÑOL</div>
+        <div class="chip">INGLÉS</div>
+        <div class="chip">ALEMÁN</div>
+      </div>
+      <div class="right-col">
+        <div class="chip right center-btn" data-center="PALMA">PALMA</div>
+        <div class="chip right center-btn" data-center="CALVIA">CALVIÀ</div>
+        <div class="chip right center-btn" data-center="ALCUDIA">ALCUDIA</div>
+        <div class="chip right center-btn" data-center="SANTANYI">SANTANYÍ</div>
+      </div>
+        <div class="chip right center-btn" data-center="CALVIA">CALVIÀ</div>
+        <div class="chip right center-btn" data-center="ALCUDIA">ALCUDIA</div>
+        <div class="chip right center-btn" data-center="SANTANYI">SANTANYÍ</div>
+      </div>
+      <div class="bottom-row">
+        <div class="chip">CONSTRUCCIÓN</div>
+        <div class="chip">FERRETERÍA</div>
+        <div class="chip">FONTANERÍA</div>
+        <div class="chip">ELECTRICIDAD</div>
       </div>
     </section>
 
-    <!-- Almacenes -->
-    <aside class="right stack" id="centers">
-      <div class="card" data-center="palma"><span class="tag">PALMA</span></div>
-      <div class="card" data-center="calvia"><span class="tag">CALVIÀ</span></div>
-      <div class="card" data-center="alcudia"><span class="tag">ALCUDIA</span></div>
-      <div class="card" data-center="santanyi"><span class="tag">SANTANYÍ</span></div>
-    </aside>
+    <!-- ====== VIEW: CENTRO (tabla A6) ====== -->
+    <section id="view-center" class="view">
+      <div class="center-wrap">
+        <div class="center-header">
+          <button class="back" id="backFromCenter">← Volver</button>
+          <h2 id="centerTitle">Centro</h2>
+          <span id="centerSubtitle" style="color:var(--muted);font-weight:700"></span>
+        </div>
+        <div class="center-grid">
+          <div class="planobox">
+            <img id="planImg" alt="Plano del centro" style="max-width:100%;max-height:100%"/>
+          </div>
+          <div id="map" class="leaflet-container"></div>
 
-    <!-- Categorías -->
-    <div class="bottom">
-      <div class="card cat">CONSTRUCCIÓN</div>
-      <div class="card cat">FERRETERÍA</div>
-      <div class="card cat">FONTANERÍA</div>
-      <div class="card cat">ELECTRICIDAD</div>
-    </div>
-  </main>
+          <div class="pane" style="grid-column:1 / span 2">
+            <h3>Inventario</h3>
+            <div class="tools">
+              <button class="pill" id="btnAutoLoad">Autocargar excels</button>
+              <label class="pill">Stock_Almacen_X_20250915.xlsx
+                <input type="file" id="fileStock" accept=".xlsx,.xls" hidden>
+              </label>
+              <label class="pill">Lista de artículos.xlsx
+                <input type="file" id="filePrice" accept=".xlsx,.xls" hidden>
+              </label>
+              <button class="pill" id="btnScan">Escanear EAN/QR</button>
+              <input id="searchText" placeholder="Buscar…" style="flex:1;padding:6px 10px;border:1px solid var(--c);border-radius:8px;background:rgba(255,255,255,.06);color:var(--t)">
+            </div>
+            <div id="scanner" style="display:none;border-top:1px solid rgba(255,255,255,.15);padding:8px"></div>
+            <table id="tableInv"><thead><tr>
+              <th>EAN</th><th>Artículo</th><th>Ubicación</th><th>Stock</th><th>Precio</th>
+            </tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  <footer>Interfaz HUD · © DURAN</footer>
+    <!-- ====== VIEW: ADMIN (iPhone XR) ====== -->
+    <section id="view-admin" class="view">
+      <div class="admin-wrap">
+        <header>
+          <button class="back" id="backFromAdmin">← Volver</button>
+          <h2>Administrador</h2>
+          <div style="color:var(--muted);font-weight:700">XR • EAN / QR / Imagen / Ubicación</div>
+        </header>
+        <div class="pane" style="padding:12px">
+          <div class="field">
+            <label>Buscar artículo</label>
+            <input id="adminQuery" placeholder="Código, EAN o nombre…">
+          </div>
+          <div id="adminList" style="max-height:38vh;overflow:auto;border:1px solid rgba(255,255,255,.15);border-radius:8px"></div>
+          <hr style="border:0;border-top:1px solid rgba(255,255,255,.15);margin:12px 0">
+          <div id="adminDetail" style="display:none">
+            <div class="field"><label>Artículo</label><input id="adName" readonly></div>
+            <div class="field"><label>EAN (actual)</label><input id="adEanCur" readonly></div>
+            <div class="field"><label>Asignar nuevo EAN (verdad)</label><input id="adEanNew" placeholder="Escanea o escribe…"></div>
+            <div class="field"><label>Ubicación (override)</label><input id="adUbic" placeholder="Pasillo · Estante…"></div>
+            <div class="field"><label>Imagen (URL) (override)</label><input id="adImg" placeholder="https://…"></div>
+            <button class="save" id="btnSaveOverride">Guardar como canónico</button>
+            <div style="margin-top:8px;color:var(--muted)">Nota: los overrides **prevalecen** y se aplican incluso si los excels traen cambios (se ignoran).</div>
+          </div>
+        </div>
+        <footer style="display:flex;gap:8px;justify-content:space-between">
+          <button class="pill" id="btnAdminScan">Escanear EAN</button>
+          <button class="pill" id="btnAdminLoad">Cargar excels</button>
+        </footer>
+      </div>
+    </section>
+  </div>
 </div>
 
-<!-- Pantalla completa -->
-<button class="fab" id="fs" title="Pantalla completa">⤢</button>
-
+<!-- Dependencias cargadas en demanda -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.10/minified/html5-qrcode.min.js"></script>
 <script>
-/* ===== Reloj ===== */
-function updClock(){
-  const now=new Date();
-  const hh=String(now.getHours()).padStart(2,'0');
-  const mm=String(now.getMinutes()).padStart(2,'0');
-  document.getElementById('hhmm').textContent=`${hh}:${mm}`;
-  document.getElementById('dmy').textContent=now.toLocaleDateString('es-ES',{weekday:'long',day:'2-digit',month:'long'}).replace(/^./,c=>c.toUpperCase());
-}
-setInterval(updClock,1000); updClock();
+  // ====== Reloj ======
+  function tick(){const d=new Date();const h=String(d.getHours()).padStart(2,'0');const m=String(d.getMinutes()).padStart(2,'0');
+    document.getElementById('clock').textContent=h+':'+m;
+    document.getElementById('date').textContent=new Intl.DateTimeFormat('es-ES',{weekday:'long',day:'2-digit',month:'long'}).format(d).toUpperCase();}
+  setInterval(tick,1000);tick();
 
-/* ===== Fullscreen FAB ===== */
-document.getElementById('fs').onclick=()=>{const el=document.documentElement;if(!document.fullscreenElement){el.requestFullscreen?.()}else{document.exitFullscreen?.()}};
+  // ====== Navegación entre vistas ======
+  const V={home:document.getElementById('view-home'),center:document.getElementById('view-center'),admin:document.getElementById('view-admin')};
+  function show(id){Object.values(V).forEach(v=>v.classList.remove('active'));V[id].classList.add('active');}
+  document.querySelectorAll('.center-btn').forEach(b=>b.onclick=()=>openCenter(b.dataset.center));
+  document.getElementById('backFromCenter').onclick=()=>show('home');
+  document.getElementById('backFromAdmin').onclick=()=>show('home');
+  document.querySelector('.admin-toggle').onclick=()=>{show('admin'); buildAdminList()};
 
-/* ===== Admin botón diminuto ===== */
-const admBtn=document.getElementById('admBtn'), admPanel=document.getElementById('admPanel');
-admBtn.onclick=()=>{
-  if(admPanel.style.display!=='block'){
-    const p=prompt('Contraseña:'); if(p!=='0666'){ alert('Incorrecta'); return }
-    admPanel.style.display='block';
-  }else{admPanel.style.display='none'}
-};
+  // ====== Centros (coordenadas + plano) ======
+  const CENTERS={
+    PALMA:{name:'PALMA',lat:39.5696,lng:2.6502,plan:'plano-PALMA.png', code:'PALMA'},
+    CALVIА:{name:'CALVIÀ',lat:39.5667,lng:2.505,plan:'plano-CALVIA.png', code:'CALVIA'},
+    ALCUDIA:{name:'ALCUDIA',lat:39.8532,lng:3.1214,plan:'plano-ALCUDIA.png', code:'ALCUDIA'},
+    SANTANYI:{name:'SANTANYÍ',lat:39.3544,lng:3.1274,plan:'plano-SANTANYI.png', code:'SANTANYI'}
+  };
+  let map, mapMarker, currentCenter='';
+  function openCenter(key){
+    currentCenter=key; const c=CENTERS[key]; if(!c) return;
+    document.getElementById('centerTitle').textContent='Centro '+c.name;
+    document.getElementById('centerSubtitle').textContent='Galaxy Tab A6';
+    document.getElementById('planImg').src=c.plan; // imagen por convención
+    show('center');
+    setTimeout(()=>{ if(!map){ map=L.map('map').setView([c.lat,c.lng], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map); }
+      map.setView([c.lat,c.lng],13); if(mapMarker){ map.removeLayer(mapMarker);} mapMarker=L.marker([c.lat,c.lng]).addTo(map).bindPopup(c.name).openPopup(); },50);
+    // Autocarga opcional
+  }
 
-/* ===== Voz: TTS + STT (demostración rápida) ===== */
-let lang='es', listening=false, rec=null;
-const transc=document.getElementById('transc'), sphere=document.getElementById('sphere');
-const LANGS={es:{tag:'es-ES',greet:'Buenos días. ¿En qué puedo ayudarle?'},en:{tag:'en-GB',greet:'Good morning. How can I help?'},de:{tag:'de-DE',greet:'Guten Tag. Wie kann ich helfen?'}};
-function speak(t){
-  try{
-    const u=new SpeechSynthesisUtterance(t); u.lang=LANGS[lang].tag; speechSynthesis.cancel(); speechSynthesis.speak(u);
-    sphere.classList.add('speaking'); setTimeout(()=>sphere.classList.remove('speaking'),Math.min(8000, t.split(/\s+/).length*340));
-  }catch{}
-}
-function listenStart(){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR){ transc.textContent='Navegador sin reconocimiento de voz.'; return }
-  rec=new SR(); rec.lang=LANGS[lang].tag; rec.continuous=true; rec.interimResults=true;
-  rec.onstart=()=>{listening=true; sphere.classList.add('listening'); transc.textContent='Escuchando…'};
-  rec.onresult=(ev)=>{let i='',f='';for(let k=ev.resultIndex;k<ev.results.length;k++){const r=ev.results[k]; if(r.isFinal) f+=r[0].transcript+' '; else i+=r[0].transcript}
-    transc.textContent=(f||i||'…')}
-  rec.onend=()=>{listening=false; sphere.classList.remove('listening');};
-  rec.start();
-}
-document.getElementById('mic').onclick=()=>{ if(!listening) listenStart() };
-document.getElementById('mute').onclick=()=>{ try{listening=false; rec&&rec.stop()}catch{} };
+  // ====== Excel: carga y fusión ======
+  let invRows=[]; let priceRows=[]; let merged=[];
+  const T=document.querySelector('#tableInv tbody');
+  document.getElementById('btnAutoLoad').onclick=tryAutoLoad;
+  document.getElementById('fileStock').onchange=e=>readExcel(e.target.files[0],'stock');
+  document.getElementById('filePrice').onchange=e=>readExcel(e.target.files[0],'price');
+  document.getElementById('searchText').oninput=e=>renderTable(e.target.value);
 
-/* Idiomas / Centros */
-document.getElementById('langs').addEventListener('click',e=>{
-  const el=e.target.closest('.card[data-lang]'); if(!el) return; lang=el.dataset.lang; speak(LANGS[lang].greet);
-});
-document.getElementById('centers').addEventListener('click',e=>{
-  const el=e.target.closest('.card[data-center]'); if(!el) return; const c=el.dataset.center.toUpperCase(); speak(`Centro ${c}. ¿Qué necesita?`);
-});
+  async function tryAutoLoad(){
+    // Intento de ruta relativa (deberá estar servida por el servidor)
+    if(!currentCenter) return alert('Selecciona un centro');
+    const code=CENTERS[currentCenter].code;
+    const paths=[`Asistente-Duran/imports/Stock_Almacen_${code}_20250915.xlsx`,`Asistente-Duran/imports/Lista de artículos.xlsx`];
+    for(const p of paths){ try{ const res=await fetch(p); if(!res.ok) throw 0; const buf=await res.arrayBuffer(); const wb=XLSX.read(buf); if(p.includes('Stock_Almacen_')) parseStock(wb); else parsePrice(wb); }catch{ console.warn('No se pudo auto-cargar',p); } }
+    mergeAndRender();
+  }
+  function readExcel(file,kind){ const r=new FileReader(); r.onload=()=>{ const wb=XLSX.read(new Uint8Array(r.result),{type:'array'}); if(kind==='stock') parseStock(wb); else parsePrice(wb); mergeAndRender(); }; r.readAsArrayBuffer(file); }
+  function sheetToJson(wb){ const sh=wb.Sheets[wb.SheetNames[0]]; return XLSX.utils.sheet_to_json(sh,{defval:''}); }
+  function parseStock(wb){ invRows=sheetToJson(wb).map(r=>({ id: r.ID||r.CODIGO||r.Articulo||r.Ref||'', name:r.NOMBRE||r.DESC||r.Descripcion||'', ean:r.EAN||r.CODBARRAS||'', ubic:r.UBICACION||r.Ubicacion||'', stock:Number(r.STOCK||r.CANTIDAD||0), img:r.IMAGEN||'' })); }
+  function parsePrice(wb){ priceRows=sheetToJson(wb).map(r=>({ key:(r.EAN||r.CODBARRAS||r.CODIGO||'').toString().trim(), price:Number(r.PRECIO||r.PVP||r.PRECIO_venta||0) })); }
 
-/* ===== Wires: dibuja líneas desde tarjetas al anillo central ===== */
-const wireSvg=document.getElementById('wire');
-function drawWires(){
-  const hubRect=document.getElementById('hub').getBoundingClientRect();
-  const sphereRect=sphere.getBoundingClientRect();
-  const cx=sphereRect.left+sphereRect.width/2 - hubRect.left;
-  const cy=sphereRect.top+sphereRect.height/2 - hubRect.top;
+  // Overrides canónicos guardados (EAN/ubic/img) -> prevalecen SIEMPRE
+  function getOverrides(){try{return JSON.parse(localStorage.getItem('duran_overrides')||'{}')}catch{return {}}}
+  function setOverrides(o){localStorage.setItem('duran_overrides',JSON.stringify(o))}
 
-  function anchors(query){
-    return [...document.querySelectorAll(query)].map(el=>{
-      const r=el.getBoundingClientRect();
-      const x=(r.left< sphereRect.left)? (r.right - hubRect.left) : (r.left - hubRect.left);
-      const y=r.top + r.height/2 - hubRect.top;
-      return {x,y};
+  function mergeAndRender(){
+    const ov=getOverrides();
+    const priceMap=new Map(priceRows.map(p=>[p.key,p.price]));
+    merged=invRows.map(it=>{
+      const k=it.id||it.ean||it.name; const o=ov[k]||{};
+      const ean=o.ean||it.ean; // canon
+      const ubic=(o.ubic!==undefined)?o.ubic:it.ubic; // override fijo
+      const img=(o.img!==undefined)?o.img:it.img;
+      const price = priceMap.get(ean)||priceMap.get(it.ean)||0;
+      return {...it, ean, ubic, img, price};
+    });
+    renderTable(document.getElementById('searchText').value||'');
+    buildAdminList();
+  }
+  function renderTable(q){ q=(q||'').toLowerCase(); T.innerHTML='';
+    merged.filter(r=>!q||r.name.toLowerCase().includes(q)||String(r.ean).includes(q)).forEach(r=>{
+      const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.ean||''}</td><td>${r.name}</td><td>${r.ubic||''}</td><td>${r.stock||0}</td><td>${r.price? r.price.toFixed(2)+'€':''}</td>`; T.appendChild(tr);
     });
   }
-  const L=anchors('#langs .card'), R=anchors('#centers .card');
 
-  const W=hubRect.width, H=hubRect.height;
-  wireSvg.setAttribute('viewBox',`0 0 ${W} ${H}`); wireSvg.innerHTML='';
-  const mk=(x1,y1,x2,y2)=>`M ${x1} ${y1} L ${x2} ${y2}`;
-  const add=(d)=>{
-    const p=document.createElementNS('http://www.w3.org/2000/svg','path');
-    p.setAttribute('d',d);
-    p.setAttribute('stroke','url(#g)');
-    p.setAttribute('stroke-width','1.4'); p.setAttribute('fill','none');
-    p.setAttribute('opacity','0.9');
-    wireSvg.appendChild(p);
-  };
-  // gradiente
-  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
-  const g=document.createElementNS('http://www.w3.org/2000/svg','linearGradient'); g.id='g'; g.setAttribute('x1','0'); g.setAttribute('x2','1'); g.innerHTML=
-    `<stop offset="0" stop-color="rgba(110,230,255,.1)"/><stop offset="0.5" stop-color="rgba(110,230,255,.8)"/><stop offset="1" stop-color="rgba(154,162,255,.6)"/>`;
-  defs.appendChild(g); wireSvg.appendChild(defs);
+  // ====== Escaneo EAN/QR ======
+  let scanner; document.getElementById('btnScan').onclick=()=>toggleScan('scanner');
+  document.getElementById('btnAdminScan').onclick=()=>{show('admin');toggleScan('adminList')};
+  function toggleScan(targetId){ const box=document.getElementById('scanner'); if(targetId==='adminList') showScan('#adminList'); else showScan('#scanner'); }
+  function showScan(sel){ const el=document.querySelector(sel); if(scanner){ scanner.stop().then(()=>{scanner.clear(); scanner=null; el.style.display='none';}); return; }
+    el.style.display='block'; const div=document.createElement('div'); div.id='readerBox'; el.prepend(div);
+    scanner=new Html5Qrcode('readerBox');
+    scanner.start({facingMode:'environment'},{fps:10, qrbox:200}, (decoded)=>{ onCode(decoded); }, (e)=>{});
+  }
+  function onCode(code){ const found=merged.find(x=>String(x.ean)===String(code)||x.id===code); if(found){ alert('Encontrado: '+found.name+' ['+found.ean+']'); document.getElementById('searchText').value=found.ean; renderTable(found.ean); }
+    if(scanner){scanner.stop().then(()=>{scanner.clear(); scanner=null; const sc=document.getElementById('scanner'); sc&& (sc.style.display='none');});}
+  }
 
-  const r = sphereRect.width*0.35; // radio aproximado del anillo interno
-  const hit=(ax,ay)=>{ // proyecta hacia el centro y corta en el círculo r
-    const dx=cx-ax, dy=cy-ay; const len=Math.hypot(dx,dy); const ux=dx/len, uy=dy/len;
-    return {x: cx-ux*r, y: cy-uy*r};
-  };
-  [...L,...R].forEach(a=>{ const h=hit(a.x,a.y); add(mk(a.x,a.y,h.x,h.y)) });
-}
-new ResizeObserver(drawWires).observe(document.getElementById('stage'));
-window.addEventListener('load',drawWires); window.addEventListener('resize',drawWires);
+  // ====== Admin ======
+  function buildAdminList(){ const box=document.getElementById('adminList'); box.innerHTML=''; (merged.length?merged:invRows).slice(0,300).forEach(r=>{
+      const row=document.createElement('div'); row.style.padding='8px 10px'; row.style.borderBottom='1px solid rgba(255,255,255,.08)'; row.innerHTML=`<b>${r.name||''}</b><div style="color:var(--muted)">${r.ean||''} · ${r.id||''}</div>`; row.onclick=()=>openAdminDetail(r); box.appendChild(row);
+  }); }
+  function openAdminDetail(r){ document.getElementById('adminDetail').style.display='block';
+    document.getElementById('adName').value=r.name||''; document.getElementById('adEanCur').value=r.ean||''; document.getElementById('adEanNew').value=r.ean||''; document.getElementById('adUbic').value=r.ubic||''; document.getElementById('adImg').value=r.img||'';
+    document.getElementById('btnSaveOverride').onclick=()=>{ const ov=getOverrides(); const key=r.id||r.ean||r.name; ov[key]={ ean:document.getElementById('adEanNew').value.trim(), ubic:document.getElementById('adUbic').value.trim(), img:document.getElementById('adImg').value.trim() }; setOverrides(ov); alert('Guardado canónico'); mergeAndRender(); }
+  }
+  document.getElementById('btnAdminLoad').onclick=()=>{ document.getElementById('fileStock').click(); document.getElementById('filePrice').click(); };
+// ====== Voz: reconocimiento y animación del orbe ======
+  (function(){
+    const orb=document.querySelector('.orb');
+    let Rec=window.SpeechRecognition||window.webkitSpeechRecognition; let rec=null; if(Rec){ rec=new Rec(); rec.lang='es-ES'; rec.continuous=false; rec.interimResults=true; rec.onstart=()=>orb.classList.add('listening'); rec.onend=()=>orb.classList.remove('listening'); rec.onresult=(e)=>{ try{ const t=[...e.results].map(r=>r[0].transcript).join(' '); }catch(_){} }; }
+    orb && orb.addEventListener('click',()=>{ try{ if(rec){ rec.abort(); rec.start(); } else { orb.classList.add('listening'); setTimeout(()=>orb.classList.remove('listening'),1200);} }catch(_){ orb.classList.add('listening'); setTimeout(()=>orb.classList.remove('listening'),1200);} });
+  })();
 </script>
 </body>
 </html>
