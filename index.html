@@ -386,7 +386,7 @@
           .toString()
           .toLowerCase()
           .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g,'') // quita acentos/diacríticos
+          .replace(/[̀-ͯ]/g,'') // quita acentos/diacríticos
           .replace(/[^a-z0-9]+/g,' ')      // deja letras/números y espacios
           .trim();
       }/gu,'').replace(/[^a-z0-9]+/g,' ').trim();
@@ -517,6 +517,48 @@
 
       // Exponer por consola
       window.__searchRepo = performSearch; // por si quieres llamarlo manualmente
+    })();
+  </script>
+  
+  <!-- ===== Aditivo: estilos y refuerzo para botón Buscar ===== -->
+  <style id="btn-search-style">
+    .search.has-button{ grid-template-columns: 1fr auto auto; }
+    .btn-search{ display:inline-grid; place-items:center; border:0; border-radius:999px; width:44px; height:44px; background:radial-gradient(120% 120% at 50% -10%, var(--electric-2), var(--electric)); color:#00121e; font-weight:900; cursor:pointer; box-shadow:0 8px 28px rgba(0,182,255,.55) }
+    .btn-search:active{ transform:scale(.98) }
+  </style>
+  <script>
+    (function ensureSearchButton(){
+      try{
+        var searchBox = document.querySelector('.search');
+        if(!searchBox) return;
+        var input = searchBox.querySelector('input');
+        var btn = document.getElementById('searchBtn');
+        if(!btn){
+          btn = document.createElement('button');
+          btn.id='searchBtn'; btn.type='button'; btn.className='btn-search'; btn.textContent='🔎';
+          btn.setAttribute('aria-label', (window.currentLang==='en-US'?'Search':window.currentLang==='de-DE'?'Suchen':'Buscar'));
+          searchBox.appendChild(btn);
+        }
+        searchBox.classList.add('has-button');
+        if(!btn.__hubReady){
+          btn.__hubReady = true;
+          btn.addEventListener('click', function(){
+            var q = (input && input.value||'').trim();
+            var resultsEl = document.getElementById('results');
+            var subEl = document.getElementById('resultsSub');
+            if(resultsEl){ resultsEl.setAttribute('aria-hidden','false'); }
+            if(subEl){ subEl.textContent='Cargando…'; }
+            if(typeof window.__searchRepo === 'function') window.__searchRepo(q);
+            else if(typeof window.performSearch === 'function') window.performSearch(q);
+            else console.warn('Motor de búsqueda aún no disponible');
+          });
+        }
+        // Refuerzo Enter por si otro script falló
+        if(input && !input.__enterPatch){
+          input.__enterPatch = true;
+          input.addEventListener('keydown', function(e){ if(e.key==='Enter'){ btn.click(); } });
+        }
+      }catch(e){ console.warn('ensureSearchButton error', e); }
     })();
   </script>
 </body>
