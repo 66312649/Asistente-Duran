@@ -80,14 +80,7 @@
     footer.ftr{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;width:100%}
     .bottom-tag{border:1.5px solid var(--electric);padding:16px 18px;font-weight:800;font-size:18px;color:#e9f7ff;background:rgba(0,182,255,.06);border-radius:14px;text-align:center;user-select:none;box-shadow:0 8px 20px rgba(0,0,0,.25)}
 
-    @keyframes spin{to{transform:rotate(360deg)}}
-    @keyframes pulse{0%{opacity:.7;transform:scale(1)}100%{opacity:0;transform:scale(1.22)}}
-
-    @media (max-width:1100px){ main.core{grid-template-columns:220px 1fr 220px} .clock .time{font-size:38px} }
-    @media (max-width:900px){ header.hdr{grid-template-columns:1fr minmax(360px,1fr) 1fr} main.core{grid-template-columns:1fr;grid-auto-rows:auto} .left,.right{order:2} .center{order:1} footer.ftr{grid-template-columns:1fr 1fr} }
-  </style>
-  <!-- === Añadido: estilos segunda pantalla (resultados) === -->
-  <style id="results-style">
+    /* ===== Resultados (overlay) ===== */
     .results-overlay{position:fixed; inset:0; display:none; z-index:50; background:linear-gradient(180deg, rgba(6,12,26,.88), rgba(6,12,26,.92)); backdrop-filter: blur(6px);} 
     .results-overlay[aria-hidden="false"]{display:grid; grid-template-rows:auto 1fr;}
     .results-header{display:grid; grid-template-columns:1fr minmax(360px, 920px) 1fr; align-items:center; padding:16px 20px;}
@@ -112,8 +105,12 @@
     .back-btn{border:2px solid var(--electric); color:var(--electric); background:transparent; border-radius:12px; padding:8px 12px; font-weight:800; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.25), 0 0 8px rgba(0,182,255,.3) inset}
     .back-btn:active{transform:scale(.98)}
 
-    @media (max-width: 900px){ .results-grid{grid-template-columns: repeat(2, minmax(0,1fr));} }
-    @media (max-width: 560px){ .results-grid{grid-template-columns: 1fr;} }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes pulse{0%{opacity:.7;transform:scale(1)}100%{opacity:0;transform:scale(1.22)}}
+
+    @media (max-width:1100px){ main.core{grid-template-columns:220px 1fr 220px} .clock .time{font-size:38px} }
+    @media (max-width:900px){ header.hdr{grid-template-columns:1fr minmax(360px,1fr) 1fr} main.core{grid-template-columns:1fr;grid-auto-rows:auto} .left,.right{order:2} .center{order:1} footer.ftr{grid-template-columns:1fr 1fr} .results-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+    @media (max-width:560px){ .results-grid{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
@@ -164,10 +161,11 @@
       <!-- Columna derecha: Centros (sin título) -->
       <aside class="right panel">
         <div class="stack" role="group" aria-label="Centro">
-          <div class="tag center-chip" data-center="Palma" role="button" aria-pressed="true">Palma</div>
-          <div class="tag center-chip" data-center="Calvià" role="button" aria-pressed="false">Calvià</div>
+          <div class="tag center-chip" data-center="Palma" role="button" aria-pressed="false">Palma</div>
+          <div class="tag center-chip" data-center="Calvià" role="button" aria-pressed="true">Calvià</div>
           <div class="tag center-chip" data-center="Alcúdia" role="button" aria-pressed="false">Alcúdia</div>
           <div class="tag center-chip" data-center="Santanyí" role="button" aria-pressed="false">Santanyí</div>
+          <div class="tag center-chip" data-center="Santa Maria" role="button" aria-pressed="false">Santa Maria</div>
         </div>
       </aside>
     </main>
@@ -179,6 +177,26 @@
       <div class="bottom-tag" role="button">Electricidad</div>
     </footer>
   </div>
+
+  <!-- Overlay de resultados -->
+  <section class="results-overlay" id="results" aria-hidden="true">
+    <div class="results-header">
+      <div></div>
+      <div class="centered">
+        <div class="results-title" id="resultsTitle">Resultados</div>
+        <div class="results-sub" id="resultsSub"></div>
+      </div>
+      <div class="results-actions">
+        <button class="back-btn" id="backBtn">← Volver</button>
+      </div>
+    </div>
+    <div class="results-body">
+      <div class="results-grid" id="resultsGrid"></div>
+    </div>
+  </section>
+
+  <!-- ===== dependencias (solo aditivas) ===== -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <script>
     // ------- Reloj -------
@@ -199,7 +217,7 @@
     });
 
     // ------- Audio + Esfera reactiva -------
-    const micBtn = document.getElementById('mic'); // existe
+    const micBtn = document.getElementById('mic');
     const wrap = document.getElementById('techWrap');
     const sphere = document.getElementById('sphere');
     const barsBox = document.getElementById('bars');
@@ -252,10 +270,10 @@
     }
     requestAnimationFrame(animate);
 
-    // ------- Locución multilenguaje -------
+    // ------- Locución multilenguaje (chips) -------
     const langChips = Array.from(document.querySelectorAll('.lang-chip'));
     const centerChips = Array.from(document.querySelectorAll('.center-chip'));
-    let currentLang = 'es-ES';
+    window.currentLang = window.currentLang || 'es-ES';
 
     const PHRASES = {
       'es-ES': { prompt: '¿En qué puedo ayudarle?', center: (n)=>`Centro seleccionado: ${n}` },
@@ -282,442 +300,208 @@
 
     function selectLang(el){
       langChips.forEach(c=>c.setAttribute('aria-pressed', c===el ? 'true':'false'));
-      currentLang = el.dataset.lang || 'es-ES';
-      speak(PHRASES[currentLang].prompt, currentLang);
+      window.currentLang = el.dataset.lang || 'es-ES';
+      speak(PHRASES[window.currentLang].prompt, window.currentLang);
     }
 
     function selectCenter(el){
       centerChips.forEach(c=>c.setAttribute('aria-pressed', c===el ? 'true':'false'));
       const name = el.dataset.center || el.textContent.trim();
-      const phrase = PHRASES[currentLang].center(name);
-      speak(phrase, currentLang);
+      const phrase = PHRASES[window.currentLang].center(name);
+      speak(phrase, window.currentLang);
     }
 
     langChips.forEach(ch=> ch.addEventListener('click', ()=> selectLang(ch)) );
     centerChips.forEach(ch=> ch.addEventListener('click', ()=> selectCenter(ch)) );
-
-    // Cargar voces (algunos navegadores requieren esto)
     speechSynthesis.onvoiceschanged = ()=>{};
+
   </script>
-  <!-- === Añadido: segunda pantalla (resultados) === -->
-  <section class="results-overlay" id="results" aria-hidden="true">
-    <div class="results-header">
-      <div></div>
-      <div class="centered">
-        <div class="results-title" id="resultsTitle">Resultados</div>
-        <div class="results-sub" id="resultsSub"></div>
-      </div>
-      <div class="results-actions">
-        <button class="back-btn" id="backBtn">← Volver</button>
-      </div>
-    </div>
-    <div class="results-body">
-      <div class="results-grid" id="resultsGrid"></div>
-    </div>
-  </section>
 
-  <!-- === Añadido: lógica de resultados (no modifica nada previo) === -->
-  <script>
-    (function(){
-      // Datos de ejemplo (Calvià) embebidos desde la hoja que nos pasaste (camino a API real).
-      const DATA_ITEMS = [
-        {numero_articulo:1, ref_proveedor:null, descripcion_final:'BOLSA', fabricante:'P02527', stock:4588, precio_num:0.12, precio_eur:'0,12 €', centro:'Calvià'},
-        {numero_articulo:100012, ref_proveedor:'RRLQ008CAV3', descripcion_final:'[DISC] 145153 BOMBA CALOR HPSU UD.EXT 8KW1-230V', fabricante:'P03050', stock:0, precio_num:2300.00, precio_eur:'2.300,00 €', centro:'Calvià'},
-        {numero_articulo:100020, ref_proveedor:'136178', descripcion_final:'[DISC] VIERTEAGUAS PIETRA FIRENZE 15X30 NOCIOLA', fabricante:'P02499', stock:0, precio_num:6.46, precio_eur:'6,46 €', centro:'Calvià'},
-        {numero_articulo:100021, ref_proveedor:'39210000', descripcion_final:'MON CITTERIO BIDE CROMO', fabricante:'P00348', stock:0, precio_num:807.70, precio_eur:'807,70 €', centro:'Calvià'},
-        {numero_articulo:100022, ref_proveedor:'111700', descripcion_final:'FUNDA CUADRANTE BORDE BORDADO 65X65 BLAN', fabricante:'P02705', stock:0, precio_num:28.926, precio_eur:'28,93 €', centro:'Calvià'},
-        {numero_articulo:100023, ref_proveedor:'111720', descripcion_final:'FUNDA CUADRANTE BORDE BORDADO 50X70 BLAN', fabricante:'P02705', stock:0, precio_num:28.926, precio_eur:'28,93 €', centro:'Calvià'},
-        {numero_articulo:100024, ref_proveedor:'111680', descripcion_final:'FUNDA NORDICA 240X220 BORDADA BLANCA', fabricante:'P02705', stock:0, precio_num:119.835, precio_eur:'119,84 €', centro:'Calvià'},
-        {numero_articulo:100028, ref_proveedor:'32553000', descripcion_final:'[DISC] MONOMANDO ZEDRA FREGADERO CROMO', fabricante:'P00348', stock:0, precio_num:866.964, precio_eur:'866,96 €', centro:'Calvià'},
-        {numero_articulo:100032, ref_proveedor:'868505', descripcion_final:'[DISC] MOSAICO QUARZITE 5X5 DORATA', fabricante:'P02766', stock:0, precio_num:16.04, precio_eur:'16,04 €', centro:'Calvià'},
-        {numero_articulo:100038, ref_proveedor:'AH997ACR', descripcion_final:'[DISC] SOPORTE SEGURIDAD CONFORT H900 CROMO', fabricante:'P02574', stock:0, precio_num:686.20, precio_eur:'686,20 €', centro:'Calvià'},
-        {numero_articulo:100039, ref_proveedor:'281970002', descripcion_final:'CEPILLO SUC. METALICA ARCO 20X6 CM', fabricante:'P02736', stock:0, precio_num:2.37, precio_eur:'2,37 €', centro:'Calvià'},
-        {numero_articulo:100041, ref_proveedor:'4210006', descripcion_final:'MALLA TEJIDO 5X5 160GR 1000MM 50M', fabricante:'P02357', stock:17, precio_num:47.96, precio_eur:'47,96 €', centro:'Calvià'},
-        {numero_articulo:100094, ref_proveedor:'G8230294', descripcion_final:'DISCO CORTE PIEDRA 230MM 2MM PERFECT (ref. ant: B8230294)', fabricante:'P02756', stock:325, precio_num:2.767, precio_eur:'2,77 €', centro:'Calvià'}
-      ];
-
-      const resultsEl = document.getElementById('results');
-      const gridEl = document.getElementById('resultsGrid');
-      const backBtn = document.getElementById('backBtn');
-      const titleEl = document.getElementById('resultsTitle');
-      const subEl = document.getElementById('resultsSub');
-
-      const searchInput = document.querySelector('.search input');
-
-      function getCurrentCenter(){
-        const el = document.querySelector('.center-chip[aria-pressed="true"]');
-        return el ? (el.dataset.center || el.textContent.trim()) : 'Calvià';
-      }
-
-      function getLang(){
-        return (window.currentLang || 'es-ES');
-      }
-
-      const TEXT = {
-        'es-ES': { results:'Resultados', of:'coincidencias', back:'← Volver', price:'Precio', stock:'Stock', prov:'Ref. proveedor', mfg:'Fabricante' },
-        'en-US': { results:'Results', of:'matches', back:'← Back', price:'Price', stock:'Stock', prov:'Supplier ref.', mfg:'Manufacturer' },
-        'de-DE': { results:'Ergebnisse', of:'Treffer', back:'← Zurück', price:'Preis', stock:'Bestand', prov:'Lieferantenref.', mfg:'Hersteller' }
-      };
-
-      function i18n(){ return TEXT[getLang()] || TEXT['es-ES']; }
-
-      function normalize(s){ return (s||'').toString().toLowerCase(); }
-
-      function scoreItem(q, item){
-        const t = normalize(q);
-        const d = normalize(item.descripcion_final);
-        const r = normalize(item.ref_proveedor);
-        const n = normalize(item.numero_articulo);
-        let sc = 0;
-        if(!t) return 0;
-        t.trim().split(' ').filter(Boolean).forEach(function(tok){
-          if(d.indexOf(tok) !== -1) sc += 3;
-          if(r && r.indexOf(tok) !== -1) sc += 2;
-          if(n && n.indexOf(tok) !== -1) sc += 1.5;
-        });
-        return sc;
-      }
-
-      function searchItems(q){
-        const center = getCurrentCenter(); // demo data es Calvià
-        const arr = DATA_ITEMS.slice();
-        arr.forEach(function(it){ it.__score = scoreItem(q, it); });
-        arr.sort(function(a,b){ return b.__score - a.__score; });
-        return arr.filter(function(x){ return x.__score>0; }).slice(0,6);
-      }
-
-      function fmtSub(count, q){
-        const txt = i18n();
-        const center = getCurrentCenter();
-        return count + ' ' + txt.of + ' · Centro: ' + center + ' · “' + q + '”';
-      }
-
-      function badge(stock){
-        var ok = (Number(stock)||0) > 0;
-        var cls = ok ? 'ok' : 'zero';
-        var l = getLang();
-        var label = ok ? (l==='de-DE'? 'Verfügbar' : l==='en-US'? 'In stock' : 'En stock') : (l==='de-DE'? 'Ausverkauft' : l==='en-US'? 'Out of stock' : 'Agotado');
-        return '<span class="stock ' + cls + '">' + label + ': ' + (stock==null?0:stock) + '</span>';
-      }
-
-      function render(items, q){
-        var t = i18n();
-        titleEl.textContent = t.results;
-        subEl.textContent = fmtSub(items.length, q);
-        backBtn.textContent = t.back;
-        gridEl.innerHTML = items.map(function(it){
-          return '<article class="card" role="button" tabindex="0" data-id="'+it.numero_articulo+'">
-'
-          + '  <h3>'+ it.descripcion_final +'</h3>
-'
-          + '  <div class="meta">
-'
-          + '    <span><strong>'+ t.prov +':</strong> '+ (it.ref_proveedor==null?'-':it.ref_proveedor) +'</span>
-'
-          + '    <span><strong>'+ t.mfg +':</strong> '+ (it.fabricante||'-') +'</span>
-'
-          + '  </div>
-'
-          + '  <div class="price-stock">
-'
-          + '    <div class="price">'+ (it.precio_eur||'-') +'</div>
-'
-          + '    '+ badge(it.stock) +'
-'
-          + '  </div>
-'
-          + '</article>';
-        }).join('');
-        resultsEl.setAttribute('aria-hidden','false');
-      }
-
-      function hide(){ resultsEl.setAttribute('aria-hidden','true'); }
-
-      backBtn.addEventListener('click', hide);
-
-      // Activación por Enter en la barra de búsqueda (no modifica listeners previos)
-      if(searchInput){
-        searchInput.addEventListener('keydown', function(e){
-          if(e.key==='Enter'){
-            var q = searchInput.value.trim();
-            var list = searchItems(q);
-            render(list, q);
-          }
-        });
-      }
-
-      // Exponer función global mínima por si quieres probar desde consola
-      window.__showResultsDemo = function(q){ var list = searchItems(q||''); render(list, q||''); };
-    })();
-  </script>
-  
-  <!-- === Añadido: librería para leer Excel en el navegador (no modifica nada existente) === -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-  <!-- === Añadido: Carga dinámica desde GitHub + motor de búsqueda (ADITIVO) === -->
+  <!-- ===== Buscador conectado a GitHub (aditivo) + botón Buscar + voz real ===== -->
   <script>
     (function(){
       const REPO_BASE = 'https://raw.githubusercontent.com/66312649/Asistente-Duran/main/imports/';
       const PRICE_FILE = 'Lista%20de%20art%C3%ADculos.xlsx';
-      const STOCK_FILE = function(n){ return 'Stock_Almacen_'+n+'_20250915.xlsx'; };
-
+      const STOCK_FILE = n => `Stock_Almacen_${n}_20250915.xlsx`;
       const CENTER_CODE = { 'Palma':1, 'Calvià':2, 'Alcúdia':3, 'Santanyí':4, 'Santa Maria':7 };
-      const CODE_TO_CENTER = (function(){ const m={}; for(const k in CENTER_CODE){ m[CENTER_CODE[k]] = k; } return m; })();
+      const CODE_TO_CENTER = Object.fromEntries(Object.entries(CENTER_CODE).map(([k,v])=>[v,k]));
 
+      // UI refs
+      const searchBox = document.querySelector('.search');
+      const q = searchBox.querySelector('input');
       const resultsEl = document.getElementById('results');
       const gridEl = document.getElementById('resultsGrid');
+      const backBtn = document.getElementById('backBtn');
       const titleEl = document.getElementById('resultsTitle');
       const subEl = document.getElementById('resultsSub');
-      const backBtn = document.getElementById('backBtn');
-      const searchInput = document.querySelector('.search input');
 
-      // Exponer/lang actual (sin tocar script previo)
-      window.currentLang = window.currentLang || 'es-ES';
-      document.querySelectorAll('.lang-chip').forEach(function(ch){
-        ch.addEventListener('click', function(){ window.currentLang = ch.dataset.lang || 'es-ES'; });
-      });
-
-      function t(){
-        var L = window.currentLang || 'es-ES';
-        var TB = {
-          'es-ES': { results:'Resultados', of:'coincidencias', back:'← Volver', price:'Precio', stock:'Stock', prov:'Ref. proveedor', mfg:'Fabricante',
-                     alt:function(n,qty){ return 'Actualmente no disponemos de stock en este centro, pero en el centro de '+n+' disponemos de '+qty+' unidades. Por favor, hable con el mostrador para tramitar el suministro.'; } },
-          'en-US': { results:'Results', of:'matches', back:'← Back', price:'Price', stock:'Stock', prov:'Supplier ref.', mfg:'Manufacturer',
-                     alt:function(n,qty){ return 'We currently have no stock at this store, but '+qty+' units are available at the '+n+' branch. Please speak to the counter to arrange supply.'; } },
-          'de-DE': { results:'Ergebnisse', of:'Treffer', back:'← Zurück', price:'Preis', stock:'Bestand', prov:'Lieferantenref.', mfg:'Hersteller',
-                     alt:function(n,qty){ return 'Derzeit kein Bestand in diesem Standort, aber '+qty+' Stück sind im Standort '+n+' verfügbar. Bitte wenden Sie sich an den Schalter für die Bestellung.'; } }
-        };
-        return TB[L] || TB['es-ES'];
+      // Añadir botón Buscar (sin tocar HTML original)
+      if(!document.getElementById('searchBtn')){
+        const btn = document.createElement('button');
+        btn.id='searchBtn'; btn.type='button'; btn.className='mic'; btn.textContent='🔎';
+        btn.setAttribute('aria-label','Buscar');
+        searchBox.appendChild(btn); searchBox.classList.add('has-button');
+        btn.addEventListener('click', ()=> triggerSearch());
       }
 
-      // ==== Helpers ====
+      function t(){
+        const L = window.currentLang || 'es-ES';
+        return {
+          'es-ES': { results:'Resultados', of:'coincidencias', back:'← Volver', price:'Precio', stock:'Stock', prov:'Ref. proveedor', mfg:'Fabricante',
+            alt:(n,qty)=>`Actualmente no disponemos de stock en este centro, pero en el centro de ${n} disponemos de ${qty} unidades. Por favor, hable con el mostrador para tramitar el suministro.` },
+          'en-US': { results:'Results', of:'matches', back:'← Back', price:'Price', stock:'Stock', prov:'Supplier ref.', mfg:'Manufacturer',
+            alt:(n,qty)=>`We currently have no stock at this store, but ${qty} units are available at the ${n} branch. Please speak to the counter to arrange supply.` },
+          'de-DE': { results:'Ergebnisse', of:'Treffer', back:'← Zurück', price:'Preis', stock:'Bestand', prov:'Lieferantenref.', mfg:'Hersteller',
+            alt:(n,qty)=>`Derzeit kein Bestand in diesem Standort, aber ${qty} Stück sind im Standort ${n} verfügbar. Bitte wenden Sie sich an den Schalter für die Bestellung.` }
+        }[L];
+      }
+
       function getCurrentCenterName(){
-        var el = document.querySelector('.center-chip[aria-pressed="true"]');
+        const el = document.querySelector('.center-chip[aria-pressed="true"]');
         return el ? (el.dataset.center || el.textContent.trim()) : 'Calvià';
       }
       function getCurrentCenterCode(){ return CENTER_CODE[getCurrentCenterName()] || 2; }
 
+      // XLSX helpers
       async function fetchWorkbook(file){
-        var url = REPO_BASE + file;
-        var res = await fetch(url);
-        if(!res.ok) throw new Error('Fetch error '+res.status+': '+url);
-        var ab = await res.arrayBuffer();
+        const res = await fetch(REPO_BASE + file);
+        if(!res.ok) throw new Error('Fetch '+res.status+' '+file);
+        const ab = await res.arrayBuffer();
         return XLSX.read(ab, {type:'array'});
       }
-      function toJSON(wb, prefer){
-        var name = (prefer && wb.Sheets[prefer]) ? prefer : wb.SheetNames[0];
+      function sheetToJSON(wb){
+        const name = wb.SheetNames.find(n=>/Hoja1|ALM|Sheet1/i.test(n)) || wb.SheetNames[0];
         return XLSX.utils.sheet_to_json(wb.Sheets[name], {defval:null});
       }
       function normKey(s){
-        return (s||'').toString().toLowerCase()
-          .normalize('NFD').replace(/[̀-ͯ]/g,'')
-          .replace(/[^a-z0-9]+/g,' ').trim();
+        return (s||'').toString().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'').replace(/[^a-z0-9]+/g,' ').trim();
       }
       function pickCol(cols, hints){
-        var i, c, ncols = cols.map(function(cn){ return {raw:cn, n:normKey(cn)}; });
-        for(i=0;i<ncols.length;i++){ c=ncols[i]; if(hints.every(function(h){return c.n.indexOf(h)>=0;})) return c.raw; }
-        for(i=0;i<ncols.length;i++){ c=ncols[i]; if(hints.some(function(h){return c.n.indexOf(h)>=0;})) return c.raw; }
+        const nn = cols.map(c=>({raw:c, n:normKey(c)}));
+        for(const c of nn){ if(hints.every(h=> c.n.includes(h))) return c.raw; }
+        for(const c of nn){ if(hints.some(h=> c.n.includes(h))) return c.raw; }
         return null;
       }
 
-      // ==== Caches ====
-      var cache = { prices:null, stock:{} };
+      const cache = { prices:null, stock:{} };
 
       async function loadPrices(){
         if(cache.prices) return cache.prices;
-        var wb = await fetchWorkbook(PRICE_FILE);
-        var rows = toJSON(wb, 'Hoja1');
-        var cols = rows.length? Object.keys(rows[0]) : [];
-        var cNum = pickCol(cols, ['numero','articulo']);
-        var cDesc = pickCol(cols, ['descripcion','articulo']);
-        var cFab = pickCol(cols, ['fabricante']);
-        var cPrice = pickCol(cols, ['1','lista','precio','venta']);
-        var map = new Map();
-        rows.forEach(function(r){
-          var id = r[cNum]; if(id==null) return;
-          var key = String(id).trim();
-          map.set(key, { numero_articulo:key, descripcion:r[cDesc]||null, fabricante:r[cFab]||null, precio_venta:r[cPrice]||null });
-        });
+        const wb = await fetchWorkbook(PRICE_FILE); const rows = sheetToJSON(wb);
+        const cols = rows.length? Object.keys(rows[0]) : [];
+        const cNum = pickCol(cols, ['numero','articulo']);
+        const cDesc= pickCol(cols, ['descripcion','articulo']);
+        const cFab = pickCol(cols, ['fabricante']);
+        const cPvp = pickCol(cols, ['1','lista','precio','venta']);
+        const map = new Map();
+        for(const r of rows){
+          const id = r[cNum]; if(id==null) continue; const key = String(id).trim();
+          map.set(key, { numero_articulo:key, descripcion:r[cDesc]||'', fabricante:r[cFab]||'', pvp:r[cPvp] });
+        }
         cache.prices = map; return map;
       }
-
-      async function loadStock(centerCode){
-        if(cache.stock[centerCode]) return cache.stock[centerCode];
-        var wb = await fetchWorkbook(STOCK_FILE(centerCode));
-        var sheetName = wb.SheetNames.find(function(n){return /ALM/i.test(n);}) || wb.SheetNames[0];
-        var rows = toJSON(wb, sheetName);
-        var cols = rows.length? Object.keys(rows[0]) : [];
-        var cNum = pickCol(cols, ['numero','articulo']);
-        var cRef = pickCol(cols, ['referencia','proveedor']);
-        var cDesc = pickCol(cols, ['descripcion']);
-        var cFab = pickCol(cols, ['fabricante']);
-        var cStock = pickCol(cols, ['stock']);
-        var list = [];
-        rows.forEach(function(r){
-          var id = r[cNum]; if(id==null) return;
-          list.push({ numero_articulo:String(id).trim(), ref_proveedor:r[cRef]||null, descripcion:r[cDesc]||null, fabricante:r[cFab]||null, stock:Number(r[cStock]||0) });
-        });
-        cache.stock[centerCode] = list; return list;
+      async function loadStock(center){
+        if(cache.stock[center]) return cache.stock[center];
+        const wb = await fetchWorkbook(STOCK_FILE(center)); const rows = sheetToJSON(wb);
+        const cols = rows.length? Object.keys(rows[0]) : [];
+        const cNum = pickCol(cols, ['numero','articulo']);
+        const cRef = pickCol(cols, ['referencia','proveedor']);
+        const cDesc= pickCol(cols, ['descripcion']);
+        const cFab = pickCol(cols, ['fabricante']);
+        const cStk = pickCol(cols, ['stock']);
+        const list = rows.map(r=>({
+          numero_articulo:String(r[cNum]||'').trim(),
+          ref_proveedor:r[cRef]||'',
+          descripcion:r[cDesc]||'',
+          fabricante:r[cFab]||'',
+          stock:Number(r[cStk]||0)
+        })).filter(x=>x.numero_articulo);
+        cache.stock[center] = list; return list;
       }
-
       function formatEUR(val){
         if(val==null || val==='') return '-';
-        var n = (typeof val==='number')? val : parseFloat(String(val).split('.').join('').replace(',','.'));
+        const n = (typeof val==='number')? val : parseFloat(String(val).replace(/\./g,'').replace(',','.'));
         if(!isFinite(n)) return '-';
         return n.toLocaleString(window.currentLang||'es-ES', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
       }
 
       function mergeItem(s, p){
-        return { numero_articulo:s.numero_articulo, ref_proveedor:s.ref_proveedor,
-                 descripcion_final:(p && p.descripcion) || s.descripcion || '-', fabricante:(p && p.fabricante) || s.fabricante || '-',
-                 stock:s.stock||0, precio_eur: formatEUR(p && p.precio_venta) };
+        return {
+          numero_articulo:s.numero_articulo,
+          ref_proveedor:s.ref_proveedor||null,
+          descripcion_final:p?.descripcion || s.descripcion || '-',
+          fabricante:p?.fabricante || s.fabricante || '-',
+          stock:s.stock||0,
+          precio_eur: formatEUR(p?.pvp)
+        };
       }
-
       function score(q, it){
-        var t = (q||'').toLowerCase(); if(!t) return 0;
-        var toks = t.trim().split(' ').filter(Boolean);
-        var d = (it.descripcion_final||'').toLowerCase();
-        var r = (it.ref_proveedor||'').toLowerCase();
-        var n = (it.numero_articulo||'').toString().toLowerCase();
-        var s=0; toks.forEach(function(tok){ if(d.indexOf(tok)>=0) s+=3; if(r.indexOf(tok)>=0) s+=2; if(n.indexOf(tok)>=0) s+=1.5; });
+        const t = (q||'').toLowerCase(); if(!t) return 0; const parts=t.split(/\s+/).filter(Boolean);
+        const d=(it.descripcion_final||'').toLowerCase(), r=(it.ref_proveedor||'').toLowerCase(), n=(it.numero_articulo||'').toLowerCase();
+        let s=0; parts.forEach(tok=>{ if(d.includes(tok)) s+=3; if(r.includes(tok)) s+=2; if(n.includes(tok)) s+=1.5; });
         return s;
       }
 
-      function render(items, q){
-        var txt = t();
-        titleEl.textContent = txt.results;
-        subEl.textContent = items.length + ' ' + txt.of + ' · Centro: ' + getCurrentCenterName() + ' · “' + q + '”';
-        backBtn.textContent = txt.back;
-        gridEl.innerHTML = items.map(function(it){
-          var ok = (Number(it.stock)||0) > 0;
-          var badge = ok ? '<span class="stock ok">'+txt.stock+': '+it.stock+'</span>' : '<span class="stock zero">'+txt.stock+': 0</span>';
-          var alt = it._altStock ? '<div class="meta" style="margin-top:6px"><em>'+ txt.alt(CODE_TO_CENTER[it._altStock.center], it._altStock.qty) +'</em></div>' : '';
-          return '<article class="card" role="button" tabindex="0" data-id="'+it.numero_articulo+'">
-'
-            + '  <h3>'+ it.descripcion_final +'</h3>
-'
-            + '  <div class="meta">
-'
-            + '    <span><strong>'+ txt.prov +':</strong> '+ (it.ref_proveedor==null?'-':it.ref_proveedor) +'</span>
-'
-            + '    <span><strong>'+ txt.mfg +':</strong> '+ (it.fabricante||'-') +'</span>
-'
-            + '  </div>
-'
-            + '  <div class="price-stock">
-'
-            + '    <div class="price">'+ (it.precio_eur||'-') +'</div>
-'
-            + '    '+ badge +'
-'
-            + '  </div>
-'
-            + alt +\
-            '
-</article>';
-        }).join('');
+      function render(items, qStr){
+        const txt=t(); titleEl.textContent=txt.results; subEl.textContent=`${items.length} ${txt.of} · Centro: ${getCurrentCenterName()} · “${qStr}”`;
+        backBtn.textContent=txt.back;
+        gridEl.innerHTML = items.map(it=>{
+          const ok = (Number(it.stock)||0)>0; const badge = ok? `<span class="stock ok">${txt.stock}: ${it.stock}</span>` : `<span class="stock zero">${txt.stock}: 0</span>`;
+          const alt = it._altStock ? `<div class="meta" style="margin-top:6px"><em>${txt.alt(CODE_TO_CENTER[it._altStock.center], it._altStock.qty)}</em></div>` : '';
+          return `<article class="card" role="button" tabindex="0" data-id="${it.numero_articulo}">
+            <h3>${it.descripcion_final}</h3>
+            <div class="meta"><span><strong>${txt.prov}:</strong> ${it.ref_proveedor??'-'}</span><span><strong>${txt.mfg}:</strong> ${it.fabricante??'-'}</span></div>
+            <div class="price-stock"><div class="price">${it.precio_eur}</div>${badge}</div>${alt}
+          </article>`;}).join('');
         resultsEl.setAttribute('aria-hidden','false');
       }
 
       async function findAltStock(numArt, excludeCenter){
-        var centers = [1,2,3,4,7].filter(function(c){ return c!==excludeCenter; });
-        var best = null;
-        for(var i=0;i<centers.length;i++){
-          var c = centers[i];
-          var list = await loadStock(c);
-          var hit = list.find(function(x){ return x.numero_articulo===numArt && Number(x.stock)>0; });
-          if(hit){ best = {center:c, qty:Number(hit.stock)}; break; }
-        }
-        return best; // or null
+        for(const c of [1,2,3,4,7]){ if(c===excludeCenter) continue; const list = await loadStock(c); const hit = list.find(x=>x.numero_articulo===numArt && Number(x.stock)>0); if(hit) return {center:c, qty:Number(hit.stock)}; }
+        return null;
       }
 
-      async function performSearch(q){
+      async function performSearch(query){
         try{
-          var center = getCurrentCenterCode();
-          titleEl.textContent = t().results;
-          subEl.textContent = 'Buscando…';
-          resultsEl.setAttribute('aria-hidden','false');
-
-          var prices = await loadPrices();
-          var stock = await loadStock(center);
-          var merged = stock.map(function(s){ return mergeItem(s, prices.get(s.numero_articulo)); });
-          merged.forEach(function(m){ m.__score = score(q, m); });
-          merged.sort(function(a,b){ return b.__score - a.__score; });
-          var top = merged.filter(function(x){ return x.__score>0; }).slice(0,6);
-          if(top.length===0) top = merged.slice(0,6); // fallback
-
-          for(var i=0;i<top.length;i++){
-            var it = top[i];
-            if(Number(it.stock)<=0){ it._altStock = await findAltStock(it.numero_articulo, center); }
-          }
-          render(top, q);
-        }catch(err){
-          console.error(err);
-          subEl.textContent = 'Error cargando datos';
-        }
+          const center = getCurrentCenterCode();
+          titleEl.textContent=t().results; subEl.textContent='Cargando…'; resultsEl.setAttribute('aria-hidden','false');
+          const [prices, stock] = await Promise.all([loadPrices(), loadStock(center)]);
+          const merged = stock.map(s=> mergeItem(s, prices.get(s.numero_articulo)));
+          merged.forEach(m=> m.__score = score(query, m)); merged.sort((a,b)=> b.__score-a.__score);
+          let top = merged.filter(x=>x.__score>0).slice(0,6); if(top.length===0) top = merged.slice(0,6);
+          for(const it of top){ if(Number(it.stock)<=0){ it._altStock = await findAltStock(it.numero_articulo, center); } }
+          render(top, query);
+        }catch(e){ console.error(e); subEl.textContent='Error cargando datos'; }
       }
 
-      // Activar búsqueda al pulsar Enter (se añadirá a lo existente)
-      if(searchInput){
-        searchInput.addEventListener('keydown', function(e){
-          if(e.key==='Enter'){
-            performSearch(searchInput.value.trim());
-          }
-        });
-      }
+      function waitForSearchReady(cb, timeout=15000){ const t0=performance.now(); (function loop(){ if(typeof performSearch==='function'){ cb(); return; } if(performance.now()-t0>timeout) return; setTimeout(loop,250); })(); }
 
-      // Exponer para probar manualmente
-      window.__searchRepo = performSearch;
-    })();
-  </script>
-  
-  <!-- === ADITIVO: botón Buscar + robustez para abrir resultados === -->
-  <style id="search-btn-style">
-    .search.has-button{ grid-template-columns: 1fr auto auto; }
-    .btn-search{ display:inline-grid; place-items:center; border:0; border-radius:999px; width:44px; height:44px; background:radial-gradient(120% 120% at 50% -10%, var(--electric-2), var(--electric)); color:#00121e; font-weight:900; cursor:pointer; box-shadow:0 8px 28px rgba(0,182,255,.55) }
-    .btn-search:active{ transform:scale(.98) }
-  </style>
-  <script>
-    (function(){
-      // 1) AÑADIR BOTÓN BUSCAR SIN TOCAR EL HTML EXISTENTE
-      var searchBox = document.querySelector('.search');
-      var input = searchBox ? searchBox.querySelector('input') : null;
-      if(searchBox && !document.getElementById('searchBtn')){
-        var btn = document.createElement('button');
-        btn.id = 'searchBtn'; btn.type = 'button'; btn.className = 'btn-search'; btn.textContent = '🔎';
-        btn.setAttribute('aria-label', (window.currentLang==='en-US'?'Search':window.currentLang==='de-DE'?'Suchen':'Buscar'));
-        searchBox.appendChild(btn);
-        searchBox.classList.add('has-button');
-        btn.addEventListener('click', function(){ if(window.__searchRepo){ window.__searchRepo((input && input.value||'').trim()); } else { openOverlayBootstrap('Inicializando…'); } });
-      }
+      function triggerSearch(){ const query=(q&&q.value||'').trim(); resultsEl.setAttribute('aria-hidden','false'); subEl.textContent='Cargando…'; waitForSearchReady(()=> performSearch(query)); }
 
-      // 2) GARANTIZAR QUE EL OVERLAY DE RESULTADOS EXISTE (por si una iteración anterior lo perdió)
-      function ensureResultsUI(){
-        if(document.getElementById('results')) return true;
-        // Estilos mínimos si faltan
-        if(!document.getElementById('results-style')){
-          var st = document.createElement('style'); st.id='results-style';
-          st.textContent = '.results-overlay{position:fixed;inset:0;display:none;z-index:50;background:linear-gradient(180deg,rgba(6,12,26,.88),rgba(6,12,26,.92));backdrop-filter:blur(6px)}.results-overlay[aria-hidden="false"]{display:grid;grid-template-rows:auto 1fr}.results-header{display:grid;grid-template-columns:1fr minmax(360px,920px) 1fr;align-items:center;padding:16px 20px}.results-header .centered{grid-column:2;display:grid;gap:10px;justify-items:center;text-align:center}.results-title{font-size:20px;font-weight:800;letter-spacing:.06em;color:var(--electric-2);text-transform:uppercase}.results-sub{font-size:14px;color:#b8c9da}.results-actions{grid-column:3;justify-self:end;display:flex;gap:10px}.results-body{padding:8px 24px 24px;display:grid;grid-template-columns:minmax(0,1fr)}.results-grid{margin:0 auto;width:min(92vw,1100px);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.card{background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;grid-template-rows:auto auto 1fr auto;gap:8px;box-shadow:0 10px 30px rgba(0,0,0,.35)}.card h3{margin:0;font-size:16px;color:#eaf4ff}.meta{font-size:12px;color:#9fb4c8;display:flex;gap:12px;flex-wrap:wrap}.price-stock{display:flex;justify-content:space-between;align-items:center;margin-top:6px}.price{font-weight:800;font-size:18px;color:var(--ink)}.stock{font-weight:800;font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid var(--line)}.stock.ok{background:rgba(34,211,238,.12);border-color:rgba(34,211,238,.35);color:#c8f6ff}.stock.zero{background:rgba(255,143,107,.12);border-color:rgba(255,143,107,.35);color:#ffd8cb}.back-btn{border:2px solid var(--electric);color:var(--electric);background:transparent;border-radius:12px;padding:8px 12px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25),0 0 8px rgba(0,182,255,.3) inset}';
-          document.head.appendChild(st);
-        }
-        var section = document.createElement('section'); section.className='results-overlay'; section.id='results'; section.setAttribute('aria-hidden','true');
-        section.innerHTML = '<div class="results-header"><div></div><div class="centered"><div class="results-title" id="resultsTitle">Resultados</div><div class="results-sub" id="resultsSub"></div></div><div class="results-actions"><button class="back-btn" id="backBtn">← Volver</button></div></div><div class="results-body"><div class="results-grid" id="resultsGrid"></div></div>';
-        document.body.appendChild(section);
-        var back = document.getElementById('backBtn'); back && back.addEventListener('click', function(){ section.setAttribute('aria-hidden','true'); });
-        return true;
-      }
+      // Enter
+      q.addEventListener('keydown', e=>{ if(e.key==='Enter') triggerSearch(); });
 
-      function openOverlayBootstrap(msg){ ensureResultsUI(); var r=document.getElementById('results'); var s=document.getElementById('resultsSub'); var t=document.getElementById('resultsTitle'); if(t) t.textContent='Resultados'; if(s) s.textContent=msg||''; if(r) r.setAttribute('aria-hidden','false'); }
-
-      // 3) ACTIVAR ENTER EN EL INPUT (si el motor está cargado, busca; si no, muestra overlay con aviso)
-      if(input){
-        input.addEventListener('keydown', function(e){
-          if(e.key==='Enter'){
-            if(window.__searchRepo){ window.__searchRepo((input && input.value||'').trim()); }
-            else { openOverlayBootstrap('Inicializando…'); }
-          }
-        });
+      // ===== Reconocimiento de voz real (SpeechRecognition) =====
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      function startSpeech(){
+        if(!SR){ resultsEl.setAttribute('aria-hidden','false'); subEl.textContent='Reconocimiento de voz no disponible'; return; }
+        const isSecure = location.protocol==='https:' || ['localhost','127.0.0.1'].includes(location.hostname);
+        if(!isSecure){ resultsEl.setAttribute('aria-hidden','false'); subEl.textContent='La voz requiere HTTPS o ejecutar en localhost'; return; }
+        const rec = new SR(); rec.lang = window.currentLang||'es-ES'; rec.interimResults=false; rec.maxAlternatives=1;
+        rec.onresult = ev =>{ let final=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ const r=ev.results[i]; if(r.isFinal) final += r[0].transcript + ' '; }
+          if(final.trim()){ q.value = (q.value? q.value+' ':'') + final.trim(); triggerSearch(); } };
+        rec.onerror = ()=>{ resultsEl.setAttribute('aria-hidden','false'); subEl.textContent='No se pudo captar audio'; };
+        try{ rec.start(); }catch(e){}
       }
+      // añadir listener sin quitar el anterior (es aditivo)
+      const mic = document.getElementById('mic');
+      mic && mic.addEventListener('click', ()=> startSpeech());
+
+      // Cerrar resultados
+      backBtn.addEventListener('click', ()=> resultsEl.setAttribute('aria-hidden','true'));
+
+      // Exponer por consola
+      window.__searchRepo = performSearch; // por si quieres llamarlo manualmente
     })();
   </script>
 </body>
