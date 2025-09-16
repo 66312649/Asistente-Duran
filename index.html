@@ -364,17 +364,32 @@
 
       // XLSX helpers
       async function fetchWorkbook(file){
-        const res = await fetch(REPO_BASE + file);
-        if(!res.ok) throw new Error('Fetch '+res.status+' '+file);
-        const ab = await res.arrayBuffer();
-        return XLSX.read(ab, {type:'array'});
+        const url = REPO_BASE + file;
+        try{
+          const res = await fetch(url, { cache:'no-store', mode:'cors' });
+          if(!res.ok) throw new Error('HTTP '+res.status+' en '+file);
+          const ab = await res.arrayBuffer();
+          return XLSX.read(ab, {type:'array'});
+        }catch(err){
+          console.error('[fetchWorkbook] Error cargando', url, err);
+          throw err;
+        }
+      });
       }
       function sheetToJSON(wb){
         const name = wb.SheetNames.find(n=>/Hoja1|ALM|Sheet1/i.test(n)) || wb.SheetNames[0];
         return XLSX.utils.sheet_to_json(wb.Sheets[name], {defval:null});
       }
       function normKey(s){
-        return (s||'').toString().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'').replace(/[^a-z0-9]+/g,' ').trim();
+        // Compatibilidad amplia (tablets antiguas): eliminar tildes sin usar Unicode property escapes
+        return (s||'')
+          .toString()
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g,'') // quita acentos/diacríticos
+          .replace(/[^a-z0-9]+/g,' ')      // deja letras/números y espacios
+          .trim();
+      }/gu,'').replace(/[^a-z0-9]+/g,' ').trim();
       }
       function pickCol(cols, hints){
         const nn = cols.map(c=>({raw:c, n:normKey(c)}));
@@ -387,7 +402,7 @@
 
       async function loadPrices(){
         if(cache.prices) return cache.prices;
-        const wb = await fetchWorkbook(PRICE_FILE); const rows = sheetToJSON(wb);
+        const wb = await fetchWorkbook(PRICE_FILE); const rows = sheetToJSON(wb); console.log('[PRECIOS] Filas:', rows.length);
         const cols = rows.length? Object.keys(rows[0]) : [];
         const cNum = pickCol(cols, ['numero','articulo']);
         const cDesc= pickCol(cols, ['descripcion','articulo']);
@@ -402,7 +417,7 @@
       }
       async function loadStock(center){
         if(cache.stock[center]) return cache.stock[center];
-        const wb = await fetchWorkbook(STOCK_FILE(center)); const rows = sheetToJSON(wb);
+        const wb = await fetchWorkbook(STOCK_FILE(center)); const rows = sheetToJSON(wb); console.log('[STOCK] Centro', center, 'Filas:', rows.length);
         const cols = rows.length? Object.keys(rows[0]) : [];
         const cNum = pickCol(cols, ['numero','articulo']);
         const cRef = pickCol(cols, ['referencia','proveedor']);
@@ -471,7 +486,7 @@
           let top = merged.filter(x=>x.__score>0).slice(0,6); if(top.length===0) top = merged.slice(0,6);
           for(const it of top){ if(Number(it.stock)<=0){ it._altStock = await findAltStock(it.numero_articulo, center); } }
           render(top, query);
-        }catch(e){ console.error(e); subEl.textContent='Error cargando datos'; }
+        }catch(e){ console.error('[performSearch] Error', e); subEl.textContent='Error cargando datos: '+ (e && e.message ? e.message : e); }
       }
 
       function waitForSearchReady(cb, timeout=15000){ const t0=performance.now(); (function loop(){ if(typeof performSearch==='function'){ cb(); return; } if(performance.now()-t0>timeout) return; setTimeout(loop,250); })(); }
