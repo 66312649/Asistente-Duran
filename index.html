@@ -296,7 +296,42 @@
 
       function formatEUR(val){ if(val==null||val==='') return '-'; var n= (typeof val==='number')? val : parseFloat(String(val).replace(/\./g,'').replace(',','.')); if(!isFinite(n)) return '-'; return n.toLocaleString(window.currentLang||'es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
       function mergeItem(s,p){ return { numero_articulo:s.numero_articulo, ref_proveedor:s.ref_proveedor||null, descripcion_final:(p && p.descripcion) || s.descripcion || '-', fabricante:(p && p.fabricante) || s.fabricante || '-', stock:s.stock||0, precio_eur:formatEUR(p && p.pvp) }; }
-      function score(qs,it){ var t=String(qs||'').toLowerCase(); if(!t) return 0; var parts=t.trim().split(' ').filter(Boolean); var d=String(it.descripcion_final==null?'':it.descripcion_final).toLowerCase(); var r=String(it.ref_proveedor==null?'':it.ref_proveedor).toLowerCase(); var n=String(it.numero_articulo==null?'':it.numero_articulo).toLowerCase(); var s=0; for(var i=0;i<parts.length;i++){ var tok=parts[i]; if(d.indexOf(tok)>=0) s+=3; if(r.indexOf(tok)>=0) s+=2; if(n.indexOf(tok)>=0) s+=1.5; } return s; }
+      function score(qs, it){
+        // Búsqueda más certera: ponderación por coincidencia exacta, frase completa, tokens y campos clave
+        var q = String(qs||'').trim();
+        if(!q) return 0;
+        var qKey = normKey(q);
+        var tokens = qKey.split(' ').filter(function(t){ return t && t.length>1; });
+        var d = normKey(it.descripcion_final==null?'':it.descripcion_final);
+        var r = normKey(it.ref_proveedor==null?'':it.ref_proveedor);
+        var n = normKey(it.numero_articulo==null?'':it.numero_articulo);
+        var f = normKey(it.fabricante==null?'':it.fabricante);
+        var s = 0;
+        // 1) Coincidencias exactas de códigos/ref → muy alto
+        if(qKey && (n===qKey || r===qKey)) s += 120;
+        // 2) Frase completa en descripción o fabricante
+        if(d.indexOf(qKey)>=0) s += 45;
+        if(f.indexOf(qKey)>=0) s += 22;
+        // 3) Por token, con más peso en ref y nº artículo
+        for(var i=0;i<tokens.length;i++){
+          var t = tokens[i];
+          if(!t) continue;
+          if(d.indexOf(t)>=0) s += 7;
+          if(f.indexOf(t)>=0) s += 6;
+          if(r.indexOf(t)>=0) s += 12;
+          if(n.indexOf(t)>=0) s += 12;
+        }
+        // 4) Bonus por comienzo de palabra (descripción)
+        if(tokens.length){
+          try{
+            var rex = new RegExp('(?:^|\s)'+tokens[0]);
+            if(rex.test(d)) s += 4;
+          }catch(e){}
+        }
+        // 5) Pequeña penalización por items sin precio visible
+        if(!it.precio_eur || it.precio_eur==='-') s -= 2;
+        return s;
+      } return s; }
 
       function render(items, qStr){ var L=window.currentLang||'es-ES'; var TXT={ 'es-ES':{results:'Resultados',of:'coincidencias',back:'← Volver',price:'Precio',stock:'Stock',prov:'Ref. proveedor',mfg:'Fabricante', alt:function(n,qty){return 'Actualmente no disponemos de stock en este centro, pero en el centro de '+n+' disponemos de '+qty+' unidades. Por favor, hable con el mostrador para tramitar el suministro.';}}, 'en-US':{results:'Results',of:'matches',back:'← Back',price:'Price',stock:'Stock',prov:'Supplier ref.',mfg:'Manufacturer', alt:function(n,qty){return 'We currently have no stock at this store, but '+qty+' units are available at the '+n+' branch. Please speak to the counter to arrange supply.';}}, 'de-DE':{results:'Ergebnisse',of:'Treffer',back:'← Zurück',price:'Preis',stock:'Bestand',prov:'Lieferantenref.',mfg:'Hersteller', alt:function(n,qty){return 'Derzeit kein Bestand in diesem Standort, aber '+qty+' Stück sind im Standort '+n+' verfügbar. Bitte wenden Sie sich an den Schalter für die Bestellung.';}} }[L];
         titleEl.textContent=TXT.results; subEl.textContent= items.length+' '+TXT.of+' · Centro: '+getCurrentCenterName()+' · “'+qStr+'”'; backBtn.textContent=TXT.back;
@@ -305,7 +340,7 @@
 
       function findAltStock(numArt, excludeCenter){ var order=[1,2,3,4,7]; var i=0; function step(){ if(i>=order.length) return Promise.resolve(null); var c=order[i++]; if(c===excludeCenter) return step(); return loadStock(c).then(function(list){ var hit=list.find(function(x){return x.numero_articulo===numArt && Number(x.stock)>0;}); return hit? {center:c, qty:Number(hit.stock)} : step(); }); } return step(); }
 
-      function performSearch(query){ try{ var center=getCurrentCenterCode(); titleEl.textContent='Resultados'; subEl.textContent='Cargando…'; resultsEl.setAttribute('aria-hidden','false'); Promise.all([loadPrices(), loadStock(center)]).then(function(arr){ var prices=arr[0], stock=arr[1]; var merged=stock.map(function(s){ return mergeItem(s, prices.get(s.numero_articulo)); }); merged.forEach(function(m){ m.__score=score(query,m); }); merged.sort(function(a,b){return b.__score-a.__score;}); var top=merged.filter(function(x){return x.__score>0;}).slice(0,6); if(top.length===0) top=merged.slice(0,6); var k=0; function enrich(){ if(k>=top.length) return render(top, query); var it=top[k++]; if(Number(it.stock)<=0){ findAltStock(it.numero_articulo, center).then(function(res){ it._altStock=res; enrich(); }); } else enrich(); } enrich(); }).catch(function(e){ console.error('[performSearch] Error', e); subEl.textContent='Error cargando datos: '+(e&&e.message?e.message:e); }); }catch(e){ console.error('[performSearch] Error', e); subEl.textContent='Error cargando datos: '+(e&&e.message?e.message:e); } }
+      function performSearch(query){ try{ var center=getCurrentCenterCode(); titleEl.textContent='Resultados'; subEl.textContent='Cargando…'; resultsEl.setAttribute('aria-hidden','false'); Promise.all([loadPrices(), loadStock(center)]).then(function(arr){ var prices=arr[0], stock=arr[1]; var merged=stock.map(function(s){ return mergeItem(s, prices.get(s.numero_articulo)); }); merged.forEach(function(m){ m.__score=score(query,m); }); merged.sort(function(a,b){return b.__score-a.__score;}); var top=merged.filter(function(x){return x.__score>0;}).slice(0,12); if(top.length===0) top=merged.slice(0,12); var k=0; function enrich(){ if(k>=top.length) return render(top, query); var it=top[k++]; if(Number(it.stock)<=0){ findAltStock(it.numero_articulo, center).then(function(res){ it._altStock=res; enrich(); }); } else enrich(); } enrich(); }).catch(function(e){ console.error('[performSearch] Error', e); subEl.textContent='Error cargando datos: '+(e&&e.message?e.message:e); }); }catch(e){ console.error('[performSearch] Error', e); subEl.textContent='Error cargando datos: '+(e&&e.message?e.message:e); } }
 
       // Exponer para depuración
       window.__searchRepo = performSearch;
