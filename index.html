@@ -239,7 +239,17 @@
 
     function formatEUR(val){ if(val==null||val==='') return '-'; const n=(typeof val==='number')?val:parseFloat(String(val).replace(/\./g,'').replace(',','.')); if(!isFinite(n)) return '-'; return n.toLocaleString(window.currentLang||'es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
     function mergeItem(s,p){ return { numero_articulo:s.numero_articulo, ref_proveedor:s.ref_proveedor||null, descripcion_final:p?.descripcion||s.descripcion||'-', fabricante:p?.fabricante||s.fabricante||'-', stock:s.stock||0, precio_eur:formatEUR(p?.pvp) }; }
-    function score(qs,it){ const t=(qs||'').toLowerCase(); if(!t) return 0; const parts=t.split(/\s+/).filter(Boolean); const d=(it.descripcion_final||'').toLowerCase(), r=(it.ref_proveedor||'').toLowerCase(), n=(it.numero_articulo||'').toLowerCase(); let s=0; parts.forEach(tok=>{ if(d.includes(tok)) s+=3; if(r.includes(tok)) s+=2; if(n.includes(tok)) s+=1.5; }); return s; }
+    function score(qs,it){
+      const t = String(qs||'').toLowerCase();
+      if(!t) return 0;
+      const parts = t.trim().split(' ').filter(Boolean);
+      const d = String(it.descripcion_final==null? '' : it.descripcion_final).toLowerCase();
+      const r = String(it.ref_proveedor==null? '' : it.ref_proveedor).toLowerCase();
+      const n = String(it.numero_articulo==null? '' : it.numero_articulo).toLowerCase();
+      let s=0;
+      for(const tok of parts){ if(d.includes(tok)) s+=3; if(r.includes(tok)) s+=2; if(n.includes(tok)) s+=1.5; }
+      return s;
+    }); return s; }
 
     function render(items, qStr){ const L=window.currentLang||'es-ES'; const TXT={ 'es-ES':{results:'Resultados',of:'coincidencias',back:'← Volver',price:'Precio',stock:'Stock',prov:'Ref. proveedor',mfg:'Fabricante', alt:(n,qty)=>`Actualmente no disponemos de stock en este centro, pero en el centro de ${n} disponemos de ${qty} unidades. Por favor, hable con el mostrador para tramitar el suministro.`}, 'en-US':{results:'Results',of:'matches',back:'← Back',price:'Price',stock:'Stock',prov:'Supplier ref.',mfg:'Manufacturer', alt:(n,qty)=>`We currently have no stock at this store, but ${qty} units are available at the ${n} branch. Please speak to the counter to arrange supply.`}, 'de-DE':{results:'Ergebnisse',of:'Treffer',back:'← Zurück',price:'Preis',stock:'Bestand',prov:'Lieferantenref.',mfg:'Hersteller', alt:(n,qty)=>`Derzeit kein Bestand in diesem Standort, aber ${qty} Stück sind im Standort ${n} verfügbar. Bitte wenden Sie sich an den Schalter für die Bestellung.`} }[L];
       titleEl.textContent=TXT.results; subEl.textContent=`${items.length} ${TXT.of} · Centro: ${getCurrentCenterName()} · “${qStr}”`; backBtn.textContent=TXT.back;
