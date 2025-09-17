@@ -170,9 +170,18 @@
   <script>
     // ===== Reloj =====
     const $time=document.getElementById('time'), $date=document.getElementById('date');
-    const fmt = new Intl.DateTimeFormat('es-ES',{hour:'2-digit',minute:'2-digit'});
+    const fmtTime = new Intl.DateTimeFormat('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
     const fmtDate = new Intl.DateTimeFormat('es-ES',{weekday:'long',day:'2-digit',month:'long'});
-    function tick(){const now=new Date();$time.textContent=fmt.format(now);const pretty=fmtDate.format(now).replace(',', '');$date.textContent=pretty.charAt(0).toUpperCase()+pretty.slice(1);} tick(); setInterval(tick,1000);
+    function tick(){
+      const now=new Date();
+      if($time) $time.textContent = fmtTime.format(now);
+      if($date){
+        const pretty = fmtDate.format(now).replace(',', '');
+        $date.textContent = pretty.charAt(0).toUpperCase()+pretty.slice(1);
+      }
+    }
+    tick();
+    setInterval(()=>requestAnimationFrame(tick), 1000);
 
     // ===== Fullscreen (compatible) =====
     const fsBtn = document.getElementById('fsBtn');
@@ -196,18 +205,83 @@
     let listening=false,audioCtx=null,analyser=null,data=null,stream=null; const N=48; let bars=[];
     function buildBars(){ barsBox.innerHTML=''; bars=[]; const size=sphere.offsetWidth, R=size*0.44; for(let i=0;i<N;i++){ const el=document.createElement('span'); el.style.transform=`translate(-50%,-50%) rotate(${(360/N*i)}deg) translateY(${-R}px)`; barsBox.appendChild(el); bars.push(el);} }
     buildBars(); addEventListener('resize', buildBars);
-    micBtn.addEventListener('click', async ()=>{ listening=!listening; wrap.classList.toggle('listening', listening); if(listening){ try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); stream=await navigator.mediaDevices.getUserMedia({audio:true}); const src=audioCtx.createMediaStreamSource(stream); analyser=audioCtx.createAnalyser(); analyser.fftSize=512; src.connect(analyser); data=new Uint8Array(analyser.frequencyBinCount);}catch(e){ console.warn('Mic no disponible', e);} } else { if(stream){stream.getTracks().forEach(t=>t.stop()); stream=null;} } });
-    function animate(t){ let amp=0.08; if(listening&&analyser&&data){ analyser.getByteFrequencyData(data); let sum=0; for(let i=0;i<32;i++) sum+=data[i]; amp=Math.min(1,(sum/32)/150); } else { amp=0.12+0.06*Math.sin(t/800);} sphere.style.setProperty('--amp', amp.toFixed(3)); for(let i=0;i<bars.length;i++){ const h=24+(90*amp)*(0.6+0.4*Math.sin(t/250+i*0.35)); bars[i].style.height=h+'px'; bars[i].style.opacity=0.6+0.4*amp; } requestAnimationFrame(animate);} requestAnimationFrame(animate);
+    micBtn.addEventListener('click', async ()=>{
+      listening = !listening; wrap.classList.toggle('listening', listening);
+      if(listening){
+        try{
+          if(!audioCtx){ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }
+          if(audioCtx.state === 'suspended'){ try{ await audioCtx.resume(); }catch(e){} }
+          const isSecure = location.protocol==='https:' || ['localhost','127.0.0.1'].includes(location.hostname);
+          // aunque no sea seguro, intentamos igualmente; si falla, simulamos
+          stream = await navigator.mediaDevices.getUserMedia({audio:true});
+          const src = audioCtx.createMediaStreamSource(stream);
+          analyser = audioCtx.createAnalyser(); analyser.fftSize = 2048;
+          src.connect(analyser);
+          data = new Uint8Array(analyser.frequencyBinCount);
+        }catch(err){ console.warn('Micrófono no disponible, usando animación simulada.', err); }
+      } else {
+        if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+      }
+    }); const src=audioCtx.createMediaStreamSource(stream); analyser=audioCtx.createAnalyser(); analyser.fftSize=512; src.connect(analyser); data=new Uint8Array(analyser.frequencyBinCount);}catch(e){ console.warn('Mic no disponible', e);} } else { if(stream){stream.getTracks().forEach(t=>t.stop()); stream=null;} } });
+    function animate(t){
+      let amp = 0.10;
+      if(listening && analyser && data){
+        // usar dominio temporal para volumen (RMS)
+        const timeData = new Uint8Array(analyser.fftSize);
+        analyser.getByteTimeDomainData(timeData);
+        let sum = 0; for(let i=0;i<timeData.length;i++){ const v = (timeData[i]-128)/128; sum += v*v; }
+        const rms = Math.sqrt(sum/timeData.length); // 0..1
+        amp = Math.min(1, 0.2 + rms*1.8);
+      } else {
+        amp = 0.12 + 0.06*Math.sin(t/800);
+      }
+      sphere.style.setProperty('--amp', amp.toFixed(3));
+      for(let i=0;i<bars.length;i++){
+        const h = 24 + (90*amp)*(0.6 + 0.4*Math.sin(t/250 + i*0.35));
+        bars[i].style.height = h+'px';
+        bars[i].style.opacity = 0.6 + 0.4*amp;
+      }
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
 
     // ===== Idioma y centro (locución) =====
     const langChips=[...document.querySelectorAll('.lang-chip')]; const centerChips=[...document.querySelectorAll('.center-chip')];
     window.currentLang = window.currentLang || 'es-ES';
     const PHRASES={ 'es-ES':{ prompt:'¿En qué puedo ayudarle?', center:n=>`Centro seleccionado: ${n}` }, 'en-US':{ prompt:'How can I help you?', center:n=>`Selected center: ${n}` }, 'de-DE':{ prompt:'Womit kann ich Ihnen helfen?', center:n=>`Ausgewählter Standort: ${n}` } };
-    function pickVoice(lang){ const list=speechSynthesis.getVoices(); let v=list.find(v=>v.lang&&v.lang.toLowerCase().startsWith(lang.toLowerCase())); if(!v) v=list.find(v=>v.lang&&v.lang.toLowerCase().startsWith(lang.slice(0,2).toLowerCase())); return v||list[0]; }
-    function speak(text,lang){ if(!('speechSynthesis'in window)) return; const u=new SpeechSynthesisUtterance(text); const v=pickVoice(lang); if(v) u.voice=v; u.lang=lang; u.rate=1; u.pitch=1.03; speechSynthesis.cancel(); speechSynthesis.speak(u); }
+    function voicesReady(timeout=2000){
+      return new Promise(resolve=>{
+        let voices=speechSynthesis.getVoices();
+        if(voices && voices.length){ resolve(voices); return; }
+        const t=setTimeout(()=> resolve(speechSynthesis.getVoices()), timeout);
+        speechSynthesis.onvoiceschanged = ()=>{ clearTimeout(t); resolve(speechSynthesis.getVoices()); };
+      });
+    }
+    async function pickVoice(lang){
+      const list = await voicesReady();
+      if(!list || !list.length) return null;
+      let v = list.find(v=>v.lang && v.lang.toLowerCase().startsWith(lang.toLowerCase()));
+      if(!v) v = list.find(v=>v.lang && v.lang.toLowerCase().startsWith(lang.slice(0,2).toLowerCase()));
+      return v || list[0];
+    }
+    async function speak(text,lang){
+      try{
+        if(!('speechSynthesis' in window)) return;
+        const u = new SpeechSynthesisUtterance(text);
+        const v = await pickVoice(lang);
+        if(v) u.voice = v;
+        u.lang = lang; u.rate = 1; u.pitch = 1.03; u.volume = 1;
+        // cancelar anteriores y hablar
+        speechSynthesis.cancel();
+        speechSynthesis.speak(u);
+      }catch(e){ /* silencio si no hay voces */ }
+    }
     function selectLang(el){ langChips.forEach(c=>c.setAttribute('aria-pressed', c===el?'true':'false')); window.currentLang=el.dataset.lang||'es-ES'; speak(PHRASES[window.currentLang].prompt, window.currentLang); }
     function selectCenter(el){ centerChips.forEach(c=>c.setAttribute('aria-pressed', c===el?'true':'false')); const name=el.dataset.center||el.textContent.trim(); speak(PHRASES[window.currentLang].center(name), window.currentLang); }
-    langChips.forEach(ch=> ch.addEventListener('click', ()=> selectLang(ch))); centerChips.forEach(ch=> ch.addEventListener('click', ()=> selectCenter(ch))); speechSynthesis.onvoiceschanged=()=>{};
+    langChips.forEach(ch=> ch.addEventListener('click', ()=> selectLang(ch)) );
+    centerChips.forEach(ch=> ch.addEventListener('click', ()=> selectCenter(ch)) );
+    // precargar voces para que la primera locución no se pierda
+    try{ window.speechSynthesis && speechSynthesis.getVoices(); }catch(e){} centerChips.forEach(ch=> ch.addEventListener('click', ()=> selectCenter(ch))); speechSynthesis.onvoiceschanged=()=>{};
 
     // ===== Buscador conectado a GitHub =====
     const REPO_BASE='https://raw.githubusercontent.com/66312649/Asistente-Duran/main/imports/';
