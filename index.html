@@ -166,6 +166,34 @@
     </div>
   </section>
 
+  <!-- Polyfills + Diagnóstico mínimo (aditivo y compatible) -->
+  <script>
+    // Polyfill mínimo: normalizar sin diacríticos si el motor no soporta normalize
+    if(!String.prototype.normalize){ String.prototype.normalize = function(){ return String(this); }; }
+    // Captura de errores globales (los mostramos por consola y en un alert breve)
+    (function(){
+      function showErr(msg){ try{ console.error('[HUB:error]', msg); }catch(e){} }
+      window.addEventListener('error', function(e){ showErr(e && (e.message||e.filename||e)); });
+      window.addEventListener('unhandledrejection', function(e){ showErr(e && (e.reason||e)); });
+      // Botón de test/diagnóstico (🔊) añadido a la derecha, sin romper layout
+      window.addEventListener('DOMContentLoaded', function(){
+        var actions = document.querySelector('.actions');
+        if(actions && !document.getElementById('diagBtn')){
+          var b=document.createElement('button'); b.id='diagBtn'; b.className='btn-icon'; b.title='Prueba de locución'; b.setAttribute('aria-label','Prueba de locución'); b.textContent='🔊';
+          b.addEventListener('click', function(){
+            try{
+              var lang = window.currentLang||'es-ES';
+              var sample = lang==='en-US' ? 'Test of speech' : (lang==='de-DE' ? 'Sprachtest' : 'Prueba de locución');
+              if(window._tts && typeof window._tts.speak==='function') window._tts.speak(sample, lang);
+              else if('speechSynthesis' in window){ var u=new SpeechSynthesisUtterance(sample); u.lang=lang; try{ speechSynthesis.cancel(); setTimeout(function(){ speechSynthesis.speak(u); }, 50); }catch(e){} }
+            }catch(e){ console.error(e); }
+          });
+          actions.appendChild(b);
+        }
+      });
+    })();
+  </script>
+
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script>
     // ===== Reloj =====
@@ -226,7 +254,21 @@
       requestAnimationFrame(animate);
 
       micBtn.addEventListener('click', function(){
-        listening = !listening; wrap.classList.toggle('listening', listening);
+      listening = !listening; wrap.classList.toggle('listening', listening);
+      if(listening){
+        try{
+          if(!audioCtx){ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }
+          if(audioCtx.state==='suspended'){ try{ audioCtx.resume(); }catch(e){} }
+          navigator.mediaDevices.getUserMedia({audio:true}).then(function(s){
+            stream = s; var src = audioCtx.createMediaStreamSource(stream);
+            analyser = audioCtx.createAnalyser(); analyser.fftSize = 2048; src.connect(analyser);
+            data = new Uint8Array(analyser.frequencyBinCount);
+          }).catch(function(err){ console.warn('Micrófono no disponible', err); });
+        }catch(err){ console.warn('Audio no disponible', err); }
+      } else {
+        if(stream){ stream.getTracks().forEach(function(t){t.stop();}); stream=null; }
+      }
+    });
         if(listening){
           try{
             if(!audioCtx){ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }
@@ -252,7 +294,19 @@
 
       function voicesReady(timeout){ timeout = timeout||2000; return new Promise(function(res){ var list=speechSynthesis.getVoices(); if(list&&list.length){ res(list); return;} var t=setTimeout(function(){ res(speechSynthesis.getVoices()); },timeout); speechSynthesis.onvoiceschanged=function(){ clearTimeout(t); res(speechSynthesis.getVoices()); }; }); }
       function pickVoice(lang){ return voicesReady().then(function(list){ if(!list||!list.length) return null; var v=list.find(function(v){ return v.lang && v.lang.toLowerCase().indexOf(lang.toLowerCase())===0; }); if(!v) v=list.find(function(v){return v.lang && v.lang.toLowerCase().indexOf(lang.slice(0,2).toLowerCase())===0;}); return v||list[0]; }); }
-      function speak(text,lang){ if(!('speechSynthesis' in window)) return; pickVoice(lang).then(function(voice){ var u=new SpeechSynthesisUtterance(text); if(voice) u.voice=voice; u.lang=lang; u.rate=1; u.pitch=1.03; u.volume=1; try{ speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){} }); }
+      function speak(text,lang){
+      if(!('speechSynthesis' in window)) return;
+      pickVoice(lang).then(function(voice){
+        try{
+          var u=new SpeechSynthesisUtterance(text);
+          if(voice) u.voice=voice;
+          u.lang=lang; u.rate=1; u.pitch=1.03; u.volume=1;
+          // Algunos navegadores cancelan si se llama speak inmediatamente tras cancel
+          try{ speechSynthesis.cancel(); }catch(e){}
+          setTimeout(function(){ try{ speechSynthesis.speak(u); }catch(e){} }, 60);
+        }catch(e){ /* silencio si falla */ }
+      });
+    }catch(e){} }); }
 
       function selectLang(el){ langChips.forEach(function(c){ c.setAttribute('aria-pressed', c===el ? 'true':'false'); }); window.currentLang=el.getAttribute('data-lang')||'es-ES'; speak(PHRASES[window.currentLang].prompt, window.currentLang); }
       function selectCenter(el){ centerChips.forEach(function(c){ c.setAttribute('aria-pressed', c===el ? 'true':'false'); }); var name=el.getAttribute('data-center')||el.textContent.trim(); speak(PHRASES[window.currentLang].center(name), window.currentLang); }
