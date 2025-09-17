@@ -166,6 +166,18 @@
     </div>
   </section>
 
+  <!-- Polyfills + diagnóstico (compatibilidad tablets) -->
+  <script>
+    // String.normalize para motores antiguos
+    if(!String.prototype.normalize){ String.prototype.normalize = function(){ return String(this); }; }
+    // Array.find / includes y String.includes
+    if(!Array.prototype.find){ Array.prototype.find=function(fn, thisArg){ if(this==null) throw new TypeError('Array.prototype.find called on null'); var o=Object(this), len=o.length>>>0; for(var i=0;i<len;i++){ var v=o[i]; if(fn.call(thisArg, v, i, o)) return v; } return undefined; }; }
+    if(!Array.prototype.includes){ Array.prototype.includes=function(search, start){ var o=Object(this), len=o.length>>>0, k=start|0; if(k<0) k=Math.max(len+k,0); for(;k<len;k++){ if(o[k]===search) return true; } return false; }; }
+    if(!String.prototype.includes){ String.prototype.includes=function(substr, pos){ return this.indexOf(substr, pos||0) !== -1; }; }
+    // Captura de errores globales
+    window.addEventListener('error', function(e){ console.error('[HUB:error]', e && (e.message||e.filename||e)); });
+    window.addEventListener('unhandledrejection', function(e){ console.error('[HUB:promise]', e && (e.reason||e)); });
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script>
     // ===== Reloj =====
@@ -252,7 +264,7 @@
 
       function voicesReady(timeout){ timeout = timeout||2000; return new Promise(function(res){ var list=speechSynthesis.getVoices(); if(list&&list.length){ res(list); return;} var t=setTimeout(function(){ res(speechSynthesis.getVoices()); },timeout); speechSynthesis.onvoiceschanged=function(){ clearTimeout(t); res(speechSynthesis.getVoices()); }; }); }
       function pickVoice(lang){ return voicesReady().then(function(list){ if(!list||!list.length) return null; var v=list.find(function(v){ return v.lang && v.lang.toLowerCase().indexOf(lang.toLowerCase())===0; }); if(!v) v=list.find(function(v){return v.lang && v.lang.toLowerCase().indexOf(lang.slice(0,2).toLowerCase())===0;}); return v||list[0]; }); }
-      function speak(text,lang){ if(!('speechSynthesis' in window)) return; pickVoice(lang).then(function(voice){ var u=new SpeechSynthesisUtterance(text); if(voice) u.voice=voice; u.lang=lang; u.rate=1; u.pitch=1.03; u.volume=1; try{ speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){} }); }
+      function speak(text,lang){ if(!('speechSynthesis' in window)) return; pickVoice(lang).then(function(voice){ try{ var u=new SpeechSynthesisUtterance(text); if(voice) u.voice=voice; u.lang=lang; u.rate=1; u.pitch=1.03; u.volume=1; try{ speechSynthesis.cancel(); }catch(e){} setTimeout(function(){ try{ speechSynthesis.speak(u); }catch(e){} }, 60); }catch(e){} }); }catch(e){} }); }
 
       function selectLang(el){ langChips.forEach(function(c){ c.setAttribute('aria-pressed', c===el ? 'true':'false'); }); window.currentLang=el.getAttribute('data-lang')||'es-ES'; speak(PHRASES[window.currentLang].prompt, window.currentLang); }
       function selectCenter(el){ centerChips.forEach(function(c){ c.setAttribute('aria-pressed', c===el ? 'true':'false'); }); var name=el.getAttribute('data-center')||el.textContent.trim(); speak(PHRASES[window.currentLang].center(name), window.currentLang); }
@@ -271,7 +283,7 @@
       var PRICE_FILE='Lista%20de%20art%C3%ADculos.xlsx';
       var STOCK_FILE=function(n){ return 'Stock_Almacen_'+n+'_20250915.xlsx'; };
       var CENTER_CODE={ 'Palma':1,'Calvià':2,'Alcúdia':3,'Santanyí':4,'Santa Maria':7 };
-      var CODE_TO_CENTER={1:'Palma',2:'Calvià',3:'Alcudía',4:'Santanyí',7:'Santa Maria'};
+      var CODE_TO_CENTER={1:'Palma',2:'Calvià',3:'Alcúdia',4:'Santanyí',7:'Santa Maria'};
 
       var q=document.getElementById('q');
       var goBtn=document.getElementById('go');
@@ -284,7 +296,36 @@
       function getCurrentCenterName(){ var el=document.querySelector('.center-chip[aria-pressed="true"]'); return el?(el.getAttribute('data-center')||el.textContent.trim()):'Calvià'; }
       function getCurrentCenterCode(){ var n=getCurrentCenterName(); return CENTER_CODE[n]||2; }
 
-      function normKey(s){ return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim(); }
+      function normKey(s){ return (s||'').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim(); }
+      // Stopwords + sinónimos + fuzziness (aditivo)
+      var STOPWORDS = new Set(['de','del','la','el','los','las','un','una','unos','unas','para','por','con','en','y','o','a','al','lo','su','sus','mi','tu','mm','m','º','°','the','and','of','for','mit','der','die','das','und']);
+      var SYN_GROUPS = [
+        ['llave inglesa','llave ajustable','ajustable','francesa'],
+        ['cinta teflon','teflon','ptfe','cinta ptfe'],
+        ['grifo','monomando','mezclador'],
+        ['sifon','sifón','desague','desagüe'],
+        ['tubo multicapa','multicapa','pex-al-pex','alpex'],
+        ['abrazadera','brida','collarin','collarín'],
+        ['tornillo','tornilleria','screw'],
+        ['tuerca','nut'],
+        ['manguito','acoplador','conector','manguito reductor','manguito reduccion'],
+        ['valvula','válvula','llave de paso','llave corte','esfera'],
+        ['filtro','prefiltro','cartucho'],
+        ['codo','angulo','ángulo','elbow'],
+        ['curva','codo largo'],
+        ['pvc','tubo pvc'],
+        ['polietileno','pe','polietileno reticulado','pex'],
+        ['descalcificador','ablandador','softener'],
+        ['caldera','calentador','termo','boiler'],
+        ['bombin','cilindro','cerradura']
+      ];
+      function tokenize(str){ var k = normKey(str); if(!k) return []; return k.split(' ').filter(function(t){ return t && !STOPWORDS.has(t); }); }
+      function expandQuery(q){ var base = normKey(q), toks = tokenize(q), extra=[]; var joined = base; for (var g=0; g<SYN_GROUPS.length; g++){ var grp=SYN_GROUPS[g]; for (var i=0;i<grp.length;i++){ var phrase=normKey(grp[i]); if(phrase && joined.indexOf(phrase)>=0){ extra = extra.concat(grp); break; } } } for (var t=0; t<toks.length; t++){ for (var g2=0; g2<SYN_GROUPS.length; g2++){ var grp2=SYN_GROUPS[g2]; if(grp2.indexOf(toks[t])>=0) extra = extra.concat(grp2); } } var all = Array.from ? Array.from(new Set(toks.concat(extra.map(normKey)).filter(Boolean))) : toks; return { phrase: base, tokens: all }; }
+      function lev(a,b){ a=a||''; b=b||''; var m=a.length, n=b.length; if(m===0) return n; if(n===0) return m; var dp=new Array(n+1); for(var j=0;j<=n;j++) dp[j]=j; for(var i=1;i<=m;i++){ var prev=dp[0]; dp[0]=i; for(var j=1;j<=n;j++){ var tmp=dp[j]; var cost=(a.charAt(i-1)===b.charAt(j-1))?0:1; dp[j]=Math.min(dp[j]+1, dp[j-1]+1, prev+cost); prev=tmp; } } return dp[n]; }
+      function sim(a,b){ var L=Math.max(a.length,b.length)||1; return 1 - (lev(a,b)/L); }
+      function bestSim(tok, arr){ var best=0; for(var i=0;i<arr.length;i++){ var s=sim(tok, arr[i]); if(s>best) best=s; if(best>=0.92) break; } return best; }
+      function contains(arr,t){ for(var i=0;i<arr.length;i++){ if(arr[i]===t) return true; } return false; }
+      function startsWithAny(t, arr){ for(var i=0;i<arr.length;i++){ if(arr[i].indexOf(t)===0) return true; } return false; }
       function pickCol(cols,hints){ var nn=cols.map(function(c){return {raw:c,n:normKey(c)};}); var i,c; for(i=0;i<nn.length;i++){ c=nn[i]; if(hints.every(function(h){return c.n.indexOf(h)>=0;})) return c.raw; } for(i=0;i<nn.length;i++){ c=nn[i]; if(hints.some(function(h){return c.n.indexOf(h)>=0;})) return c.raw; } return null; }
 
       function fetchWorkbook(file){ var url=REPO_BASE+file; return fetch(url,{cache:'no-store',mode:'cors'}).then(function(res){ if(!res.ok) throw new Error('HTTP '+res.status+' en '+file); return res.arrayBuffer(); }).then(function(ab){ return XLSX.read(ab,{type:'array'}); }); }
@@ -296,7 +337,7 @@
 
       function formatEUR(val){ if(val==null||val==='') return '-'; var n= (typeof val==='number')? val : parseFloat(String(val).replace(/\./g,'').replace(',','.')); if(!isFinite(n)) return '-'; return n.toLocaleString(window.currentLang||'es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
       function mergeItem(s,p){ return { numero_articulo:s.numero_articulo, ref_proveedor:s.ref_proveedor||null, descripcion_final:(p && p.descripcion) || s.descripcion || '-', fabricante:(p && p.fabricante) || s.fabricante || '-', stock:s.stock||0, precio_eur:formatEUR(p && p.pvp) }; }
-      function score(qs,it){ var t=String(qs||'').toLowerCase(); if(!t) return 0; var parts=t.trim().split(' ').filter(Boolean); var d=String(it.descripcion_final==null?'':it.descripcion_final).toLowerCase(); var r=String(it.ref_proveedor==null?'':it.ref_proveedor).toLowerCase(); var n=String(it.numero_articulo==null?'':it.numero_articulo).toLowerCase(); var s=0; for(var i=0;i<parts.length;i++){ var tok=parts[i]; if(d.indexOf(tok)>=0) s+=3; if(r.indexOf(tok)>=0) s+=2; if(n.indexOf(tok)>=0) s+=1.5; } return s; }
+      function score(qs, it){ var exp = expandQuery(qs); if((!exp.tokens || !exp.tokens.length) && !exp.phrase) return 0; var dT = tokenize(it.descripcion_final==null?'':it.descripcion_final); var rT = tokenize(it.ref_proveedor==null?'':it.ref_proveedor); var nT = tokenize(it.numero_articulo==null?'':it.numero_articulo); var fT = tokenize(it.fabricante==null?'':it.fabricante); var dS=dT.join(' '), fS=fT.join(' '), rS=rT.join(' '), nS=nT.join(' '); var s=0, phrase=exp.phrase; if(phrase){ if(nS===phrase || rS===phrase) s+=150; if(dS.indexOf(phrase)>=0) s+=50; if(fS.indexOf(phrase)>=0) s+=25; } for(var i=0;i<exp.tokens.length;i++){ var t=exp.tokens[i]; if(!t) continue; if(contains(dT,t)) s+=8; else { var sd=bestSim(t,dT); if(sd>=0.82) s += 5*sd; else if(startsWithAny(t,dT)) s+=3; } if(contains(fT,t)) s+=6; else { var sf=bestSim(t,fT); if(sf>=0.84) s += 4*sf; } if(contains(rT,t)) s+=14; else { var sr=bestSim(t,rT); if(sr>=0.85) s += 8*sr; } if(contains(nT,t)) s+=14; else { var sn=bestSim(t,nT); if(sn>=0.85) s += 8*sn; } } if(exp.tokens.length && startsWithAny(exp.tokens[0], dT)) s += 4; if(!it.precio_eur || it.precio_eur==='-') s -= 2; return s; } return s; }
 
       function render(items, qStr){ var L=window.currentLang||'es-ES'; var TXT={ 'es-ES':{results:'Resultados',of:'coincidencias',back:'← Volver',price:'Precio',stock:'Stock',prov:'Ref. proveedor',mfg:'Fabricante', alt:function(n,qty){return 'Actualmente no disponemos de stock en este centro, pero en el centro de '+n+' disponemos de '+qty+' unidades. Por favor, hable con el mostrador para tramitar el suministro.';}}, 'en-US':{results:'Results',of:'matches',back:'← Back',price:'Price',stock:'Stock',prov:'Supplier ref.',mfg:'Manufacturer', alt:function(n,qty){return 'We currently have no stock at this store, but '+qty+' units are available at the '+n+' branch. Please speak to the counter to arrange supply.';}}, 'de-DE':{results:'Ergebnisse',of:'Treffer',back:'← Zurück',price:'Preis',stock:'Bestand',prov:'Lieferantenref.',mfg:'Hersteller', alt:function(n,qty){return 'Derzeit kein Bestand in diesem Standort, aber '+qty+' Stück sind im Standort '+n+' verfügbar. Bitte wenden Sie sich an den Schalter für die Bestellung.';}} }[L];
         titleEl.textContent=TXT.results; subEl.textContent= items.length+' '+TXT.of+' · Centro: '+getCurrentCenterName()+' · “'+qStr+'”'; backBtn.textContent=TXT.back;
@@ -305,7 +346,7 @@
 
       function findAltStock(numArt, excludeCenter){ var order=[1,2,3,4,7]; var i=0; function step(){ if(i>=order.length) return Promise.resolve(null); var c=order[i++]; if(c===excludeCenter) return step(); return loadStock(c).then(function(list){ var hit=list.find(function(x){return x.numero_articulo===numArt && Number(x.stock)>0;}); return hit? {center:c, qty:Number(hit.stock)} : step(); }); } return step(); }
 
-      function performSearch(query){ try{ var center=getCurrentCenterCode(); titleEl.textContent='Resultados'; subEl.textContent='Cargando…'; resultsEl.setAttribute('aria-hidden','false'); Promise.all([loadPrices(), loadStock(center)]).then(function(arr){ var prices=arr[0], stock=arr[1]; var merged=stock.map(function(s){ return mergeItem(s, prices.get(s.numero_articulo)); }); merged.forEach(function(m){ m.__score=score(query,m); }); merged.sort(function(a,b){return b.__score-a.__score;}); var top=merged.filter(function(x){return x.__score>0;}).slice(0,6); if(top.length===0) top=merged.slice(0,6); var k=0; function enrich(){ if(k>=top.length) return render(top, query); var it=top[k++]; if(Number(it.stock)<=0){ findAltStock(it.numero_articulo, center).then(function(res){ it._altStock=res; enrich(); }); } else enrich(); } enrich(); }).catch(function(e){ console.error('[performSearch] Error', e); subEl.textContent='Error cargando datos: '+(e&&e.message?e.message:e); }); }catch(e){ console.error('[performSearch] Error', e); subEl.textContent='Error cargando datos: '+(e&&e.message?e.message:e); } }
+      function performSearch(query){ try{ var center=getCurrentCenterCode(); titleEl.textContent='Resultados'; subEl.textContent='Cargando…'; resultsEl.setAttribute('aria-hidden','false'); Promise.all([loadPrices(), loadStock(center)]).then(function(arr){ var prices=arr[0], stock=arr[1]; var merged=stock.map(function(s){ return mergeItem(s, prices.get(s.numero_articulo)); }); merged.forEach(function(m){ m.__score=score(query,m); }); merged.sort(function(a,b){return b.__score-a.__score;}); var top=merged.filter(function(x){return x.__score>0;}).slice(0,12); if(top.length===0) top=merged.slice(0,12); var k=0; function enrich(){ if(k>=top.length) return render(top, query); var it=top[k++]; if(Number(it.stock)<=0){ findAltStock(it.numero_articulo, center).then(function(res){ it._altStock=res; enrich(); }); } else enrich(); } enrich(); }).catch(function(e){ console.error('[performSearch] Error', e); subEl.textContent='Error cargando datos: '+(e&&e.message?e.message:e); }); }catch(e){ console.error('[performSearch] Error', e); subEl.textContent='Error cargando datos: '+(e&&e.message?e.message:e); } }
 
       // Exponer para depuración
       window.__searchRepo = performSearch;
