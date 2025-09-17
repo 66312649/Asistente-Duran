@@ -312,7 +312,7 @@
     async function loadStock(center){ if(cache.stock[center]) return cache.stock[center]; const wb=await fetchWorkbook(STOCK_FILE(center)); const rows=sheetToJSON(wb); console.log('[STOCK] Centro', center, 'Filas:', rows.length); const cols=rows.length?Object.keys(rows[0]):[]; const cNum=pickCol(cols,['numero','articulo']); const cRef=pickCol(cols,['referencia','proveedor']); const cDesc=pickCol(cols,['descripcion']); const cFab=pickCol(cols,['fabricante']); const cStk=pickCol(cols,['stock']); const list=rows.map(r=>({ numero_articulo:String(r[cNum]||'').trim(), ref_proveedor:r[cRef]||'', descripcion:r[cDesc]||'', fabricante:r[cFab]||'', stock:Number(r[cStk]||0) })).filter(x=>x.numero_articulo); cache.stock[center]=list; return list; }
 
     function formatEUR(val){ if(val==null||val==='') return '-'; const n=(typeof val==='number')?val:parseFloat(String(val).replace(/\./g,'').replace(',','.')); if(!isFinite(n)) return '-'; return n.toLocaleString(window.currentLang||'es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
-    function mergeItem(s,p){ return { numero_articulo:s.numero_articulo, ref_proveedor:s.ref_proveedor||null, descripcion_final:p?.descripcion||s.descripcion||'-', fabricante:p?.fabricante||s.fabricante||'-', stock:s.stock||0, precio_eur:formatEUR(p?.pvp) }; }
+    function mergeItem(s,p){ return { numero_articulo:s.numero_articulo, ref_proveedor:s.ref_proveedor||null, descripcion_final:(p && p.descripcion)||s.descripcion||'-', fabricante:(p && p.fabricante)||s.fabricante||'-', stock:s.stock||0, precio_eur:formatEUR((p && p.pvp)) }; }
     function score(qs,it){
       const t = String(qs||'').toLowerCase();
       if(!t) return 0;
@@ -336,6 +336,8 @@
 
     // Exponer para depurar
     window.__searchRepo = performSearch;
+    window._debug = { speak, performSearch, center: ()=>getCurrentCenterName(), lang: ()=>window.currentLang };
+    console.info('[HUB] ready:', {lang: window.currentLang, center: getCurrentCenterName()});
 
     // Go + Enter
     goBtn.onclick=()=> performSearch(q.value.trim());
