@@ -166,34 +166,6 @@
     </div>
   </section>
 
-  <!-- Polyfills + Diagnóstico mínimo (aditivo y compatible) -->
-  <script>
-    // Polyfill mínimo: normalizar sin diacríticos si el motor no soporta normalize
-    if(!String.prototype.normalize){ String.prototype.normalize = function(){ return String(this); }; }
-    // Captura de errores globales (los mostramos por consola y en un alert breve)
-    (function(){
-      function showErr(msg){ try{ console.error('[HUB:error]', msg); }catch(e){} }
-      window.addEventListener('error', function(e){ showErr(e && (e.message||e.filename||e)); });
-      window.addEventListener('unhandledrejection', function(e){ showErr(e && (e.reason||e)); });
-      // Botón de test/diagnóstico (🔊) añadido a la derecha, sin romper layout
-      window.addEventListener('DOMContentLoaded', function(){
-        var actions = document.querySelector('.actions');
-        if(actions && !document.getElementById('diagBtn')){
-          var b=document.createElement('button'); b.id='diagBtn'; b.className='btn-icon'; b.title='Prueba de locución'; b.setAttribute('aria-label','Prueba de locución'); b.textContent='🔊';
-          b.addEventListener('click', function(){
-            try{
-              var lang = window.currentLang||'es-ES';
-              var sample = lang==='en-US' ? 'Test of speech' : (lang==='de-DE' ? 'Sprachtest' : 'Prueba de locución');
-              if(window._tts && typeof window._tts.speak==='function') window._tts.speak(sample, lang);
-              else if('speechSynthesis' in window){ var u=new SpeechSynthesisUtterance(sample); u.lang=lang; try{ speechSynthesis.cancel(); setTimeout(function(){ speechSynthesis.speak(u); }, 50); }catch(e){} }
-            }catch(e){ console.error(e); }
-          });
-          actions.appendChild(b);
-        }
-      });
-    })();
-  </script>
-
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script>
     // ===== Reloj =====
@@ -254,21 +226,7 @@
       requestAnimationFrame(animate);
 
       micBtn.addEventListener('click', function(){
-      listening = !listening; wrap.classList.toggle('listening', listening);
-      if(listening){
-        try{
-          if(!audioCtx){ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }
-          if(audioCtx.state==='suspended'){ try{ audioCtx.resume(); }catch(e){} }
-          navigator.mediaDevices.getUserMedia({audio:true}).then(function(s){
-            stream = s; var src = audioCtx.createMediaStreamSource(stream);
-            analyser = audioCtx.createAnalyser(); analyser.fftSize = 2048; src.connect(analyser);
-            data = new Uint8Array(analyser.frequencyBinCount);
-          }).catch(function(err){ console.warn('Micrófono no disponible', err); });
-        }catch(err){ console.warn('Audio no disponible', err); }
-      } else {
-        if(stream){ stream.getTracks().forEach(function(t){t.stop();}); stream=null; }
-      }
-    });
+        listening = !listening; wrap.classList.toggle('listening', listening);
         if(listening){
           try{
             if(!audioCtx){ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }
@@ -294,19 +252,7 @@
 
       function voicesReady(timeout){ timeout = timeout||2000; return new Promise(function(res){ var list=speechSynthesis.getVoices(); if(list&&list.length){ res(list); return;} var t=setTimeout(function(){ res(speechSynthesis.getVoices()); },timeout); speechSynthesis.onvoiceschanged=function(){ clearTimeout(t); res(speechSynthesis.getVoices()); }; }); }
       function pickVoice(lang){ return voicesReady().then(function(list){ if(!list||!list.length) return null; var v=list.find(function(v){ return v.lang && v.lang.toLowerCase().indexOf(lang.toLowerCase())===0; }); if(!v) v=list.find(function(v){return v.lang && v.lang.toLowerCase().indexOf(lang.slice(0,2).toLowerCase())===0;}); return v||list[0]; }); }
-      function speak(text,lang){
-      if(!('speechSynthesis' in window)) return;
-      pickVoice(lang).then(function(voice){
-        try{
-          var u=new SpeechSynthesisUtterance(text);
-          if(voice) u.voice=voice;
-          u.lang=lang; u.rate=1; u.pitch=1.03; u.volume=1;
-          // Algunos navegadores cancelan si se llama speak inmediatamente tras cancel
-          try{ speechSynthesis.cancel(); }catch(e){}
-          setTimeout(function(){ try{ speechSynthesis.speak(u); }catch(e){} }, 60);
-        }catch(e){ /* silencio si falla */ }
-      });
-    }catch(e){} }); }
+      function speak(text,lang){ if(!('speechSynthesis' in window)) return; pickVoice(lang).then(function(voice){ var u=new SpeechSynthesisUtterance(text); if(voice) u.voice=voice; u.lang=lang; u.rate=1; u.pitch=1.03; u.volume=1; try{ speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){} }); }
 
       function selectLang(el){ langChips.forEach(function(c){ c.setAttribute('aria-pressed', c===el ? 'true':'false'); }); window.currentLang=el.getAttribute('data-lang')||'es-ES'; speak(PHRASES[window.currentLang].prompt, window.currentLang); }
       function selectCenter(el){ centerChips.forEach(function(c){ c.setAttribute('aria-pressed', c===el ? 'true':'false'); }); var name=el.getAttribute('data-center')||el.textContent.trim(); speak(PHRASES[window.currentLang].center(name), window.currentLang); }
@@ -338,55 +284,7 @@
       function getCurrentCenterName(){ var el=document.querySelector('.center-chip[aria-pressed="true"]'); return el?(el.getAttribute('data-center')||el.textContent.trim()):'Calvià'; }
       function getCurrentCenterCode(){ var n=getCurrentCenterName(); return CENTER_CODE[n]||2; }
 
-      function normKey(s){ return (s||'').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim(); }
-      
-      // ==== Aditivo: buscador inteligente (stopwords + sinónimos + fuzziness) ====
-      var STOPWORDS = new Set(['de','del','la','el','los','las','un','una','unos','unas','para','por','con','en','y','o','a','al','lo','su','sus','mi','tu','mm','m','º','°','the','and','of','for','mit','der','die','das','und']);
-      var SYN_GROUPS = [
-        ['llave inglesa','llave ajustable','ajustable','francesa'],
-        ['cinta teflon','teflon','ptfe','cinta ptfe'],
-        ['grifo','monomando','mezclador'],
-        ['sifon','sifón','desague','desagüe'],
-        ['tubo multicapa','multicapa','pex-al-pex','alpex'],
-        ['abrazadera','brida','collarin','collarín'],
-        ['tornillo','tornilleria','screw'],
-        ['tuerca','nut'],
-        ['manguito','acoplador','conector','manguito reductor','manguito reduccion'],
-        ['válvula','valvula','llave de paso','llave corte','esfera'],
-        ['filtro','prefiltro','cartucho'],
-        ['codo','angulo','ángulo','elbow','coudé'],
-        ['curva','codo largo'],
-        ['pvc','tubo pvc'],
-        ['polietileno','pe','polietileno reticulado','pex'],
-        ['descalcificador','ablandador','softener'],
-        ['caldera','calentador','termo','boiler'],
-        ['bombin','cilindro','cerradura']
-      ];
-      function tokenize(str){ var k = normKey(str); if(!k) return []; return k.split(' ').filter(function(t){ return t && !STOPWORDS.has(t); }); }
-      function expandQuery(q){
-        var base = normKey(q), toks = tokenize(q), extra=[];
-        var joined = base;
-        for (var g=0; g<SYN_GROUPS.length; g++){
-          var grp = SYN_GROUPS[g];
-          for (var i=0;i<grp.length;i++){
-            var phrase = normKey(grp[i]);
-            if (phrase && joined.indexOf(phrase)>=0){ extra = extra.concat(grp); break; }
-          }
-        }
-        for (var t=0; t<toks.length; t++){
-          for (var g2=0; g2<SYN_GROUPS.length; g2++){
-            var grp2=SYN_GROUPS[g2];
-            if (grp2.indexOf(toks[t])>=0) extra = extra.concat(grp2);
-          }
-        }
-        var all = Array.from(new Set(toks.concat(extra.map(normKey)).filter(Boolean)));
-        return { phrase: base, tokens: all };
-      }
-      function lev(a,b){ a=a||''; b=b||''; var m=a.length, n=b.length; if(m===0) return n; if(n===0) return m; var dp=new Array(n+1); for(var j=0;j<=n;j++) dp[j]=j; for(var i=1;i<=m;i++){ var prev=dp[0]; dp[0]=i; for(var j=1;j<=n;j++){ var tmp=dp[j]; var cost=(a[i-1]===b[j-1])?0:1; dp[j]=Math.min(dp[j]+1, dp[j-1]+1, prev+cost); prev=tmp; } } return dp[n]; }
-      function sim(a,b){ var L=Math.max(a.length,b.length)||1; return 1 - (lev(a,b)/L); }
-      function bestSim(tok, arr){ var best=0; for(var i=0;i<arr.length;i++){ var s=sim(tok, arr[i]); if(s>best) best=s; if(best>=0.92) break; } return best; }
-      function contains(arr,t){ for(var i=0;i<arr.length;i++){ if(arr[i]===t) return true; } return false; }
-      function startsWithAny(t, arr){ for(var i=0;i<arr.length;i++){ if(arr[i].indexOf(t)===0) return true; } return false; }
+      function normKey(s){ return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim(); }
       function pickCol(cols,hints){ var nn=cols.map(function(c){return {raw:c,n:normKey(c)};}); var i,c; for(i=0;i<nn.length;i++){ c=nn[i]; if(hints.every(function(h){return c.n.indexOf(h)>=0;})) return c.raw; } for(i=0;i<nn.length;i++){ c=nn[i]; if(hints.some(function(h){return c.n.indexOf(h)>=0;})) return c.raw; } return null; }
 
       function fetchWorkbook(file){ var url=REPO_BASE+file; return fetch(url,{cache:'no-store',mode:'cors'}).then(function(res){ if(!res.ok) throw new Error('HTTP '+res.status+' en '+file); return res.arrayBuffer(); }).then(function(ab){ return XLSX.read(ab,{type:'array'}); }); }
@@ -398,61 +296,7 @@
 
       function formatEUR(val){ if(val==null||val==='') return '-'; var n= (typeof val==='number')? val : parseFloat(String(val).replace(/\./g,'').replace(',','.')); if(!isFinite(n)) return '-'; return n.toLocaleString(window.currentLang||'es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
       function mergeItem(s,p){ return { numero_articulo:s.numero_articulo, ref_proveedor:s.ref_proveedor||null, descripcion_final:(p && p.descripcion) || s.descripcion || '-', fabricante:(p && p.fabricante) || s.fabricante || '-', stock:s.stock||0, precio_eur:formatEUR(p && p.pvp) }; }
-      function score(qs, it){
-        var exp = expandQuery(qs);
-        if((!exp.tokens || !exp.tokens.length) && !exp.phrase) return 0;
-        var dT = tokenize(it.descripcion_final==null?'':it.descripcion_final);
-        var rT = tokenize(it.ref_proveedor==null?'':it.ref_proveedor);
-        var nT = tokenize(it.numero_articulo==null?'':it.numero_articulo);
-        var fT = tokenize(it.fabricante==null?'':it.fabricante);
-        var dS = dT.join(' '), fS = fT.join(' '), rS = rT.join(' '), nS = nT.join(' ');
-        var s=0, phrase=exp.phrase;
-        if(phrase){
-          if(nS===phrase || rS===phrase) s+=150;
-          if(dS.indexOf(phrase)>=0) s+=50;
-          if(fS.indexOf(phrase)>=0) s+=25;
-        }
-        for(var i=0;i<exp.tokens.length;i++){
-          var t = exp.tokens[i]; if(!t) continue;
-          if(contains(dT,t)) s+=8; else { var sd=bestSim(t,dT); if(sd>=0.82) s += 5*sd; else if(startsWithAny(t,dT)) s+=3; }
-          if(contains(fT,t)) s+=6; else { var sf=bestSim(t,fT); if(sf>=0.84) s += 4*sf; }
-          if(contains(rT,t)) s+=14; else { var sr=bestSim(t,rT); if(sr>=0.85) s += 8*sr; }
-          if(contains(nT,t)) s+=14; else { var sn=bestSim(t,nT); if(sn>=0.85) s += 8*sn; }
-        }
-        if(exp.tokens.length && startsWithAny(exp.tokens[0], dT)) s += 4;
-        if(!it.precio_eur || it.precio_eur==='-') s -= 2;
-        return s;
-      });
-        var d = normKey(it.descripcion_final==null?'':it.descripcion_final);
-        var r = normKey(it.ref_proveedor==null?'':it.ref_proveedor);
-        var n = normKey(it.numero_articulo==null?'':it.numero_articulo);
-        var f = normKey(it.fabricante==null?'':it.fabricante);
-        var s = 0;
-        // 1) Coincidencias exactas de códigos/ref → muy alto
-        if(qKey && (n===qKey || r===qKey)) s += 120;
-        // 2) Frase completa en descripción o fabricante
-        if(d.indexOf(qKey)>=0) s += 45;
-        if(f.indexOf(qKey)>=0) s += 22;
-        // 3) Por token, con más peso en ref y nº artículo
-        for(var i=0;i<tokens.length;i++){
-          var t = tokens[i];
-          if(!t) continue;
-          if(d.indexOf(t)>=0) s += 7;
-          if(f.indexOf(t)>=0) s += 6;
-          if(r.indexOf(t)>=0) s += 12;
-          if(n.indexOf(t)>=0) s += 12;
-        }
-        // 4) Bonus por comienzo de palabra (descripción)
-        if(tokens.length){
-          try{
-            var rex = new RegExp('(?:^|\s)'+tokens[0]);
-            if(rex.test(d)) s += 4;
-          }catch(e){}
-        }
-        // 5) Pequeña penalización por items sin precio visible
-        if(!it.precio_eur || it.precio_eur==='-') s -= 2;
-        return s;
-      } return s; }
+      function score(qs,it){ var t=String(qs||'').toLowerCase(); if(!t) return 0; var parts=t.trim().split(' ').filter(Boolean); var d=String(it.descripcion_final==null?'':it.descripcion_final).toLowerCase(); var r=String(it.ref_proveedor==null?'':it.ref_proveedor).toLowerCase(); var n=String(it.numero_articulo==null?'':it.numero_articulo).toLowerCase(); var s=0; for(var i=0;i<parts.length;i++){ var tok=parts[i]; if(d.indexOf(tok)>=0) s+=3; if(r.indexOf(tok)>=0) s+=2; if(n.indexOf(tok)>=0) s+=1.5; } return s; }
 
       function render(items, qStr){ var L=window.currentLang||'es-ES'; var TXT={ 'es-ES':{results:'Resultados',of:'coincidencias',back:'← Volver',price:'Precio',stock:'Stock',prov:'Ref. proveedor',mfg:'Fabricante', alt:function(n,qty){return 'Actualmente no disponemos de stock en este centro, pero en el centro de '+n+' disponemos de '+qty+' unidades. Por favor, hable con el mostrador para tramitar el suministro.';}}, 'en-US':{results:'Results',of:'matches',back:'← Back',price:'Price',stock:'Stock',prov:'Supplier ref.',mfg:'Manufacturer', alt:function(n,qty){return 'We currently have no stock at this store, but '+qty+' units are available at the '+n+' branch. Please speak to the counter to arrange supply.';}}, 'de-DE':{results:'Ergebnisse',of:'Treffer',back:'← Zurück',price:'Preis',stock:'Bestand',prov:'Lieferantenref.',mfg:'Hersteller', alt:function(n,qty){return 'Derzeit kein Bestand in diesem Standort, aber '+qty+' Stück sind im Standort '+n+' verfügbar. Bitte wenden Sie sich an den Schalter für die Bestellung.';}} }[L];
         titleEl.textContent=TXT.results; subEl.textContent= items.length+' '+TXT.of+' · Centro: '+getCurrentCenterName()+' · “'+qStr+'”'; backBtn.textContent=TXT.back;
@@ -461,7 +305,7 @@
 
       function findAltStock(numArt, excludeCenter){ var order=[1,2,3,4,7]; var i=0; function step(){ if(i>=order.length) return Promise.resolve(null); var c=order[i++]; if(c===excludeCenter) return step(); return loadStock(c).then(function(list){ var hit=list.find(function(x){return x.numero_articulo===numArt && Number(x.stock)>0;}); return hit? {center:c, qty:Number(hit.stock)} : step(); }); } return step(); }
 
-      function performSearch(query){ try{ var center=getCurrentCenterCode(); titleEl.textContent='Resultados'; subEl.textContent='Cargando…'; resultsEl.setAttribute('aria-hidden','false'); Promise.all([loadPrices(), loadStock(center)]).then(function(arr){ var prices=arr[0], stock=arr[1]; var merged=stock.map(function(s){ return mergeItem(s, prices.get(s.numero_articulo)); }); merged.forEach(function(m){ m.__score=score(query,m); }); merged.sort(function(a,b){return b.__score-a.__score;}); var top=merged.filter(function(x){return x.__score>0;}).slice(0,12); if(top.length===0) top=merged.slice(0,12); var k=0; function enrich(){ if(k>=top.length) return render(top, query); var it=top[k++]; if(Number(it.stock)<=0){ findAltStock(it.numero_articulo, center).then(function(res){ it._altStock=res; enrich(); }); } else enrich(); } enrich(); }).catch(function(e){ console.error('[performSearch] Error', e); subEl.textContent='Error cargando datos: '+(e&&e.message?e.message:e); }); }catch(e){ console.error('[performSearch] Error', e); subEl.textContent='Error cargando datos: '+(e&&e.message?e.message:e); } }
+      function performSearch(query){ try{ var center=getCurrentCenterCode(); titleEl.textContent='Resultados'; subEl.textContent='Cargando…'; resultsEl.setAttribute('aria-hidden','false'); Promise.all([loadPrices(), loadStock(center)]).then(function(arr){ var prices=arr[0], stock=arr[1]; var merged=stock.map(function(s){ return mergeItem(s, prices.get(s.numero_articulo)); }); merged.forEach(function(m){ m.__score=score(query,m); }); merged.sort(function(a,b){return b.__score-a.__score;}); var top=merged.filter(function(x){return x.__score>0;}).slice(0,6); if(top.length===0) top=merged.slice(0,6); var k=0; function enrich(){ if(k>=top.length) return render(top, query); var it=top[k++]; if(Number(it.stock)<=0){ findAltStock(it.numero_articulo, center).then(function(res){ it._altStock=res; enrich(); }); } else enrich(); } enrich(); }).catch(function(e){ console.error('[performSearch] Error', e); subEl.textContent='Error cargando datos: '+(e&&e.message?e.message:e); }); }catch(e){ console.error('[performSearch] Error', e); subEl.textContent='Error cargando datos: '+(e&&e.message?e.message:e); } }
 
       // Exponer para depuración
       window.__searchRepo = performSearch;
