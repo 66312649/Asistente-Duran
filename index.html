@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>HUB Ferretería · Fijo</title>
+  <title>HUB Ferretería · Fijo v2</title>
   <style>
     :root{
       --bg:#0a1426; --ink:#e6f1ff; --muted:#9fb4c8;
@@ -99,7 +99,7 @@
 <body>
   <div class="hub">
     <header class="hdr">
-      <div class="clock"><div class="time" id="time">16:00</div><div class="date" id="date">Viernes · 04 de septiembre</div></div>
+      <div class="clock"><div class="time" id="time">16:00:00</div><div class="date" id="date">Martes · 16 de septiembre</div></div>
       <div class="hdr-center">
         <div class="title">¿En qué puedo ayudarle?</div>
         <div class="search" role="search">
@@ -169,187 +169,160 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script>
     // ===== Reloj =====
-    const $time=document.getElementById('time'), $date=document.getElementById('date');
-    const fmtTime = new Intl.DateTimeFormat('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
-    const fmtDate = new Intl.DateTimeFormat('es-ES',{weekday:'long',day:'2-digit',month:'long'});
-    function tick(){
-      const now=new Date();
-      if($time) $time.textContent = fmtTime.format(now);
-      if($date){
-        const pretty = fmtDate.format(now).replace(',', '');
-        $date.textContent = pretty.charAt(0).toUpperCase()+pretty.slice(1);
+    (function(){
+      var $time=document.getElementById('time'), $date=document.getElementById('date');
+      var fmtTime = new Intl.DateTimeFormat('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+      var fmtDate = new Intl.DateTimeFormat('es-ES',{weekday:'long',day:'2-digit',month:'long'});
+      function tick(){
+        var now=new Date();
+        if($time) $time.textContent = fmtTime.format(now);
+        if($date){ var pretty = fmtDate.format(now).replace(',', ''); $date.textContent = pretty.charAt(0).toUpperCase()+pretty.slice(1); }
       }
-    }
-    tick();
-    setInterval(()=>requestAnimationFrame(tick), 1000);
+      tick(); setInterval(function(){ requestAnimationFrame(tick); },1000);
+    })();
 
     // ===== Fullscreen (compatible) =====
-    const fsBtn = document.getElementById('fsBtn');
-    fsBtn.onclick = () => {
-      const el = document.documentElement;
-      if (!document.fullscreenElement) {
-        if (el.requestFullscreen) el.requestFullscreen();
-        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-        else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
-        else if (el.msRequestFullscreen) el.msRequestFullscreen();
-      } else {
-        if (document.exitFullscreen) document.exitFullscreen();
-        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-        else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
-        else if (document.msExitFullscreen) document.msExitFullscreen();
-      }
-    };
+    (function(){
+      var fsBtn = document.getElementById('fsBtn');
+      fsBtn.onclick = function(){
+        var el = document.documentElement;
+        if (!document.fullscreenElement) {
+          if (el.requestFullscreen) el.requestFullscreen();
+          else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+          else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+          else if (el.msRequestFullscreen) el.msRequestFullscreen();
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen();
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+          else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+          else if (document.msExitFullscreen) document.msExitFullscreen();
+        }
+      };
+    })();
 
     // ===== Esfera reactiva =====
-    const micBtn=document.getElementById('mic'); const wrap=document.getElementById('techWrap'); const sphere=document.getElementById('sphere'); const barsBox=document.getElementById('bars');
-    let listening=false,audioCtx=null,analyser=null,data=null,stream=null; const N=48; let bars=[];
-    function buildBars(){ barsBox.innerHTML=''; bars=[]; const size=sphere.offsetWidth, R=size*0.44; for(let i=0;i<N;i++){ const el=document.createElement('span'); el.style.transform=`translate(-50%,-50%) rotate(${(360/N*i)}deg) translateY(${-R}px)`; barsBox.appendChild(el); bars.push(el);} }
-    buildBars(); addEventListener('resize', buildBars);
-    micBtn.addEventListener('click', async ()=>{
-      listening = !listening; wrap.classList.toggle('listening', listening);
-      if(listening){
-        try{
-          if(!audioCtx){ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }
-          if(audioCtx.state === 'suspended'){ try{ await audioCtx.resume(); }catch(e){} }
-          const isSecure = location.protocol==='https:' || ['localhost','127.0.0.1'].includes(location.hostname);
-          // aunque no sea seguro, intentamos igualmente; si falla, simulamos
-          stream = await navigator.mediaDevices.getUserMedia({audio:true});
-          const src = audioCtx.createMediaStreamSource(stream);
-          analyser = audioCtx.createAnalyser(); analyser.fftSize = 2048;
-          src.connect(analyser);
-          data = new Uint8Array(analyser.frequencyBinCount);
-        }catch(err){ console.warn('Micrófono no disponible, usando animación simulada.', err); }
-      } else {
-        if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
-      }
-    }); const src=audioCtx.createMediaStreamSource(stream); analyser=audioCtx.createAnalyser(); analyser.fftSize=512; src.connect(analyser); data=new Uint8Array(analyser.frequencyBinCount);}catch(e){ console.warn('Mic no disponible', e);} } else { if(stream){stream.getTracks().forEach(t=>t.stop()); stream=null;} } });
-    function animate(t){
-      let amp = 0.10;
-      if(listening && analyser && data){
-        // usar dominio temporal para volumen (RMS)
-        const timeData = new Uint8Array(analyser.fftSize);
-        analyser.getByteTimeDomainData(timeData);
-        let sum = 0; for(let i=0;i<timeData.length;i++){ const v = (timeData[i]-128)/128; sum += v*v; }
-        const rms = Math.sqrt(sum/timeData.length); // 0..1
-        amp = Math.min(1, 0.2 + rms*1.8);
-      } else {
-        amp = 0.12 + 0.06*Math.sin(t/800);
-      }
-      sphere.style.setProperty('--amp', amp.toFixed(3));
-      for(let i=0;i<bars.length;i++){
-        const h = 24 + (90*amp)*(0.6 + 0.4*Math.sin(t/250 + i*0.35));
-        bars[i].style.height = h+'px';
-        bars[i].style.opacity = 0.6 + 0.4*amp;
+    (function(){
+      var micBtn=document.getElementById('mic'); var wrap=document.getElementById('techWrap'); var sphere=document.getElementById('sphere'); var barsBox=document.getElementById('bars');
+      var listening=false,audioCtx=null,analyser=null,data=null,stream=null; var N=48; var bars=[];
+      function buildBars(){ barsBox.innerHTML=''; bars=[]; var size=sphere.offsetWidth, R=size*0.44; for(var i=0;i<N;i++){ var el=document.createElement('span'); el.style.transform='translate(-50%,-50%) rotate('+(360/N*i)+'deg) translateY('+(-R)+'px)'; barsBox.appendChild(el); bars.push(el);} }
+      buildBars(); addEventListener('resize', buildBars);
+      function animate(t){
+        var amp = 0.10;
+        if(listening && analyser){
+          var timeData = new Uint8Array(analyser.fftSize||2048);
+          analyser.getByteTimeDomainData(timeData);
+          var sum=0; for(var i=0;i<timeData.length;i++){ var v=(timeData[i]-128)/128; sum+=v*v; }
+          var rms = Math.sqrt(sum/timeData.length);
+          amp = Math.min(1, 0.2 + rms*1.8);
+        } else { amp = 0.12 + 0.06*Math.sin(t/800); }
+        sphere.style.setProperty('--amp', amp.toFixed(3));
+        for(var j=0;j<bars.length;j++){
+          var h = 24 + (90*amp)*(0.6 + 0.4*Math.sin(t/250 + j*0.35));
+          bars[j].style.height = h+'px';
+          bars[j].style.opacity = 0.6 + 0.4*amp;
+        }
+        requestAnimationFrame(animate);
       }
       requestAnimationFrame(animate);
-    }
-    requestAnimationFrame(animate);
+
+      micBtn.addEventListener('click', function(){
+        listening = !listening; wrap.classList.toggle('listening', listening);
+        if(listening){
+          try{
+            if(!audioCtx){ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }
+            if(audioCtx.state==='suspended'){ audioCtx.resume().catch(function(){}); }
+            navigator.mediaDevices.getUserMedia({audio:true}).then(function(s){
+              stream = s; var src = audioCtx.createMediaStreamSource(stream);
+              analyser = audioCtx.createAnalyser(); analyser.fftSize = 2048; src.connect(analyser);
+              data = new Uint8Array(analyser.frequencyBinCount);
+            }).catch(function(err){ console.warn('Micrófono no disponible', err); });
+          }catch(e){ console.warn('AudioContext no disponible', e); }
+        } else {
+          if(stream){ stream.getTracks().forEach(function(t){t.stop();}); stream=null; }
+        }
+      });
+    })();
 
     // ===== Idioma y centro (locución) =====
-    const langChips=[...document.querySelectorAll('.lang-chip')]; const centerChips=[...document.querySelectorAll('.center-chip')];
-    window.currentLang = window.currentLang || 'es-ES';
-    const PHRASES={ 'es-ES':{ prompt:'¿En qué puedo ayudarle?', center:n=>`Centro seleccionado: ${n}` }, 'en-US':{ prompt:'How can I help you?', center:n=>`Selected center: ${n}` }, 'de-DE':{ prompt:'Womit kann ich Ihnen helfen?', center:n=>`Ausgewählter Standort: ${n}` } };
-    function voicesReady(timeout=2000){
-      return new Promise(resolve=>{
-        let voices=speechSynthesis.getVoices();
-        if(voices && voices.length){ resolve(voices); return; }
-        const t=setTimeout(()=> resolve(speechSynthesis.getVoices()), timeout);
-        speechSynthesis.onvoiceschanged = ()=>{ clearTimeout(t); resolve(speechSynthesis.getVoices()); };
-      });
-    }
-    async function pickVoice(lang){
-      const list = await voicesReady();
-      if(!list || !list.length) return null;
-      let v = list.find(v=>v.lang && v.lang.toLowerCase().startsWith(lang.toLowerCase()));
-      if(!v) v = list.find(v=>v.lang && v.lang.toLowerCase().startsWith(lang.slice(0,2).toLowerCase()));
-      return v || list[0];
-    }
-    async function speak(text,lang){
-      try{
-        if(!('speechSynthesis' in window)) return;
-        const u = new SpeechSynthesisUtterance(text);
-        const v = await pickVoice(lang);
-        if(v) u.voice = v;
-        u.lang = lang; u.rate = 1; u.pitch = 1.03; u.volume = 1;
-        // cancelar anteriores y hablar
-        speechSynthesis.cancel();
-        speechSynthesis.speak(u);
-      }catch(e){ /* silencio si no hay voces */ }
-    }
-    function selectLang(el){ langChips.forEach(c=>c.setAttribute('aria-pressed', c===el?'true':'false')); window.currentLang=el.dataset.lang||'es-ES'; speak(PHRASES[window.currentLang].prompt, window.currentLang); }
-    function selectCenter(el){ centerChips.forEach(c=>c.setAttribute('aria-pressed', c===el?'true':'false')); const name=el.dataset.center||el.textContent.trim(); speak(PHRASES[window.currentLang].center(name), window.currentLang); }
-    langChips.forEach(ch=> ch.addEventListener('click', ()=> selectLang(ch)) );
-    centerChips.forEach(ch=> ch.addEventListener('click', ()=> selectCenter(ch)) );
-    // precargar voces para que la primera locución no se pierda
-    try{ window.speechSynthesis && speechSynthesis.getVoices(); }catch(e){} centerChips.forEach(ch=> ch.addEventListener('click', ()=> selectCenter(ch))); speechSynthesis.onvoiceschanged=()=>{};
+    (function(){
+      var langChips=[].slice.call(document.querySelectorAll('.lang-chip'));
+      var centerChips=[].slice.call(document.querySelectorAll('.center-chip'));
+      window.currentLang = window.currentLang || 'es-ES';
+      var PHRASES={ 'es-ES':{ prompt:'¿En qué puedo ayudarle?', center:function(n){return 'Centro seleccionado: '+n;} }, 'en-US':{ prompt:'How can I help you?', center:function(n){return 'Selected center: '+n;} }, 'de-DE':{ prompt:'Womit kann ich Ihnen helfen?', center:function(n){return 'Ausgewählter Standort: '+n;} } };
+
+      function voicesReady(timeout){ timeout = timeout||2000; return new Promise(function(res){ var list=speechSynthesis.getVoices(); if(list&&list.length){ res(list); return;} var t=setTimeout(function(){ res(speechSynthesis.getVoices()); },timeout); speechSynthesis.onvoiceschanged=function(){ clearTimeout(t); res(speechSynthesis.getVoices()); }; }); }
+      function pickVoice(lang){ return voicesReady().then(function(list){ if(!list||!list.length) return null; var v=list.find(function(v){ return v.lang && v.lang.toLowerCase().indexOf(lang.toLowerCase())===0; }); if(!v) v=list.find(function(v){return v.lang && v.lang.toLowerCase().indexOf(lang.slice(0,2).toLowerCase())===0;}); return v||list[0]; }); }
+      function speak(text,lang){ if(!('speechSynthesis' in window)) return; pickVoice(lang).then(function(voice){ var u=new SpeechSynthesisUtterance(text); if(voice) u.voice=voice; u.lang=lang; u.rate=1; u.pitch=1.03; u.volume=1; try{ speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){} }); }
+
+      function selectLang(el){ langChips.forEach(function(c){ c.setAttribute('aria-pressed', c===el ? 'true':'false'); }); window.currentLang=el.getAttribute('data-lang')||'es-ES'; speak(PHRASES[window.currentLang].prompt, window.currentLang); }
+      function selectCenter(el){ centerChips.forEach(function(c){ c.setAttribute('aria-pressed', c===el ? 'true':'false'); }); var name=el.getAttribute('data-center')||el.textContent.trim(); speak(PHRASES[window.currentLang].center(name), window.currentLang); }
+
+      langChips.forEach(function(ch){ ch.addEventListener('click', function(){ selectLang(ch); }); });
+      centerChips.forEach(function(ch){ ch.addEventListener('click', function(){ selectCenter(ch); }); });
+      try{ window.speechSynthesis && speechSynthesis.getVoices(); }catch(e){}
+
+      // export para depurar
+      window._tts = {speak:speak};
+    })();
 
     // ===== Buscador conectado a GitHub =====
-    const REPO_BASE='https://raw.githubusercontent.com/66312649/Asistente-Duran/main/imports/';
-    const PRICE_FILE='Lista%20de%20art%C3%ADculos.xlsx';
-    const STOCK_FILE=n=>`Stock_Almacen_${n}_20250915.xlsx`;
-    const CENTER_CODE={ 'Palma':1,'Calvià':2,'Alcúdia':3,'Santanyí':4,'Santa Maria':7 };
-    const CODE_TO_CENTER=Object.fromEntries(Object.entries(CENTER_CODE).map(([k,v])=>[v,k]));
+    (function(){
+      var REPO_BASE='https://raw.githubusercontent.com/66312649/Asistente-Duran/main/imports/';
+      var PRICE_FILE='Lista%20de%20art%C3%ADculos.xlsx';
+      var STOCK_FILE=function(n){ return 'Stock_Almacen_'+n+'_20250915.xlsx'; };
+      var CENTER_CODE={ 'Palma':1,'Calvià':2,'Alcúdia':3,'Santanyí':4,'Santa Maria':7 };
+      var CODE_TO_CENTER={1:'Palma',2:'Calvià',3:'Alcudía',4:'Santanyí',7:'Santa Maria'};
 
-    const q=document.getElementById('q');
-    const goBtn=document.getElementById('go');
-    const resultsEl=document.getElementById('results');
-    const gridEl=document.getElementById('resultsGrid');
-    const backBtn=document.getElementById('backBtn');
-    const titleEl=document.getElementById('resultsTitle');
-    const subEl=document.getElementById('resultsSub');
+      var q=document.getElementById('q');
+      var goBtn=document.getElementById('go');
+      var resultsEl=document.getElementById('results');
+      var gridEl=document.getElementById('resultsGrid');
+      var backBtn=document.getElementById('backBtn');
+      var titleEl=document.getElementById('resultsTitle');
+      var subEl=document.getElementById('resultsSub');
 
-    function getCurrentCenterName(){ const el=document.querySelector('.center-chip[aria-pressed="true"]'); return el?(el.dataset.center||el.textContent.trim()):'Calvià'; }
-    function getCurrentCenterCode(){ return CENTER_CODE[getCurrentCenterName()]||2; }
+      function getCurrentCenterName(){ var el=document.querySelector('.center-chip[aria-pressed="true"]'); return el?(el.getAttribute('data-center')||el.textContent.trim()):'Calvià'; }
+      function getCurrentCenterCode(){ var n=getCurrentCenterName(); return CENTER_CODE[n]||2; }
 
-    function normKey(s){ return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim(); }
-    function pickCol(cols,hints){ const nn=cols.map(c=>({raw:c,n:normKey(c)})); for(const c of nn){ if(hints.every(h=>c.n.includes(h))) return c.raw; } for(const c of nn){ if(hints.some(h=>c.n.includes(h))) return c.raw; } return null; }
+      function normKey(s){ return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim(); }
+      function pickCol(cols,hints){ var nn=cols.map(function(c){return {raw:c,n:normKey(c)};}); var i,c; for(i=0;i<nn.length;i++){ c=nn[i]; if(hints.every(function(h){return c.n.indexOf(h)>=0;})) return c.raw; } for(i=0;i<nn.length;i++){ c=nn[i]; if(hints.some(function(h){return c.n.indexOf(h)>=0;})) return c.raw; } return null; }
 
-    async function fetchWorkbook(file){ const url=REPO_BASE+file; const res=await fetch(url,{cache:'no-store',mode:'cors'}); if(!res.ok) throw new Error('HTTP '+res.status+' en '+file); const ab=await res.arrayBuffer(); return XLSX.read(ab,{type:'array'}); }
-    function sheetToJSON(wb){ const name=wb.SheetNames.find(n=>/Hoja1|ALM|Sheet1/i.test(n))||wb.SheetNames[0]; return XLSX.utils.sheet_to_json(wb.Sheets[name],{defval:null}); }
+      function fetchWorkbook(file){ var url=REPO_BASE+file; return fetch(url,{cache:'no-store',mode:'cors'}).then(function(res){ if(!res.ok) throw new Error('HTTP '+res.status+' en '+file); return res.arrayBuffer(); }).then(function(ab){ return XLSX.read(ab,{type:'array'}); }); }
+      function sheetToJSON(wb){ var name=wb.SheetNames.find(function(n){return /Hoja1|ALM|Sheet1/i.test(n);})||wb.SheetNames[0]; return XLSX.utils.sheet_to_json(wb.Sheets[name],{defval:null}); }
 
-    const cache={ prices:null, stock:{} };
-    async function loadPrices(){ if(cache.prices) return cache.prices; const wb=await fetchWorkbook(PRICE_FILE); const rows=sheetToJSON(wb); console.log('[PRECIOS] Filas:', rows.length); const cols=rows.length?Object.keys(rows[0]):[]; const cNum=pickCol(cols,['numero','articulo']); const cDesc=pickCol(cols,['descripcion','articulo']); const cFab=pickCol(cols,['fabricante']); const cPvp=pickCol(cols,['1','lista','precio','venta']); const map=new Map(); for(const r of rows){ const id=r[cNum]; if(id==null) continue; const key=String(id).trim(); map.set(key,{numero_articulo:key, descripcion:r[cDesc]||'', fabricante:r[cFab]||'', pvp:r[cPvp]}); } cache.prices=map; return map; }
-    async function loadStock(center){ if(cache.stock[center]) return cache.stock[center]; const wb=await fetchWorkbook(STOCK_FILE(center)); const rows=sheetToJSON(wb); console.log('[STOCK] Centro', center, 'Filas:', rows.length); const cols=rows.length?Object.keys(rows[0]):[]; const cNum=pickCol(cols,['numero','articulo']); const cRef=pickCol(cols,['referencia','proveedor']); const cDesc=pickCol(cols,['descripcion']); const cFab=pickCol(cols,['fabricante']); const cStk=pickCol(cols,['stock']); const list=rows.map(r=>({ numero_articulo:String(r[cNum]||'').trim(), ref_proveedor:r[cRef]||'', descripcion:r[cDesc]||'', fabricante:r[cFab]||'', stock:Number(r[cStk]||0) })).filter(x=>x.numero_articulo); cache.stock[center]=list; return list; }
+      var cache={ prices:null, stock:{} };
+      function loadPrices(){ if(cache.prices) return Promise.resolve(cache.prices); return fetchWorkbook(PRICE_FILE).then(function(wb){ var rows=sheetToJSON(wb); console.log('[PRECIOS] Filas:', rows.length); var cols=rows.length?Object.keys(rows[0]):[]; var cNum=pickCol(cols,['numero','articulo']); var cDesc=pickCol(cols,['descripcion','articulo']); var cFab=pickCol(cols,['fabricante']); var cPvp=pickCol(cols,['1','lista','precio','venta']); var map=new Map(); rows.forEach(function(r){ var id=r[cNum]; if(id==null) return; var key=String(id).trim(); map.set(key,{numero_articulo:key, descripcion:r[cDesc]||'', fabricante:r[cFab]||'', pvp:r[cPvp]}); }); cache.prices=map; return map; }); }
+      function loadStock(center){ if(cache.stock[center]) return Promise.resolve(cache.stock[center]); return fetchWorkbook(STOCK_FILE(center)).then(function(wb){ var rows=sheetToJSON(wb); console.log('[STOCK] Centro', center, 'Filas:', rows.length); var cols=rows.length?Object.keys(rows[0]):[]; var cNum=pickCol(cols,['numero','articulo']); var cRef=pickCol(cols,['referencia','proveedor']); var cDesc=pickCol(cols,['descripcion']); var cFab=pickCol(cols,['fabricante']); var cStk=pickCol(cols,['stock']); var list=rows.map(function(r){ return { numero_articulo:String(r[cNum]||'').trim(), ref_proveedor:r[cRef]||'', descripcion:r[cDesc]||'', fabricante:r[cFab]||'', stock:Number(r[cStk]||0) }; }).filter(function(x){return x.numero_articulo;}); cache.stock[center]=list; return list; }); }
 
-    function formatEUR(val){ if(val==null||val==='') return '-'; const n=(typeof val==='number')?val:parseFloat(String(val).replace(/\./g,'').replace(',','.')); if(!isFinite(n)) return '-'; return n.toLocaleString(window.currentLang||'es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
-    function mergeItem(s,p){ return { numero_articulo:s.numero_articulo, ref_proveedor:s.ref_proveedor||null, descripcion_final:(p && p.descripcion)||s.descripcion||'-', fabricante:(p && p.fabricante)||s.fabricante||'-', stock:s.stock||0, precio_eur:formatEUR((p && p.pvp)) }; }
-    function score(qs,it){
-      const t = String(qs||'').toLowerCase();
-      if(!t) return 0;
-      const parts = t.trim().split(' ').filter(Boolean);
-      const d = String(it.descripcion_final==null? '' : it.descripcion_final).toLowerCase();
-      const r = String(it.ref_proveedor==null? '' : it.ref_proveedor).toLowerCase();
-      const n = String(it.numero_articulo==null? '' : it.numero_articulo).toLowerCase();
-      let s=0;
-      for(const tok of parts){ if(d.includes(tok)) s+=3; if(r.includes(tok)) s+=2; if(n.includes(tok)) s+=1.5; }
-      return s;
-    }); return s; }
+      function formatEUR(val){ if(val==null||val==='') return '-'; var n= (typeof val==='number')? val : parseFloat(String(val).replace(/\./g,'').replace(',','.')); if(!isFinite(n)) return '-'; return n.toLocaleString(window.currentLang||'es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+      function mergeItem(s,p){ return { numero_articulo:s.numero_articulo, ref_proveedor:s.ref_proveedor||null, descripcion_final:(p && p.descripcion) || s.descripcion || '-', fabricante:(p && p.fabricante) || s.fabricante || '-', stock:s.stock||0, precio_eur:formatEUR(p && p.pvp) }; }
+      function score(qs,it){ var t=String(qs||'').toLowerCase(); if(!t) return 0; var parts=t.trim().split(' ').filter(Boolean); var d=String(it.descripcion_final==null?'':it.descripcion_final).toLowerCase(); var r=String(it.ref_proveedor==null?'':it.ref_proveedor).toLowerCase(); var n=String(it.numero_articulo==null?'':it.numero_articulo).toLowerCase(); var s=0; for(var i=0;i<parts.length;i++){ var tok=parts[i]; if(d.indexOf(tok)>=0) s+=3; if(r.indexOf(tok)>=0) s+=2; if(n.indexOf(tok)>=0) s+=1.5; } return s; }
 
-    function render(items, qStr){ const L=window.currentLang||'es-ES'; const TXT={ 'es-ES':{results:'Resultados',of:'coincidencias',back:'← Volver',price:'Precio',stock:'Stock',prov:'Ref. proveedor',mfg:'Fabricante', alt:(n,qty)=>`Actualmente no disponemos de stock en este centro, pero en el centro de ${n} disponemos de ${qty} unidades. Por favor, hable con el mostrador para tramitar el suministro.`}, 'en-US':{results:'Results',of:'matches',back:'← Back',price:'Price',stock:'Stock',prov:'Supplier ref.',mfg:'Manufacturer', alt:(n,qty)=>`We currently have no stock at this store, but ${qty} units are available at the ${n} branch. Please speak to the counter to arrange supply.`}, 'de-DE':{results:'Ergebnisse',of:'Treffer',back:'← Zurück',price:'Preis',stock:'Bestand',prov:'Lieferantenref.',mfg:'Hersteller', alt:(n,qty)=>`Derzeit kein Bestand in diesem Standort, aber ${qty} Stück sind im Standort ${n} verfügbar. Bitte wenden Sie sich an den Schalter für die Bestellung.`} }[L];
-      titleEl.textContent=TXT.results; subEl.textContent=`${items.length} ${TXT.of} · Centro: ${getCurrentCenterName()} · “${qStr}”`; backBtn.textContent=TXT.back;
-      gridEl.innerHTML=items.map(it=>{ const ok=(Number(it.stock)||0)>0; const badge= ok?`<span class="stock ok">${TXT.stock}: ${it.stock}</span>`:`<span class="stock zero">${TXT.stock}: 0</span>`; const alt=it._altStock?`<div class="meta" style="margin-top:6px"><em>${TXT.alt(CODE_TO_CENTER[it._altStock.center], it._altStock.qty)}</em></div>`:''; return `<article class="card" role="button" tabindex="0" data-id="${it.numero_articulo}"><h3>${it.descripcion_final}</h3><div class="meta"><span><strong>${TXT.prov}:</strong> ${it.ref_proveedor??'-'}</span><span><strong>${TXT.mfg}:</strong> ${it.fabricante??'-'}</span></div><div class="price-stock"><div class="price">${it.precio_eur}</div>${badge}</div>${alt}</article>`; }).join('');
-      resultsEl.setAttribute('aria-hidden','false'); }
+      function render(items, qStr){ var L=window.currentLang||'es-ES'; var TXT={ 'es-ES':{results:'Resultados',of:'coincidencias',back:'← Volver',price:'Precio',stock:'Stock',prov:'Ref. proveedor',mfg:'Fabricante', alt:function(n,qty){return 'Actualmente no disponemos de stock en este centro, pero en el centro de '+n+' disponemos de '+qty+' unidades. Por favor, hable con el mostrador para tramitar el suministro.';}}, 'en-US':{results:'Results',of:'matches',back:'← Back',price:'Price',stock:'Stock',prov:'Supplier ref.',mfg:'Manufacturer', alt:function(n,qty){return 'We currently have no stock at this store, but '+qty+' units are available at the '+n+' branch. Please speak to the counter to arrange supply.';}}, 'de-DE':{results:'Ergebnisse',of:'Treffer',back:'← Zurück',price:'Preis',stock:'Bestand',prov:'Lieferantenref.',mfg:'Hersteller', alt:function(n,qty){return 'Derzeit kein Bestand in diesem Standort, aber '+qty+' Stück sind im Standort '+n+' verfügbar. Bitte wenden Sie sich an den Schalter für die Bestellung.';}} }[L];
+        titleEl.textContent=TXT.results; subEl.textContent= items.length+' '+TXT.of+' · Centro: '+getCurrentCenterName()+' · “'+qStr+'”'; backBtn.textContent=TXT.back;
+        gridEl.innerHTML= items.map(function(it){ var ok=(Number(it.stock)||0)>0; var badge= ok?('<span class="stock ok">'+TXT.stock+': '+it.stock+'</span>'):( '<span class="stock zero">'+TXT.stock+': 0</span>'); var alt= it._altStock ? ('<div class="meta" style="margin-top:6px"><em>'+ TXT.alt(CODE_TO_CENTER[it._altStock.center], it._altStock.qty) +'</em></div>') : ''; return '<article class="card" role="button" tabindex="0" data-id="'+it.numero_articulo+'">\n  <h3>'+ it.descripcion_final +'</h3>\n  <div class="meta">\n    <span><strong>'+TXT.prov+':</strong> '+ (it.ref_proveedor==null?'-':it.ref_proveedor) +'</span>\n    <span><strong>'+TXT.mfg+':</strong> '+ (it.fabricante||'-') +'</span>\n  </div>\n  <div class="price-stock">\n    <div class="price">'+ (it.precio_eur||'-') +'</div>\n    '+ badge +'\n  </div>\n  '+alt+'\n</article>'; }).join('');
+        resultsEl.setAttribute('aria-hidden','false'); }
 
-    async function findAltStock(numArt, excludeCenter){ for(const c of [1,2,3,4,7]){ if(c===excludeCenter) continue; const list=await loadStock(c); const hit=list.find(x=>x.numero_articulo===numArt && Number(x.stock)>0); if(hit) return {center:c, qty:Number(hit.stock)}; } return null; }
+      function findAltStock(numArt, excludeCenter){ var order=[1,2,3,4,7]; var i=0; function step(){ if(i>=order.length) return Promise.resolve(null); var c=order[i++]; if(c===excludeCenter) return step(); return loadStock(c).then(function(list){ var hit=list.find(function(x){return x.numero_articulo===numArt && Number(x.stock)>0;}); return hit? {center:c, qty:Number(hit.stock)} : step(); }); } return step(); }
 
-    async function performSearch(query){ try{ const center=getCurrentCenterCode(); titleEl.textContent='Resultados'; subEl.textContent='Cargando…'; resultsEl.setAttribute('aria-hidden','false'); const [prices, stock]=await Promise.all([loadPrices(), loadStock(center)]); const merged=stock.map(s=>mergeItem(s, prices.get(s.numero_articulo))); merged.forEach(m=>m.__score=score(query,m)); merged.sort((a,b)=>b.__score-a.__score); let top=merged.filter(x=>x.__score>0).slice(0,6); if(top.length===0) top=merged.slice(0,6); for(const it of top){ if(Number(it.stock)<=0){ it._altStock=await findAltStock(it.numero_articulo, center);} } render(top, query); } catch(e){ console.error('[performSearch] Error', e); subEl.textContent='Error cargando datos: '+(e&&e.message?e.message:e); } }
+      function performSearch(query){ try{ var center=getCurrentCenterCode(); titleEl.textContent='Resultados'; subEl.textContent='Cargando…'; resultsEl.setAttribute('aria-hidden','false'); Promise.all([loadPrices(), loadStock(center)]).then(function(arr){ var prices=arr[0], stock=arr[1]; var merged=stock.map(function(s){ return mergeItem(s, prices.get(s.numero_articulo)); }); merged.forEach(function(m){ m.__score=score(query,m); }); merged.sort(function(a,b){return b.__score-a.__score;}); var top=merged.filter(function(x){return x.__score>0;}).slice(0,6); if(top.length===0) top=merged.slice(0,6); var k=0; function enrich(){ if(k>=top.length) return render(top, query); var it=top[k++]; if(Number(it.stock)<=0){ findAltStock(it.numero_articulo, center).then(function(res){ it._altStock=res; enrich(); }); } else enrich(); } enrich(); }).catch(function(e){ console.error('[performSearch] Error', e); subEl.textContent='Error cargando datos: '+(e&&e.message?e.message:e); }); }catch(e){ console.error('[performSearch] Error', e); subEl.textContent='Error cargando datos: '+(e&&e.message?e.message:e); } }
 
-    // Exponer para depurar
-    window.__searchRepo = performSearch;
-    window._debug = { speak, performSearch, center: ()=>getCurrentCenterName(), lang: ()=>window.currentLang };
-    console.info('[HUB] ready:', {lang: window.currentLang, center: getCurrentCenterName()});
+      // Exponer para depuración
+      window.__searchRepo = performSearch;
+      window._debug = { performSearch: performSearch };
+      console.info('[HUB] ready:', {lang: window.currentLang, center: getCurrentCenterName()});
 
-    // Go + Enter
-    goBtn.onclick=()=> performSearch(q.value.trim());
-    q.onkeydown=(e)=>{ if(e.key==='Enter'){ e.preventDefault(); performSearch(q.value.trim()); } };
+      // Go + Enter
+      goBtn.onclick=function(){ performSearch(q.value.trim()); };
+      q.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); performSearch(q.value.trim()); } });
 
-    // ===== Voz real (SpeechRecognition) =====
-    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-    function startSpeech(){ if(!SR){ resultsEl.setAttribute('aria-hidden','false'); subEl.textContent='Reconocimiento de voz no disponible'; return; } const isSecure= location.protocol==='https:' || ['localhost','127.0.0.1'].includes(location.hostname); if(!isSecure){ resultsEl.setAttribute('aria-hidden','false'); subEl.textContent='La voz requiere HTTPS o ejecutar en localhost'; return; } const rec=new SR(); rec.lang=window.currentLang||'es-ES'; rec.interimResults=false; rec.maxAlternatives=1; rec.onresult=(ev)=>{ let final=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ const r=ev.results[i]; if(r.isFinal) final+= r[0].transcript + ' '; } if(final.trim()){ q.value=(q.value? q.value+' ' : '') + final.trim(); performSearch(q.value.trim()); } }; rec.onerror=()=>{ resultsEl.setAttribute('aria-hidden','false'); subEl.textContent='No se pudo captar audio'; }; try{ rec.start(); }catch(e){} }
-    micBtn && micBtn.addEventListener('click', startSpeech);
+      // Voz (SpeechRecognition)
+      var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+      function startSpeech(){ if(!SR){ resultsEl.setAttribute('aria-hidden','false'); subEl.textContent='Reconocimiento de voz no disponible'; return; } var isSecure= location.protocol==='https:' || ['localhost','127.0.0.1'].includes(location.hostname); if(!isSecure){ resultsEl.setAttribute('aria-hidden','false'); subEl.textContent='La voz requiere HTTPS o ejecutar en localhost'; return; } var rec=new SR(); rec.lang=window.currentLang||'es-ES'; rec.interimResults=false; rec.maxAlternatives=1; rec.onresult=function(ev){ var final=''; for(var i=ev.resultIndex;i<ev.results.length;i++){ var r=ev.results[i]; if(r.isFinal) final+= r[0].transcript + ' '; } if(final.trim()){ q.value=(q.value? q.value+' ' : '') + final.trim(); performSearch(q.value.trim()); } }; rec.onerror=function(){ resultsEl.setAttribute('aria-hidden','false'); subEl.textContent='No se pudo captar audio'; }; try{ rec.start(); }catch(e){} }
+      document.getElementById('mic').addEventListener('click', startSpeech);
 
-    // Cerrar overlay
-    backBtn.addEventListener('click', ()=> resultsEl.setAttribute('aria-hidden','true'));
+      backBtn.addEventListener('click', function(){ resultsEl.setAttribute('aria-hidden','true'); });
+    })();
   </script>
 </body>
 </html>
